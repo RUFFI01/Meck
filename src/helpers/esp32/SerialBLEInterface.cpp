@@ -15,7 +15,7 @@
 // Slice tags for small-MTU peers. No real frame can start with one of these:
 // command codes are below 0x80 and push codes stop at 0x90. When slicing is in
 // effect, every frame to or from the peer travels as [tag][len][payload]
-// slices; the length byte lets stream-style transports (nRF52 BLEUart)
+// slices; the length byte lets stream-style transports
 // recover slice boundaries as well.
 #define SLICE_TAG_FIRST   0xF0   // first slice of a multi-slice frame
 #define SLICE_TAG_MIDDLE  0xF1

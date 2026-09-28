@@ -64,7 +64,7 @@ void setup() {
   fast_rng.begin(radio_get_rng_seed());
 
   FILESYSTEM* fs;
-#if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
+#if defined(STM32_PLATFORM)
   InternalFS.begin();
   fs = &InternalFS;
   IdentityStore store(InternalFS, "");
@@ -102,7 +102,6 @@ void setup() {
   // ---------------------------------------------------------------------------
   // SD card init — needed for MQTT config on devices with SD slots.
   // T-Deck Pro: SD shares display SPI bus (HSPI via displaySpi)
-  // T5S3: SD shares LoRa SPI bus (SCK=14, MOSI=13, MISO=21)
   // Heltec V4 and others without SD: config lives in SPIFFS (already init'd)
   // ---------------------------------------------------------------------------
 #if (defined(HAS_4G_MODEM) || defined(MECK_WIFI_REMOTE)) && (defined(HAS_SDCARD) || defined(SDCARD_CS))
@@ -123,12 +122,7 @@ void setup() {
     delay(100);
 
     for (int i = 0; i < 3; i++) {
-      #if defined(LilyGo_T5S3_EPaper_Pro)
-      // T5S3: SD shares LoRa SPI bus — create local HSPI reference
-      static SPIClass sdSpi(HSPI);
-      sdSpi.begin(P_LORA_SCLK, P_LORA_MISO, P_LORA_MOSI, SDCARD_CS);
-      if (SD.begin(SDCARD_CS, sdSpi, 4000000)) { sdCardReady = true; break; }
-      #elif defined(SDCARD_CS)
+      #if defined(SDCARD_CS)
       extern SPIClass displaySpi;
       if (SD.begin(SDCARD_CS, displaySpi)) { sdCardReady = true; break; }
       #else

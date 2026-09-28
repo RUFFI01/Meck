@@ -58,4 +58,4 @@ pio run -e meck_wifi_repeater_heltec_v4 -t upload
 - OTA firmware updates work over WiFi via the Mycelium dashboard
 - Config changes require re-uploading SPIFFS (`-t uploadfs`)
 - The same `main.cpp`, `WiFiMQTT.h/cpp`, and `MyMesh.cpp` are shared
-  with T-Deck Pro and T5S3 builds — no Heltec-specific source changes
+  with T-Deck Pro builds -- no Heltec-specific source changes

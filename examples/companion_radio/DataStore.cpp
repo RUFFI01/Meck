@@ -1,14 +1,10 @@
 #include <Arduino.h>
 #include "DataStore.h"
 
-#if defined(EXTRAFS) || defined(QSPIFLASH)
-  #define MAX_BLOBRECS 100
-#else
   #define MAX_BLOBRECS 20
-#endif
 
 DataStore::DataStore(FILESYSTEM& fs, mesh::RTCClock& clock) : _fs(&fs), _fsExtra(nullptr), _clock(&clock),
-#if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
+#if defined(STM32_PLATFORM)
     identity_store(fs, "")
 #elif defined(RP2040_PLATFORM)
     identity_store(fs, "/identity")
@@ -17,22 +13,9 @@ DataStore::DataStore(FILESYSTEM& fs, mesh::RTCClock& clock) : _fs(&fs), _fsExtra
 #endif
 {
 }
-
-#if defined(EXTRAFS) || defined(QSPIFLASH)
-DataStore::DataStore(FILESYSTEM& fs, FILESYSTEM& fsExtra, mesh::RTCClock& clock) : _fs(&fs), _fsExtra(&fsExtra), _clock(&clock),
-#if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
-    identity_store(fs, "")
-#elif defined(RP2040_PLATFORM)
-    identity_store(fs, "/identity")
-#else
-    identity_store(fs, "/identity")
-#endif
-{
-}
-#endif
 
 static File openWrite(FILESYSTEM* fs, const char* filename) {
-#if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
+#if defined(STM32_PLATFORM)
   fs->remove(filename);
   return fs->open(filename, FILE_O_WRITE);
 #elif defined(RP2040_PLATFORM)
@@ -42,7 +25,7 @@ static File openWrite(FILESYSTEM* fs, const char* filename) {
 #endif
 }
 
-#if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
+#if defined(STM32_PLATFORM)
   static uint32_t _ContactsChannelsTotalBlocks = 0;
 #endif
 
@@ -51,12 +34,9 @@ void DataStore::begin() {
   identity_store.begin();
 #endif
 
-#if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
+#if defined(STM32_PLATFORM)
   _ContactsChannelsTotalBlocks = _getContactsChannelsFS()->_getFS()->cfg->block_count;
   checkAdvBlobFile();
-  #if defined(EXTRAFS) || defined(QSPIFLASH)
-  migrateToSecondaryFS();
-  #endif
 #else
   // init 'blob store' support
   _fs->mkdir("/bl");
@@ -68,17 +48,11 @@ void DataStore::begin() {
   #include <nvs_flash.h>
 #elif defined(RP2040_PLATFORM)
   #include <LittleFS.h>
-#elif defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
-  #if defined(QSPIFLASH)
-    #include <CustomLFS_QSPIFlash.h>
-  #elif defined(EXTRAFS)
-    #include <CustomLFS.h>
-  #else 
+#elif defined(STM32_PLATFORM)
     #include <InternalFileSystem.h>
-  #endif
 #endif
 
-#if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
+#if defined(STM32_PLATFORM)
 int _countLfsBlock(void *p, lfs_block_t block){
       if (block > _ContactsChannelsTotalBlocks) {
         MESH_DEBUG_PRINTLN("ERROR: Block %d exceeds filesystem bounds - CORRUPTION DETECTED!", block);
@@ -108,7 +82,7 @@ uint32_t DataStore::getStorageUsedKb() const {
   info.usedBytes = 0;
   _fs->info(info);
   return info.usedBytes / 1024;
-#elif defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
+#elif defined(STM32_PLATFORM)
   const lfs_config* config = _getContactsChannelsFS()->_getFS()->cfg;
   int usedBlockCount = _getLfsUsedBlockCount(_getContactsChannelsFS());
   int usedBytes = config->block_size * usedBlockCount;
@@ -126,7 +100,7 @@ uint32_t DataStore::getStorageTotalKb() const {
   info.totalBytes = 0;
   _fs->info(info);
   return info.totalBytes / 1024;
-#elif defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
+#elif defined(STM32_PLATFORM)
   const lfs_config* config = _getContactsChannelsFS()->_getFS()->cfg;
   int totalBytes = config->block_size * config->block_count;
   return totalBytes / 1024;
@@ -136,7 +110,7 @@ uint32_t DataStore::getStorageTotalKb() const {
 }
 
 File DataStore::openRead(const char* filename) {
-#if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
+#if defined(STM32_PLATFORM)
   return _fs->open(filename, FILE_O_READ);
 #elif defined(RP2040_PLATFORM)
   return _fs->open(filename, "r");
@@ -146,7 +120,7 @@ File DataStore::openRead(const char* filename) {
 }
 
 File DataStore::openRead(FILESYSTEM* fs, const char* filename) {
-#if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
+#if defined(STM32_PLATFORM)
   return fs->open(filename, FILE_O_READ);
 #elif defined(RP2040_PLATFORM)
   return fs->open(filename, "r");
@@ -164,7 +138,7 @@ bool DataStore::removeFile(FILESYSTEM* fs, const char* filename) {
 }
 
 bool DataStore::formatFileSystem() {
-#if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
+#if defined(STM32_PLATFORM)
   if (_fsExtra == nullptr) {
     return _fs->format();
   } else {
@@ -271,9 +245,7 @@ void DataStore::loadPrefsInt(const char *filename, NodePrefs& _prefs, double& no
     if (file.read((uint8_t *)&_prefs.dark_mode, sizeof(_prefs.dark_mode)) != sizeof(_prefs.dark_mode)) {
       _prefs.dark_mode = 0;  // default: light mode
     }
-    if (file.read((uint8_t *)&_prefs.portrait_mode, sizeof(_prefs.portrait_mode)) != sizeof(_prefs.portrait_mode)) {
-      _prefs.portrait_mode = 0;  // default: landscape
-    }
+    file.read(pad, 1);  // 99: unused (reserved)
     if (file.read((uint8_t *)&_prefs.auto_lock_minutes, sizeof(_prefs.auto_lock_minutes)) != sizeof(_prefs.auto_lock_minutes)) {
       _prefs.auto_lock_minutes = 0;  // default: disabled
     }
@@ -316,7 +288,6 @@ void DataStore::loadPrefsInt(const char *filename, NodePrefs& _prefs, double& no
 
     // Clamp to valid ranges
     if (_prefs.dark_mode > 1) _prefs.dark_mode = 0;
-    if (_prefs.portrait_mode > 1) _prefs.portrait_mode = 0;
     if (_prefs.hint_shown > 1) _prefs.hint_shown = 0;
     if (_prefs.large_font > 1) _prefs.large_font = 0;
     if (_prefs.ui_font_style > 2) _prefs.ui_font_style = 0;
@@ -383,7 +354,7 @@ void DataStore::savePrefs(const NodePrefs& _prefs, double node_lat, double node_
     file.write((uint8_t *)&_prefs.gps_baudrate, sizeof(_prefs.gps_baudrate));            // 93
     file.write((uint8_t *)&_prefs.interference_threshold, sizeof(_prefs.interference_threshold)); // 97
     file.write((uint8_t *)&_prefs.dark_mode, sizeof(_prefs.dark_mode));                  // 98
-    file.write((uint8_t *)&_prefs.portrait_mode, sizeof(_prefs.portrait_mode));          // 99
+    file.write(pad, 1);  // 99: unused (reserved)
     file.write((uint8_t *)&_prefs.auto_lock_minutes, sizeof(_prefs.auto_lock_minutes)); // 100
     file.write((uint8_t *)&_prefs.hint_shown, sizeof(_prefs.hint_shown));               // 101
     file.write((uint8_t *)&_prefs.large_font, sizeof(_prefs.large_font));               // 102
@@ -484,8 +455,8 @@ void DataStore::loadContacts(DataStoreHost* host) {
 void DataStore::saveContacts(DataStoreHost* host) {
   FILESYSTEM* fs = _getContactsChannelsFS();
 
-#if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
-  // nRF52/STM32: direct write (no tmp+rename — InternalFS doesn't need atomic pattern)
+#if defined(STM32_PLATFORM)
+  // STM32: direct write (no tmp+rename -- InternalFS doesn't need atomic pattern)
   File file = openWrite(fs, "/contacts3");
   if (file) {
     uint32_t idx = 0;
@@ -582,9 +553,9 @@ void DataStore::saveContacts(DataStoreHost* host) {
 
 // =========================================================================
 // Chunked contact save — non-blocking across multiple loop iterations
-// Only for ESP32 with SD card — nRF52 uses blocking saveContacts() above
+// Only for ESP32 with SD card -- STM32 uses blocking saveContacts() above
 // =========================================================================
-#if !defined(NRF52_PLATFORM) && !defined(STM32_PLATFORM)
+#if !defined(STM32_PLATFORM)
 
 bool DataStore::beginSaveContacts(DataStoreHost* host) {
   if (_saveInProgress) return false;  // Already saving
@@ -676,7 +647,7 @@ void DataStore::finishSaveContacts() {
     Serial.println("DataStore: rename failed, tmp file preserved");
   }
 }
-#endif // !NRF52_PLATFORM && !STM32_PLATFORM
+#endif // !STM32_PLATFORM
 
 void DataStore::loadChannels(DataStoreHost* host) {
     FILESYSTEM* fs = _getContactsChannelsFS();
@@ -809,7 +780,7 @@ void DataStore::saveChannels(DataStoreHost* host) {
   }
 }
 
-#if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
+#if defined(STM32_PLATFORM)
 
 #define MAX_ADVERT_PKT_LEN   (2 + 32 + PUB_KEY_SIZE + 4 + SIGNATURE_SIZE + MAX_ADVERT_DATA_SIZE)
 

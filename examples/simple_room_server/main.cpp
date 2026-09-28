@@ -38,11 +38,7 @@ void setup() {
   fast_rng.begin(radio_get_rng_seed());
 
   FILESYSTEM* fs;
-#if defined(NRF52_PLATFORM)
-  InternalFS.begin();
-  fs = &InternalFS;
-  IdentityStore store(InternalFS, "");
-#elif defined(RP2040_PLATFORM)
+#if defined(RP2040_PLATFORM)
   LittleFS.begin();
   fs = &LittleFS;
   IdentityStore store(LittleFS, "/identity");

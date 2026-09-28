@@ -1,9 +1,7 @@
 #include <Arduino.h>   // needed for PlatformIO
 #include <Mesh.h>
 
-#if defined(NRF52_PLATFORM)
-  #include <InternalFileSystem.h>
-#elif defined(RP2040_PLATFORM)
+#if defined(RP2040_PLATFORM)
   #include <LittleFS.h>
 #elif defined(ESP32)
   #include <SPIFFS.h>
@@ -126,10 +124,7 @@ class MyMesh : public BaseChatMesh, ContactVisitor {
   }
 
   void saveContacts() {
-#if defined(NRF52_PLATFORM)
-    _fs->remove("/contacts");
-    File file = _fs->open("/contacts", FILE_O_WRITE);
-#elif defined(RP2040_PLATFORM)
+#if defined(RP2040_PLATFORM)
     File file = _fs->open("/contacts", "w");
 #else
     File file = _fs->open("/contacts", "w", true);
@@ -297,9 +292,7 @@ public:
 
     BaseChatMesh::begin();
 
-  #if defined(NRF52_PLATFORM)
-    IdentityStore store(fs, "");
-  #elif defined(RP2040_PLATFORM)
+  #if defined(RP2040_PLATFORM)
     IdentityStore store(fs, "/identity");
     store.begin();
   #else
@@ -340,10 +333,7 @@ public:
   }
 
   void savePrefs() {
-#if defined(NRF52_PLATFORM)
-    _fs->remove("/node_prefs");
-    File file = _fs->open("/node_prefs", FILE_O_WRITE);
-#elif defined(RP2040_PLATFORM)
+#if defined(RP2040_PLATFORM)
     File file = _fs->open("/node_prefs", "w");
 #else
     File file = _fs->open("/node_prefs", "w", true);
@@ -563,10 +553,7 @@ void setup() {
 
   fast_rng.begin(radio_get_rng_seed());
 
-#if defined(NRF52_PLATFORM)
-  InternalFS.begin();
-  the_mesh.begin(InternalFS);
-#elif defined(RP2040_PLATFORM)
+#if defined(RP2040_PLATFORM)
   LittleFS.begin();
   the_mesh.begin(LittleFS);
 #elif defined(ESP32)

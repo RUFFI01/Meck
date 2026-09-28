@@ -20,8 +20,6 @@ for item in menv.get("CPPDEFINES", []):
         src_filter.append("+<helpers/stm32/*>")
     elif item == "ESP32":
         src_filter.append("+<helpers/esp32/*>")
-    elif item == "NRF52_PLATFORM":
-        src_filter.append("+<helpers/nrf52/*>")
     elif item == "RP2040_PLATFORM":
         src_filter.append("+<helpers/rp2040/*>")
     

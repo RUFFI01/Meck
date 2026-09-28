@@ -99,7 +99,7 @@ inline WrapResult findLineBreak(const char* buffer, int bufLen, int lineStart, i
 }
 
 // ============================================================================
-// Pixel-width line breaking for proportional fonts (T5S3)
+// Pixel-width line breaking for proportional fonts
 //
 // Measures actual rendered text width via DisplayDriver::getTextWidth() at
 // each word boundary. This gives correct line breaks regardless of character
@@ -114,11 +114,7 @@ inline WrapResult findLineBreakPixel(const char* buffer, int bufLen, int lineSta
   result.nextStart = lineStart;
   if (lineStart >= bufLen || !display) return result;
 
-#if defined(LilyGo_T5S3_EPaper_Pro)
-  int rightMargin = 5;  // Wider margin for T5S3 (portrait mode especially tight)
-#else
   int rightMargin = 3;
-#endif
   int displayW = display->width() - rightMargin;
   char measBuf[300];                // temp buffer for pixel measurement
   int measLen = 0;
@@ -1119,14 +1115,10 @@ private:
 
         if (selected) {
           display.setColor(DisplayDriver::LIGHT);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-          display.fillRect(0, y, display.width(), listLineH);
-#else
           // setCursor adds +5 to y internally, but fillRect does not.
           // NodePrefs::smallHighlightOff() returns the correct offset for all
           // font combinations (built-in, large_font, custom 7pt styles).
           display.fillRect(0, y + _prefs->smallHighlightOff(), display.width(), listLineH);
-#endif
           display.setColor(DisplayDriver::DARK);
         } else {
           display.setColor(DisplayDriver::LIGHT);
@@ -1170,17 +1162,12 @@ private:
     display.drawRect(0, footerY - 2, display.width(), 1);
     display.setColor(DisplayDriver::YELLOW);
 
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    display.setTextSize(_prefs->smallTextSize());
-    display.drawTextCentered(display.width() / 2, footerY, "Swipe: Scroll   Tap: Open   Boot: home");
-#else
     display.setCursor(0, footerY);
     display.print("Q:Bk");
 
     const char* right = "Tap/Ent:Open";
     display.setCursor(display.width() - display.getTextWidth(right) - 2, footerY);
     display.print(right);
-#endif
   }
 
   void renderPage(DisplayDriver& display) {
@@ -1257,8 +1244,7 @@ private:
       }
 
       // Blank lines (paragraph breaks) get reduced height for compact layout.
-      // Full _lineHeight for blank lines wastes too much space — on T5S3 each
-      // blank line is ~34px, making paragraph gaps 7-8× the normal line spacing.
+      // Full _lineHeight for blank lines wastes too much space.
       // Using 40% height gives a visible paragraph break without wasting space.
       if (lineHasContent) {
         y += _lineHeight;
@@ -1288,21 +1274,12 @@ private:
       sprintf(status, "%d/%d %d%%", _currentPage + 1, _totalPages, pct);
     }
 
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    display.setTextSize(_prefs->smallTextSize());
-    display.setCursor(0, footerY);
-    display.print(status);
-    const char* right = "Swipe:Page  Tap:GoTo  Hold:Close";
-    display.setCursor(display.width() - display.getTextWidth(right) - 2, footerY);
-    display.print(right);
-#else
     display.setCursor(0, footerY);
     display.print(status);
 
     const char* right = _gotoMode ? "Ent:Go Sh+Del:Cancel" : "Entr:Pg# Q:Bk";
     display.setCursor(display.width() - display.getTextWidth(right) - 2, footerY);
     display.print(right);
-#endif
   }
 
 public:
@@ -1350,28 +1327,12 @@ public:
     display.setTextSize(_prefs->smallTextSize());
 
     // Measure character width: use 10 M's for monospace (T-Deck Pro tiny font).
-    // Proportional fonts (T5S3 and T-Deck Pro large_font) override below with
+    // Proportional fonts (T-Deck Pro large_font) override below with
     // average-width measurement since M is the widest glyph (~40% wider than average).
     uint16_t tenCharsW = display.getTextWidth("MMMMMMMMMM");
     if (tenCharsW > 0) {
       _charsPerLine = (display.width() * 10) / tenCharsW;
     }
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    // T5S3 uses proportional font (FreeSans12pt) — measure average character
-    // width from a representative English sample.  M-based measurement is far
-    // too conservative (M is the widest glyph), leaving half the line empty.
-    {
-      const char* sample = "the quick brown fox jumps over lazy dog";
-      uint16_t sampleW = display.getTextWidth(sample);
-      int sampleLen = strlen(sample);
-      if (sampleW > 0 && sampleLen > 0) {
-        // 95% factor as small safety margin for slightly-wider-than-average text
-        _charsPerLine = (display.width() * sampleLen * 95) / ((int)sampleW * 100);
-      }
-    }
-    if (_charsPerLine < 15) _charsPerLine = 15;
-    if (_charsPerLine > 80) _charsPerLine = 80;
-#else
     // T-Deck Pro: proportional font — measure average character width from
     // a sample sentence (M is widest glyph, ~40% wider than average).
     // Large font (9pt) uses 70% safety margin; custom tiny (7pt) uses 85%.
@@ -1386,7 +1347,6 @@ public:
     }
     if (_charsPerLine < 15) _charsPerLine = 15;
     if (_charsPerLine > 60) _charsPerLine = 60;
-#endif
 
     // Line height for built-in 6x8 font:
     // setCursor adds +5 to y, so effective text top = (y+5)*scale_y
@@ -1401,13 +1361,6 @@ public:
       _lineHeight = 5;  // Safe fallback
     }
 
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    // T5S3 uses FreeSans12pt/FreeSerif12pt for size 0 (yAdvance=29px).
-    {
-      extern DISPLAY_CLASS display;
-      _lineHeight = display.isPortraitMode() ? 5 : 8;
-    }
-#else
     // T-Deck Pro large_font uses FreeSans9pt (yAdvance=22px at scale 1.5625×).
     // Custom proportional fonts (Noto Sans, Montserrat) at size 0 also need
     // a tuned line height — the 6x8 formula above uses a width:height ratio
@@ -1417,7 +1370,6 @@ public:
     } else if (display.getFontStyle() > 0) {
       _lineHeight = 7;  // Custom 7pt fonts: 7 * 2.5 = 17.5px — fits ~16 lines/page
     }
-#endif
 
     _headerHeight = 0;  // No header in reading mode (maximize text area)
     _footerHeight = 14;
@@ -1755,11 +1707,7 @@ public:
     if (_mode != FILE_LIST) return 0;
     const int startY = 14, footerH = 14;
     const int listLineH = _prefs ? _prefs->smallLineH() : 9;
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    const int bodyTop = startY;
-#else
     const int bodyTop = startY + (_prefs ? _prefs->smallHighlightOff() : 5);
-#endif
     if (vy < bodyTop || vy >= 128 - footerH) return 0;
 
     int totalItems = totalListItems();

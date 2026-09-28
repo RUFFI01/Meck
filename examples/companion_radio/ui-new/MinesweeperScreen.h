@@ -4,12 +4,10 @@
 // MinesweeperScreen -- Classic Minesweeper for Meck e-ink devices
 //
 // 9x9 grid, 10 mines (classic Beginner difficulty) on T-Deck Pro.
-// 14x14 grid, 25 mines on T5S3 (fills the larger virtual display).
 // First reveal is always safe -- mines are placed after the first click.
 // Fully turn-based: no tick timer, renders only on input. Perfect for e-ink.
 //
 // T-Deck Pro: 14x14 pixel cells (126x126 grid area on 240x320 display)
-// T5S3:       14x14 grid at 8x8 pixel cells (112x112 on 128x128 virtual display)
 // =============================================================================
 
 #include <helpers/ui/UIScreen.h>
@@ -19,15 +17,7 @@
 class UITask;
 
 // -- Grid and cell parameters per platform --
-#if defined(LilyGo_T5S3_EPaper_Pro)
-  #define MINE_GRID_W   14
-  #define MINE_GRID_H   14
-  #define MINE_COUNT    25
-  #define MINE_CELL_W    8
-  #define MINE_CELL_H    8
-  #define MINE_HDR      14
-  #define MINE_FTR      10
-#elif defined(LilyGo_TDeck_Pro_Max)
+#if defined(LilyGo_TDeck_Pro_Max)
   // MAX renders into a 128x128 virtual canvas with non-uniform scaling
   // (X 1.875, Y 2.5) and a (2,5) virtual offset applied by GxEPDDisplay.
   // Cells are 8x6 virtual so they land square on the panel (8*1.875 = 6*2.5
@@ -60,13 +50,10 @@ class UITask;
 // Cell-text size + vertical nudge. GxEPDDisplay::setCursor adds a +5 baseline
 // fudge sized for the tall FreeSans fonts; for the small built-in (size 0)
 // font on MAX that lands the glyph at the cell's bottom edge, so it needs a
-// negative nudge to sit centred. T5S3 (FastEPD, no fudge) and Pro are unchanged.
+// negative nudge to sit centred. Pro is unchanged.
 #if defined(LilyGo_TDeck_Pro_Max)
   #define MINE_TEXT_SIZE  0
   #define MINE_TEXT_DY   (-3)
-#elif defined(LilyGo_T5S3_EPaper_Pro)
-  #define MINE_TEXT_SIZE  0
-  #define MINE_TEXT_DY    1
 #else
   #define MINE_TEXT_SIZE  1
   #define MINE_TEXT_DY    3
@@ -385,12 +372,8 @@ public:
     if (_state == READY) {
       // --- READY: header + instructions + footer ---
       display.setColor(DisplayDriver::GREEN);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      display.drawTextCentered(display.width() / 2, 2, "Minesweeper");
-#else
       display.setCursor(2, 2);
       display.print("Minesweeper");
-#endif
       display.setColor(DisplayDriver::LIGHT);
       display.drawRect(0, MINE_HDR - 2, display.width(), 1);
 
@@ -400,39 +383,25 @@ public:
       display.drawTextCentered(cx, y, "Minesweeper");
       y += 16;
       display.setColor(DisplayDriver::GREEN);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      display.drawTextCentered(cx, y, "Swipe to move cursor");
-      y += 11;
-      display.drawTextCentered(cx, y, "Tap to reveal");
-      y += 11;
-      display.drawTextCentered(cx, y, "Long press to flag");
-#else
       display.drawTextCentered(cx, y, "W/S/A/D to move cursor");
       y += 11;
       display.drawTextCentered(cx, y, "Enter to reveal a cell");
       y += 11;
       display.drawTextCentered(cx, y, "F to flag a mine");
-#endif
       y += 16;
       display.setColor(DisplayDriver::LIGHT);
       char info[32];
       snprintf(info, sizeof(info), "%dx%d grid, %d mines", MINE_GRID_W, MINE_GRID_H, MINE_COUNT);
       display.drawTextCentered(cx, y, info);
       y += 16;
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      display.drawTextCentered(cx, y, "Tap to start");
-#else
       display.drawTextCentered(cx, y, "Press Enter to start");
-#endif
 
       // Footer
       display.setColor(DisplayDriver::LIGHT);
-#if !defined(LilyGo_T5S3_EPaper_Pro)
       int fy = display.height() - 12;
       display.drawRect(0, fy - 2, display.width(), 1);
       display.setCursor(2, fy);
       display.print("Enter:Start  Sh+Del:Back");
-#endif
       return 5000;
 
     } else if (_state == PLAYING) {

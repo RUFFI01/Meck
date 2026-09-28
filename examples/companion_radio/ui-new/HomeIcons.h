@@ -1,6 +1,6 @@
 #pragma once
 // =============================================================================
-// HomeIcons -- 12x12 icon sprites for T5S3 home screen tiles
+// HomeIcons -- 12x12 icon sprites for home screen tiles
 // MSB-first, 2 bytes per row (same format as emoji sprites)
 // =============================================================================
 

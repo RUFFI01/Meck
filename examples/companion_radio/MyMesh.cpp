@@ -4,10 +4,6 @@
 #include <Mesh.h>
 #include "RadioPresets.h"        // Shared radio presets (serial CLI + settings screen)
 
-#if defined(LilyGo_T5S3_EPaper_Pro)
-  #include "target.h"            // for board.setBacklight() CLI command
-#endif
-
 #ifdef HAS_4G_MODEM
   #include "ModemManager.h"      // Serial CLI modem commands
 #endif
@@ -1787,7 +1783,6 @@ void MyMesh::begin(bool has_display) {
   if (_prefs.path_hash_mode > 2) _prefs.path_hash_mode = 0;
   if (_prefs.autoadd_max_hops > 64) _prefs.autoadd_max_hops = 0;
   if (_prefs.dark_mode > 1) _prefs.dark_mode = 0;
-  if (_prefs.portrait_mode > 1) _prefs.portrait_mode = 0;
   if (_prefs.hint_shown > 1) _prefs.hint_shown = 0;
 
 #ifdef BLE_PIN_CODE // 123456 by default
@@ -1839,7 +1834,7 @@ void MyMesh::startInterface(BaseSerialInterface &serial) {
   // deferred-init SerialBLEInterface the controller stays down until the first
   // enable(), which now happens only when the user turns Bluetooth on from the
   // Bluetooth page. Reclaims the controller idle current in the standalone-first
-  // default. nRF52 BLE (separate class, no deferred init) and USB-serial / WiFi
+  // default. USB-serial / WiFi
   // are unaffected and still enable at boot below.
 #else
   serial.enable();
@@ -3649,29 +3644,8 @@ void MyMesh::checkCLIRescueCmd() {
           Serial.println("  Usage: set channel.scope <idx> <name|none>");
         }
 
-      // Backlight control (T5S3 E-Paper Pro only)
       } else if (memcmp(config, "backlight ", 10) == 0) {
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        const char* val = &config[10];
-        if (strcmp(val, "on") == 0) {
-          board.setBacklight(true);
-          Serial.println("  > backlight ON");
-        } else if (strcmp(val, "off") == 0) {
-          board.setBacklight(false);
-          Serial.println("  > backlight OFF");
-        } else {
-          int brightness = atoi(val);
-          if (brightness >= 0 && brightness <= 255) {
-            board.setBacklightBrightness((uint8_t)brightness);
-            board.setBacklight(brightness > 0);
-            Serial.printf("  > backlight brightness = %d\n", brightness);
-          } else {
-            Serial.println("  Error: use 'on', 'off', or 0-255");
-          }
-        }
-#else
         Serial.println("  Error: backlight not available on this device");
-#endif
 
       // --- Contact auto-add settings ---
       } else if (memcmp(config, "contact.mode ", 13) == 0) {
@@ -3841,11 +3815,6 @@ void MyMesh::checkCLIRescueCmd() {
       Serial.println("    erase     Format filesystem");
       Serial.println("    reboot    Restart device");
       Serial.println("    ls / cat / rm   File operations");
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      Serial.println("");
-      Serial.println("  Display:");
-      Serial.println("    set backlight on/off/0-255  Control front-light");
-#endif
 
     // =====================================================================
     // Existing system commands (unchanged)
@@ -4141,8 +4110,8 @@ void MyMesh::loop() {
   // is there are pending dirty contacts write needed?
   bool userActive = _lastUserInput && (millis() - _lastUserInput) < USER_IDLE_SAVE_THRESHOLD;
   if (dirty_contacts_expiry && millisHasNowPassed(dirty_contacts_expiry)) {
-#if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
-    // nRF52/STM32: blocking save (fast on internal flash, no chunking needed)
+#if defined(STM32_PLATFORM)
+    // STM32: blocking save (fast on internal flash, no chunking needed)
     if (!_deferSaves && !userActive) {
       _store->saveContacts(this);
       dirty_contacts_expiry = 0;
@@ -4167,7 +4136,7 @@ void MyMesh::loop() {
 #endif
   }
 
-#if !defined(NRF52_PLATFORM) && !defined(STM32_PLATFORM)
+#if !defined(STM32_PLATFORM)
   // Drive chunked contact save -- write a batch each loop iteration
   // Paused while user is actively pressing keys or voice session is receiving
   if (_store->isSaveInProgress() && !_deferSaves && !userActive) {

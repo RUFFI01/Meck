@@ -111,37 +111,12 @@ public:
 
     // --- Header ---
     display.setColor(DisplayDriver::GREEN);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    display.drawTextCentered(display.width() / 2, 2, "Games");
-#else
     display.setCursor(2, 2);
     display.print("Games");
-#endif
     display.setColor(DisplayDriver::LIGHT);
     display.drawRect(0, 12, display.width(), 1);
 
     // --- Game list ---
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    int y = 18;
-    int lineH = 16;
-
-    for (int i = 0; i < NUM_GAMES; i++) {
-      bool selected = (i == _cursor);
-
-      if (selected) {
-        // Highlight bar
-        display.setColor(DisplayDriver::LIGHT);
-        display.fillRect(0, y - 1, display.width(), lineH);
-        display.setColor(DisplayDriver::DARK);
-      } else {
-        display.setColor(DisplayDriver::LIGHT);
-      }
-
-      display.drawTextCentered(display.width() / 2, y + 2, getGames()[i].name);
-
-      y += lineH;
-    }
-#else
     // T-Deck Pro / MAX: rows follow the user's font size and style, the same
     // way the channel picker does (NodePrefs font helpers).
     NodePrefs* prefs = the_mesh.getNodePrefs();
@@ -165,36 +140,24 @@ public:
 
       y += lineH;
     }
-#endif
 
     // --- Footer ---
     display.setColor(DisplayDriver::LIGHT);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    display.setTextSize(0);
-    display.drawTextCentered(display.width() / 2, display.height() - 8, "Tap to select");
-    display.setTextSize(1);
-#else
     display.setTextSize(1);
     int fy = display.height() - 12;
     display.drawRect(0, fy - 2, display.width(), 1);
     display.setCursor(2, fy);
     display.print("Enter:Play  Q:Back");
-#endif
 
     return 5000;  // Static menu -- slow refresh
   }
 
-  // --- Touch: tap to select game entry (T5S3 and T-Deck Pro / MAX) ---
+  // --- Touch: tap to select game entry (T-Deck Pro / MAX) ---
   int selectRowAtVY(int vy) {
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    int y = 18;
-    int lineH = 16;
-#else
     // Must match the render geometry above (NodePrefs font helpers).
     NodePrefs* prefs = the_mesh.getNodePrefs();
     int lineH = prefs->smallLineH();
     int y = 14 + prefs->smallHighlightOff();
-#endif
     if (vy < y) return 0;  // Above list
     int row = (vy - y) / lineH;
     if (row >= NUM_GAMES) return 0;  // Below list

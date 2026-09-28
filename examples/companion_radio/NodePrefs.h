@@ -46,7 +46,6 @@ struct NodePrefs {  // persisted to file
   uint32_t gps_baudrate;     // GPS baud rate (0 = use compile-time GPS_BAUDRATE default)
   uint8_t interference_threshold; // Interference threshold in dB (0=disabled, 14+=enabled)
   uint8_t dark_mode;              // 0=off (white bg), 1=on (black bg)
-  uint8_t portrait_mode;          // 0=landscape, 1=portrait — T5S3 only
   uint8_t auto_lock_minutes;      // 0=disabled, 2/5/10/15/30=auto-lock after idle
   uint8_t hint_shown;             // 0=show nav hint on boot, 1=already shown (dismiss permanently)
   uint8_t large_font;             // 0=tiny (built-in 6x8), 1=larger (FreeSans9pt) — T-Deck Pro only
@@ -94,8 +93,6 @@ struct NodePrefs {  // persisted to file
   // --- Font helpers (inline, no overhead) ---
   // Returns the DisplayDriver text-size index for "small/body" text.
   // T-Deck Pro: 0 = built-in 6×8 (or 7pt with custom fonts), 1 = 9pt.
-  // T5S3: both 0 and 1 are 12pt fonts (regular vs bold) with identical line
-  //        height, so large_font has no layout effect there.
   inline uint8_t smallTextSize() const {
     return large_font ? 1 : 0;
   }
@@ -104,13 +101,8 @@ struct NodePrefs {  // persisted to file
   // T-Deck Pro size 0 → 9 (6×8 + 1px gap), size 1 → 11 (9pt ascent+descent).
   // With custom fonts (Noto 7pt, Montserrat 7pt), size 0 is slightly taller
   // than built-in 6×8 but fits within the 9-unit virtual grid.
-  // T5S3 size 0/1 → same 12pt height → always 9 in virtual coords.
   inline int smallLineH() const {
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    return 9;
-#else
     return large_font ? 11 : 9;
-#endif
   }
 
   // Returns the Y offset for selection highlight fillRect (T-Deck Pro only).
@@ -119,16 +111,11 @@ struct NodePrefs {  // persisted to file
   // Size 0 (custom 7pt fonts): baseline fonts, same behaviour as size 1.
   // Size 1 (9pt): cursor positions at baseline, ascenders render
   //   upward → fillRect must start above baseline to cover ascenders.
-  // T5S3: always 0 (both sizes use baseline fonts with highlight at y).
   inline int smallHighlightOff() const {
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    return 0;
-#else
     // Custom 7pt fonts at textSize 0 use GFXfont (baseline rendering), not built-in.
     // Offset 0: highlight starts at row top, covers 7pt ascenders without
     // bleeding into the row above (-2 was calibrated for taller 9pt ascenders).
     if (ui_font_style > 0 && !large_font) return 0;
     return large_font ? -2 : 5;
-#endif
   }
 };

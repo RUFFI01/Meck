@@ -12,11 +12,7 @@
 #endif
 
 // Inline edit hint shown next to values being adjusted
-#if defined(LilyGo_T5S3_EPaper_Pro)
-  #define EDIT_ADJ_HINT "<Swipe>"
-#else
   #define EDIT_ADJ_HINT "<W/S>"
-#endif
 
 #ifdef HAS_4G_MODEM
   #include "ModemManager.h"
@@ -146,10 +142,7 @@ enum SettingsRowType : uint8_t {
   ROW_DARK_MODE,      // Dark mode toggle (inverted display)
   ROW_LARGE_FONT,     // Font size toggle: 0=tiny (default), 1=larger
   ROW_FONT_STYLE,     // Font style: Classic / Noto Sans / Montserrat
-#if defined(LilyGo_T5S3_EPaper_Pro)
-  ROW_PORTRAIT_MODE,  // Portrait orientation toggle
-#endif
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
   ROW_AUTO_LOCK,      // Auto-lock timeout picker (None/2/5/10/15/30 min)
 #endif
   ROW_GPS_BAUD,       // GPS baud rate picker (requires reboot)
@@ -346,9 +339,6 @@ private:
   // Dirty flag for radio params Ã¢â‚¬â€ prompt to apply
   bool _radioChanged;
 
-  // T5S3: signal UITask to open VKB when entering text edit mode
-  bool _needsTextVKB;
-  bool _needsCannedVKB;   // T5S3: open VKB for a canned slot (full-length path)
   bool _wantsWatchChannels;   // Watch: hand off to WatchChannelConfigScreen (polled by UITask)
 
   // 4G modem state (runtime cache of config)
@@ -372,9 +362,6 @@ private:
   char _wifiPassBuf[64];
   int _wifiPassLen;
   unsigned long _wifiFormLastChar;  // For brief password reveal
-#if defined(LilyGo_T5S3_EPaper_Pro)
-  bool _wifiNeedsVKB;              // T5S3: signal UITask to open VKB for password
-#endif
   #endif
 
   #ifdef MECK_OTA_UPDATE
@@ -511,7 +498,7 @@ private:
       addRow(ROW_UTC_OFFSET);
     #if defined(LilyGo_TDeck_Pro_Max)
       // Canned messages are Max-only for now: the send trigger is the Max's
-      // speech-bubble capacitive pad, and no Pro/T5S3 trigger is wired. The
+      // speech-bubble capacitive pad, and no Pro trigger is wired. The
       // NodePrefs storage stays shared so the prefs layout is uniform.
       addRow(ROW_CANNED_SUBMENU);
     #endif
@@ -526,14 +513,9 @@ private:
       addRow(ROW_PATH_HASH_SIZE);
       addRow(ROW_DEFAULT_SCOPE);
       addRow(ROW_DARK_MODE);
-#if !defined(LILYGO_TECHO_LITE)
       addRow(ROW_LARGE_FONT);
       addRow(ROW_FONT_STYLE);
-#endif
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      addRow(ROW_PORTRAIT_MODE);
-#endif
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
       addRow(ROW_AUTO_LOCK);
 #endif
       #ifdef MECK_WIFI_COMPANION
@@ -714,7 +696,7 @@ public:
       _editMode(EDIT_NONE), _editPos(0), _editPickerIdx(0),
       _editFloat(0), _editInt(0), _fontPickerOriginal(0), _confirmAction(0),
       _onboarding(false), _subScreen(SUB_NONE), _savedTopCursor(0),
-      _radioChanged(false), _needsTextVKB(false), _needsCannedVKB(false),
+      _radioChanged(false),
       _cannedPos(0), _cannedEditSlot(0), _wantsWatchChannels(false) {
     memset(_editBuf, 0, sizeof(_editBuf));
     #ifdef HAS_SDCARD
@@ -772,9 +754,6 @@ public:
     _wifiPassLen = 0;
     memset(_wifiPassBuf, 0, sizeof(_wifiPassBuf));
     _wifiFormLastChar = 0;
-  #if defined(LilyGo_T5S3_EPaper_Pro)
-    _wifiNeedsVKB = false;
-  #endif
     #endif
     rebuildRows();
   }
@@ -804,12 +783,8 @@ public:
     if (_editMode != EDIT_NONE) return 0;  // Don't change cursor while editing
     const int headerH = 14, footerH = 14, lineH = _prefs->smallLineH();
     // bodyTop must match where the visual rows start (highlight bar position).
-    // T5S3 renders highlight at y directly. T-Deck Pro offsets by smallHighlightOff().
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    const int bodyTop = headerH;
-#else
+    // T-Deck Pro offsets by smallHighlightOff().
     const int bodyTop = headerH + _prefs->smallHighlightOff();
-#endif
     if (vy < bodyTop || vy >= 128 - footerH) return 0;  // Outside body area
 
     int maxVisible = (128 - headerH - footerH) / lineH;
@@ -898,78 +873,10 @@ public:
     return _editMode == EDIT_WIFI && _wifiPhase == WIFI_PHASE_SELECT;
   }
 
-#if defined(LilyGo_T5S3_EPaper_Pro)
-  // T5S3 VKB integration — UITask polls this to open the virtual keyboard
-  // when settings enters WiFi password phase (no physical keyboard available).
-  bool needsWifiVKB() const { return _wifiNeedsVKB; }
-  void clearWifiNeedsVKB() { _wifiNeedsVKB = false; }
-
-  // Called by UITask::onVKBSubmit with the password text from VKB.
-  // Fills the password buffer and triggers the WiFi connect sequence.
-  void submitWifiPassword(const char* pass) {
-    _wifiNeedsVKB = false;
-    int len = strlen(pass);
-    if (len > 63) len = 63;
-    memcpy(_wifiPassBuf, pass, len);
-    _wifiPassBuf[len] = '\0';
-    _wifiPassLen = len;
-
-    // Trigger the same connect sequence as pressing Enter in password phase
-    _wifiPhase = WIFI_PHASE_CONNECTING;
-
-    // Save credentials to SD (so web reader can reuse them)
-    if (SD.exists("/web") || SD.mkdir("/web")) {
-      File f = SD.open("/web/wifi.cfg", FILE_WRITE);
-      if (f) {
-        f.println(_wifiSSIDs[_wifiSSIDSelected]);
-        f.println(_wifiPassBuf);
-        f.close();
-      }
-      digitalWrite(SDCARD_CS, HIGH);
-    }
-
-    WiFi.disconnect(false);
-    WiFi.begin(_wifiSSIDs[_wifiSSIDSelected].c_str(), _wifiPassBuf);
-
-    // Brief blocking wait — fine for e-ink
-    unsigned long timeout = millis() + 8000;
-    while (WiFi.status() != WL_CONNECTED && millis() < timeout) {
-      delay(100);
-    }
-
-    if (WiFi.status() == WL_CONNECTED) {
-      Serial.printf("Settings VKB: WiFi connected to %s, IP: %s\n",
-                    _wifiSSIDs[_wifiSSIDSelected].c_str(),
-                    WiFi.localIP().toString().c_str());
-      _editMode = EDIT_NONE;
-      _wifiPhase = WIFI_PHASE_IDLE;
-      if (_onboarding) _onboarding = false;
-    } else {
-      Serial.println("Settings VKB: WiFi connection failed");
-      _wifiPhase = WIFI_PHASE_SELECT;  // Back to SSID list to retry
-    }
-  }
-#endif
-
   #endif
 
-  // T5S3 VKB integration for text editing (channel name, device name, freq, APN)
-  bool needsTextVKB() const { return _needsTextVKB; }
-  void clearTextNeedsVKB() { _needsTextVKB = false; }
   bool wantsWatchChannels() const { return _wantsWatchChannels; }
   void clearWantsWatchChannels() { _wantsWatchChannels = false; }
-  const char* getEditBuf() const { return _editBuf; }
-  bool needsCannedVKB() const { return _needsCannedVKB; }
-  void clearCannedNeedsVKB() { _needsCannedVKB = false; }
-  const char* getCannedBuf() const { return _cannedBuf; }
-  SettingsRowType getCurrentRowType() const { return _rows[_cursor].type; }
-  void submitEditText(const char* text) {
-    strncpy(_editBuf, text, SETTINGS_TEXT_BUF - 1);
-    _editBuf[SETTINGS_TEXT_BUF - 1] = '\0';
-    _editPos = strlen(_editBuf);
-    // Simulate Enter to confirm the edit through the normal path
-    handleInput('\r');
-  }
 
   // Export/Import request flags — checked and cleared by main.cpp
   #ifdef HAS_SDCARD
@@ -1253,8 +1160,8 @@ public:
   }
 
   // Called from main loop — detect upload completion and trigger flash.
-  // Must be called from the main loop (not render) because T5S3 FastEPD
-  // blocks for 500ms+ per frame, making render-only detection unreliable.
+  // Must be called from the main loop (not render) because an e-ink refresh
+  // blocks the render, making render-only detection unreliable.
   void checkOTAComplete(DisplayDriver& display) {
     if (_editMode != EDIT_OTA) return;
     if (!_otaUploadOk) return;
@@ -1763,9 +1670,6 @@ public:
     strncpy(_editBuf, initial, SETTINGS_TEXT_BUF - 1);
     _editBuf[SETTINGS_TEXT_BUF - 1] = '\0';
     _editPos = strlen(_editBuf);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    _needsTextVKB = true;  // Signal UITask to open virtual keyboard
-#endif
   }
 
   // Canned slot edit: full-length buffer, bypasses the 32-char _editBuf.
@@ -1776,18 +1680,6 @@ public:
     strncpy(_cannedBuf, _prefs->canned_msgs[slot], CANNED_MSG_LEN - 1);
     _cannedBuf[CANNED_MSG_LEN - 1] = '\0';
     _cannedPos = strlen(_cannedBuf);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    _needsCannedVKB = true;  // Signal UITask to open the virtual keyboard
-#endif
-  }
-
-  // T5S3 VKB return path for canned slots: commit the full-length text
-  // directly (empty clears the slot) through the normal Enter path.
-  void submitCannedText(const char* text) {
-    strncpy(_cannedBuf, text ? text : "", CANNED_MSG_LEN - 1);
-    _cannedBuf[CANNED_MSG_LEN - 1] = '\0';
-    _cannedPos = strlen(_cannedBuf);
-    handleInput('\r');
   }
 
   void startEditPicker(int initialIdx) {
@@ -1863,13 +1755,7 @@ public:
       // Selection highlight
       if (selected) {
         display.setColor(DisplayDriver::LIGHT);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        // FreeSans12pt: baseline at (y+5)*scale_y, ascent ~17px above.
-        // Highlight needs to start above the baseline to cover ascenders.
-        display.fillRect(0, y, display.width() - sbW, lineHeight);
-#else
         display.fillRect(0, y + _prefs->smallHighlightOff(), display.width() - sbW, lineHeight);
-#endif
         display.setColor(DisplayDriver::DARK);
       } else {
         display.setColor(DisplayDriver::LIGHT);
@@ -2048,15 +1934,7 @@ public:
           display.print(tmp);
           break;
 
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        case ROW_PORTRAIT_MODE:
-          snprintf(tmp, sizeof(tmp), "Portrait Mode: %s",
-                   _prefs->portrait_mode ? "ON" : "OFF");
-          display.print(tmp);
-          break;
-#endif
-
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
         case ROW_AUTO_LOCK:
           if (editing && _editMode == EDIT_PICKER) {
             snprintf(tmp, sizeof(tmp), "< Auto Lock: %s >",
@@ -2239,13 +2117,7 @@ public:
                 const char* nTag = (nPref == NOTIF_NONE) ? "Off" :
                                    (nPref == NOTIF_MENTIONS) ? "@" : "All";
                 char hintBuf[40];
-              #if defined(LilyGo_T5S3_EPaper_Pro)
-                if (chIdx > 0) {
-                  snprintf(hintBuf, sizeof(hintBuf), "Hold:Del");
-                } else {
-                  hintBuf[0] = '\0';  // No actionable hints for channel 0 on T5S3
-                }
-              #elif defined(MECK_AUDIO_VARIANT) || defined(HAS_4G_MODEM)
+              #if defined(MECK_AUDIO_VARIANT) || defined(HAS_4G_MODEM)
                 if (chIdx > 0) {
                   snprintf(hintBuf, sizeof(hintBuf), "N:%s T:Tone X:Del", nTag);
                 } else {
@@ -2426,11 +2298,7 @@ public:
         display.drawTextCentered(display.width() / 2, by + 4, "Region not set.");
         display.drawTextCentered(display.width() / 2, by + 15, "Leave unset?");
       }
-    #if defined(LilyGo_T5S3_EPaper_Pro)
-      display.drawTextCentered(display.width() / 2, by + bh - 14, "Tap:Yes  Boot:No");
-    #else
       display.drawTextCentered(display.width() / 2, by + bh - 14, "Enter:Yes  Q:No");
-    #endif
       display.setTextSize(1);
     }
 
@@ -2506,13 +2374,8 @@ public:
       display.setTextSize(1);
       display.setColor(DisplayDriver::YELLOW);
       int fy = by + bh - 11;
-    #if defined(LilyGo_T5S3_EPaper_Pro)
-      display.setCursor(bx + 4, fy);
-      display.print("Tap:Pick  Boot:Back");
-    #else
       display.setCursor(bx + 4, fy);
       display.print("Enter:Pick  Q:Back");
-    #endif
 
       // Scroll indicator
       if (totalItems > maxVisible) {
@@ -2567,11 +2430,7 @@ public:
           bool sel = (wi == _wifiSSIDSelected);
           if (sel) {
             display.setColor(DisplayDriver::LIGHT);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-            display.fillRect(bx + 2, wy, bw - 4, 8);
-#else
             display.fillRect(bx + 2, wy + 5, bw - 4, 8);
-#endif
             display.setColor(DisplayDriver::DARK);
           } else {
             display.setColor(DisplayDriver::LIGHT);
@@ -2847,11 +2706,7 @@ public:
       // Footer hint
       display.setColor(DisplayDriver::YELLOW);
       display.setCursor(bx + 4, by + bh - 12);
-    #if defined(LilyGo_T5S3_EPaper_Pro)
-      display.print("Tap:Send  Boot:Cancel");
-    #else
       display.print("Enter:Send  Q:Cancel");
-    #endif
       display.setTextSize(1);
     }
 
@@ -2861,102 +2716,6 @@ public:
     display.setColor(DisplayDriver::YELLOW);
     display.setCursor(0, footerY);
 
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    if (_editMode == EDIT_NONE) {
-      if (_subScreen != SUB_NONE) {
-        display.print("Boot:Back");
-        const char* r;
-        if (_subScreen == SUB_CHANNELS) r = "Tap:Select  Hold:Del";
-        #ifdef MECK_OTA_UPDATE
-        else if (_subScreen == SUB_OTA_TOOLS) r = "Tap:Select";
-        #endif
-        else r = "Tap:Toggle  Hold:Edit";
-        display.setCursor(display.width() - display.getTextWidth(r) - 2, footerY);
-        display.print(r);
-      } else {
-        display.print("Swipe:Scroll");
-        const char* r = "Tap:Toggle  Hold:Edit";
-        display.setCursor(display.width() - display.getTextWidth(r) - 2, footerY);
-        display.print(r);
-      }
-    } else if (_editMode == EDIT_NUMBER) {
-      display.print("Swipe:Adjust");
-      const char* r = "Tap:OK  Boot:Cancel";
-      display.setCursor(display.width() - display.getTextWidth(r) - 2, footerY);
-      display.print(r);
-    } else if (_editMode == EDIT_PICKER) {
-      display.print("Swipe:Choose");
-      const char* r = "Tap:OK  Boot:Cancel";
-      display.setCursor(display.width() - display.getTextWidth(r) - 2, footerY);
-      display.print(r);
-    } else if (_editMode == EDIT_CONFIRM) {
-      display.print("Boot:Cancel");
-      const char* r = "Tap:Confirm";
-      display.setCursor(display.width() - display.getTextWidth(r) - 2, footerY);
-      display.print(r);
-    #ifdef MECK_WIFI_COMPANION
-    } else if (_editMode == EDIT_WIFI) {
-      if (_wifiPhase == WIFI_PHASE_SELECT) {
-        display.print("Swipe:Pick");
-        const char* r = "Tap:Select  Boot:Back";
-        display.setCursor(display.width() - display.getTextWidth(r) - 2, footerY);
-        display.print(r);
-      } else {
-        display.print("Please wait...");
-      }
-    #endif
-    #ifdef MECK_OTA_UPDATE
-    } else if (_editMode == EDIT_OTA) {
-      if (_otaPhase == OTA_PHASE_CONFIRM) {
-        display.print("Boot:Cancel");
-        const char* r = "Tap:Start";
-        display.setCursor(display.width() - display.getTextWidth(r) - 2, footerY);
-        display.print(r);
-      } else if (_otaPhase == OTA_PHASE_WAITING) {
-        display.print("Boot:Cancel");
-      } else if (_otaPhase == OTA_PHASE_ERROR) {
-        display.print("Boot:Back");
-      } else {
-        display.print("Please wait...");
-      }
-    } else if (_editMode == EDIT_FILEMGR) {
-      if (_fmPhase == FM_PHASE_CONFIRM) {
-        display.print("Boot:Cancel");
-        const char* r = "Tap:Start";
-        display.setCursor(display.width() - display.getTextWidth(r) - 2, footerY);
-        display.print(r);
-      } else if (_fmPhase == FM_PHASE_WAITING) {
-        display.print("Boot:Stop");
-      } else if (_fmPhase == FM_PHASE_ERROR) {
-        display.print("Boot:Back");
-      } else {
-        display.print("Please wait...");
-      }
-    #endif
-    } else if (_editMode == EDIT_TEXT || _editMode == EDIT_CANNED) {
-      display.print("Hold:Type");
-      const char* r = "Tap:OK  Boot:Cancel";
-      display.setCursor(display.width() - display.getTextWidth(r) - 2, footerY);
-      display.print(r);
-    } else {
-      display.print("Editing...");
-    }
-#elif defined(LILYGO_TECHO_LITE)
-    if (_editMode == EDIT_TEXT || _editMode == EDIT_CANNED) {
-      display.print("Ent:Ok Sh+Del:Cancel");
-    } else if (_editMode == EDIT_PICKER) {
-      display.print("A/D:Pick Ent:Ok");
-    } else if (_editMode == EDIT_NUMBER) {
-      display.print("W/S:Adj Ent:Ok");
-    } else if (_editMode == EDIT_CONFIRM) {
-      // overlay handles it
-    } else {
-      display.print("Q:Bk");
-      const char* r = "Ent:Edit";
-      display.setCursor(display.width() - display.getTextWidth(r) - 2, footerY);
-      display.print(r);
-    }
-#else
     if (_editMode == EDIT_TEXT || _editMode == EDIT_CANNED) {
       display.print("Type, Enter:Ok Sh+Del:Cancel");
     #ifdef MECK_WIFI_COMPANION
@@ -3013,7 +2772,6 @@ public:
       display.setCursor(display.width() - display.getTextWidth(r) - 2, footerY);
       display.print(r);
     }
-#endif
 
     #ifdef MECK_OTA_UPDATE
     // Poll web server frequently during OTA waiting/receiving or file manager phases
@@ -3229,9 +2987,6 @@ public:
           _wifiPassLen = 0;
           memset(_wifiPassBuf, 0, sizeof(_wifiPassBuf));
           _wifiFormLastChar = 0;
-#if defined(LilyGo_T5S3_EPaper_Pro)
-          _wifiNeedsVKB = true;  // Signal UITask to open virtual keyboard
-#endif
           return true;
         }
         if (c == KEY_CANCEL || c == 'q') {
@@ -3448,7 +3203,7 @@ public:
         } else if (type == ROW_GPS_BAUD) {
           _editPickerIdx--;
           if (_editPickerIdx < 0) _editPickerIdx = GPS_BAUD_OPTION_COUNT - 1;
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
         } else if (type == ROW_AUTO_LOCK) {
           _editPickerIdx--;
           if (_editPickerIdx < 0) _editPickerIdx = AUTO_LOCK_OPTION_COUNT - 1;
@@ -3471,7 +3226,7 @@ public:
         } else if (type == ROW_GPS_BAUD) {
           _editPickerIdx++;
           if (_editPickerIdx >= GPS_BAUD_OPTION_COUNT) _editPickerIdx = 0;
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
         } else if (type == ROW_AUTO_LOCK) {
           _editPickerIdx++;
           if (_editPickerIdx >= AUTO_LOCK_OPTION_COUNT) _editPickerIdx = 0;
@@ -3497,7 +3252,7 @@ public:
           _editMode = EDIT_NONE;
           Serial.printf("Settings: GPS baud set to %lu (reboot to apply)\n",
                         (unsigned long)_prefs->gps_baudrate);
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
         } else if (type == ROW_AUTO_LOCK) {
           _prefs->auto_lock_minutes = AUTO_LOCK_OPTIONS[_editPickerIdx];
           the_mesh.savePrefs();
@@ -3760,15 +3515,7 @@ public:
           _fontPickerOriginal = _prefs->ui_font_style;
           startEditPicker(_prefs->ui_font_style);
           break;
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        case ROW_PORTRAIT_MODE:
-          _prefs->portrait_mode = _prefs->portrait_mode ? 0 : 1;
-          the_mesh.savePrefs();
-          Serial.printf("Settings: Portrait mode = %s\n",
-                        _prefs->portrait_mode ? "ON" : "OFF");
-          break;
-#endif
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
         case ROW_AUTO_LOCK:
           startEditPicker(findAutoLockIndex(_prefs->auto_lock_minutes));
           break;

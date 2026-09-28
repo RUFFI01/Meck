@@ -1,9 +1,7 @@
 #include "UITask.h"
 #include <helpers/TxtDataHelpers.h>
 #include "../MyMesh.h"
-#if !defined(LILYGO_TECHO_LITE) && !defined(LILYGO_TECHO_CARD)
 #include "NotesScreen.h"
-#endif
 #include "RepeaterAdminScreen.h"
 #include "PathEditorScreen.h"
 #include "DiscoveryScreen.h"
@@ -19,21 +17,18 @@
 #ifdef MECK_WEB_READER
   #include "WebReaderScreen.h"
 #endif
-#if   HAS_GPS && !defined(LILYGO_TECHO_CARD)
+#if   HAS_GPS
   #include "MapScreen.h"
 #endif
 #include "target.h"
 #if defined(LilyGo_TDeck_Pro_Max)
   #include "DRV2605Haptic.h"   // haptic motor for "Buzzer (vibrate)" channels
 #endif
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(MECK_AUDIO_VARIANT) || defined(LilyGo_TDeck_Pro)
+#if defined(MECK_AUDIO_VARIANT) || defined(LilyGo_TDeck_Pro)
   #include "HomeIcons.h"
 #endif
 #if defined(WIFI_SSID) || defined(MECK_WIFI_COMPANION)
   #include <WiFi.h>
-#endif
-#if defined(LilyGo_T5S3_EPaper_Pro) && !defined(BLE_PIN_CODE) && !defined(MECK_WIFI_COMPANION)
-  #include "esp_sleep.h"
 #endif
 
 #ifndef AUTO_OFF_MILLIS
@@ -56,11 +51,7 @@
 #define LONG_PRESS_MILLIS   1200
 
 #ifndef UI_RECENT_LIST_SIZE
-  #if defined(LilyGo_T5S3_EPaper_Pro)
-    #define UI_RECENT_LIST_SIZE 8
-  #else
     #define UI_RECENT_LIST_SIZE 4
-  #endif
 #endif
 
 #define PRESS_LABEL "long press"
@@ -69,9 +60,7 @@
 #include "ChannelScreen.h"
 #include "ChannelPickerScreen.h"
 #include "ContactsScreen.h"
-#if !defined(LILYGO_TECHO_LITE) && !defined(LILYGO_TECHO_CARD)
 #include "TextReaderScreen.h"
-#endif
 #include "SettingsScreen.h"
 #ifdef MECK_AUDIO_VARIANT
 #include "AudiobookPlayerScreen.h"
@@ -215,28 +204,6 @@ void renderBatteryIndicator(DisplayDriver& display, uint16_t batteryMilliVolts, 
     display.setColor(DisplayDriver::GREEN);
     display.setTextSize(_node_prefs->smallTextSize());
 
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    // T5S3: text-only battery indicator — "Batt 99% 4.1v"
-    char battStr[20];
-    float volts = batteryMilliVolts / 1000.0f;
-    snprintf(battStr, sizeof(battStr), "Batt %d%% %.1fv", batteryPercentage, volts);
-    uint16_t textWidth = display.getTextWidth(battStr);
-    int textX = display.width() - textWidth - 2;
-    if (outIconX) *outIconX = textX;
-    display.setCursor(textX, 0);
-    display.print(battStr);
-    display.setTextSize(1);  // restore default text size
-#elif defined(LILYGO_TECHO_LITE)
-    // T-Echo Lite: text-only battery (icon misaligns due to fillRect/setCursor offset mismatch at 2× scale)
-    char battStr[8];
-    snprintf(battStr, sizeof(battStr), "%d%%", batteryPercentage);
-    uint16_t textWidth = display.getTextWidth(battStr);
-    int textX = display.width() - textWidth - 2;
-    if (outIconX) *outIconX = textX;
-    display.setCursor(textX, 0);  // Same baseline as node name (HOME_HDR_Y)
-    display.print(battStr);
-    display.setTextSize(1);
-#else
     // T-Deck Pro: icon + percentage text (icon hidden in large font)
     int iconWidth = 16;
     int iconHeight = 6;
@@ -278,7 +245,6 @@ void renderBatteryIndicator(DisplayDriver& display, uint16_t batteryMilliVolts, 
       display.print(pctStr);
     }
     display.setTextSize(1);  // restore default text size
-#endif
   }
 
 #ifdef MECK_AUDIO_VARIANT
@@ -371,7 +337,7 @@ public:
 
   int render(DisplayDriver& display) override {
     char tmp[80];
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
     _task->setHomeShowingTiles(false);  // Reset — only set true on FIRST page
 #endif
 
@@ -379,9 +345,6 @@ public:
     // First render: "powering off..." + wake instruction
     // Second render onward: wake instruction only (persists on e-ink)
     if (_shutdown_init && _poweroff_selected) {
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      board.setBacklight(false);
-#endif
       display.setColor(DisplayDriver::GREEN);
       display.setTextSize(1);
       if (!_poweroff_msg_shown) {
@@ -400,15 +363,7 @@ public:
     display.setColor(DisplayDriver::GREEN);
     char filtered_name[sizeof(_node_prefs->node_name)];
     display.translateUTF8ToBlocks(filtered_name, _node_prefs->node_name, sizeof(filtered_name));
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    // T5S3: FreeSans12pt ascenders need more room than built-in font.
-    // Shift header elements down by 4 virtual units (~17px physical).
-    #define HOME_HDR_Y 1
-#elif defined(LILYGO_TECHO_LITE)
-    #define HOME_HDR_Y 0
-#else
     #define HOME_HDR_Y -3
-#endif
     display.setCursor(0, HOME_HDR_Y);
     display.print(filtered_name);
     // battery voltage + status icons
@@ -452,11 +407,7 @@ public:
       }
     }
     // curr page indicator
-#if defined(LILYGO_TECHO_LITE)
-    int y = 13;   // Below header
-#elif defined(LilyGo_T5S3_EPaper_Pro)
-    int y = 14;  // Closer to header
-#elif defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
     int y = 8;   // Tighter under header; frees room for the MSG strip above the tile grid
 #else
     int y = 14;
@@ -471,7 +422,7 @@ public:
     }
 
     if (_page == HomePage::FIRST) {
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
       _task->setHomeShowingTiles(true);
 #endif
 #if defined(LilyGo_TDeck_Pro)
@@ -593,24 +544,12 @@ public:
         display.setTextSize(1);  // restore driver font state after raw text
       }
 #else // not LilyGo_TDeck_Pro
-#if defined(LilyGo_T5S3_EPaper_Pro)
-  #if defined(BLE_PIN_CODE) || defined(WIFI_SSID) || defined(MECK_WIFI_COMPANION)
-      int y = 18;  // Tighter spacing — connectivity info fills gap below dots
-  #else
-      int y = 26;  // Standalone: extra line below dots (no IP/Connected row)
-  #endif
-#elif defined(LILYGO_TECHO_LITE)
-      int y = 18;  // Below page dots
-#else
       int y = 20;
-#endif
       display.setColor(DisplayDriver::YELLOW);
       display.setTextSize(2);
       sprintf(tmp, "MSG: %d", _task->getUnreadMsgCount());
       display.drawTextCentered(display.width() / 2, y, tmp);
-#if defined(LILYGO_TECHO_LITE)
-      y += 12;  // Compact
-#elif defined(LilyGo_TDeck_Pro_Max)
+#if defined(LilyGo_TDeck_Pro_Max)
       y += 10;  // MAX: pull < Connected > up under MSG to make room for [T] Phone
 #else
       y += 14;  // Reduced from 18
@@ -637,9 +576,7 @@ public:
         display.setTextSize(2);
         sprintf(tmp, "Pin:%d", the_mesh.getBLEPin());
         display.drawTextCentered(display.width() / 2, y, tmp);
-#if defined(LILYGO_TECHO_LITE)
-        y += 14;  // Compact
-#elif defined(LilyGo_TDeck_Pro_Max)
+#if defined(LilyGo_TDeck_Pro_Max)
         y += 6;  // MAX: tighter pin-to-menu gap so [T] Phone is not clipped
 #else
         y += 18;
@@ -648,101 +585,7 @@ public:
       }
       #endif
 
-      // ----- T5S3: Tappable tile grid (touch-friendly home screen) -----
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      // 3×2 grid of tiles below MSG count
-      // Virtual coords (128×128), scaled by DisplayDriver
-      {
-        struct Tile { const uint8_t* icon; const char* label; };
-        const Tile tiles[2][3] = {
-          { {icon_envelope, "Messages"}, {icon_people, "Contacts"}, {icon_gear, "Settings"} },
-#ifdef MECK_WEB_READER
-          { {icon_book, "Reader"},       {icon_notepad, "Notes"},   {icon_search, "Browser"} }
-#else
-          { {icon_book, "Reader"},       {icon_notepad, "Notes"},   {icon_search, "Discover"} }
-#endif
-        };
-
-        const int tileW = 40;
-        const int tileH = 22;
-        const int gapX = 1;
-        const int gapY = 1;
-        const int gridW = tileW * 3 + gapX * 2;
-        const int gridX = (display.width() - gridW) / 2;
-        const int gridY = y + 2;
-        _task->setTileGridVY(gridY);  // Store for touch hit testing
-
-        for (int row = 0; row < 2; row++) {
-          for (int col = 0; col < 3; col++) {
-            int tx = gridX + col * (tileW + gapX);
-            int ty = gridY + row * (tileH + gapY);
-
-            // Tile border
-            display.setColor(DisplayDriver::LIGHT);
-            display.drawRect(tx, ty, tileW, tileH);
-
-            // Icon centered in tile
-            int iconX = tx + (tileW - HOME_ICON_W) / 2;
-            int iconY = ty + 2;
-            display.drawXbm(iconX, iconY, tiles[row][col].icon, HOME_ICON_W, HOME_ICON_H);
-
-            // Label centered below icon
-            display.setTextSize(_node_prefs->smallTextSize());
-            display.drawTextCentered(tx + tileW / 2, ty + 15, tiles[row][col].label);
-          }
-        }
-
-        // Third row: Trace (col 0) + Games (col 1)
-        {
-          int row3y = gridY + 2 * (tileH + gapY);
-
-          // Trace tile (column 0)
-          int col0x = gridX;
-          display.setColor(DisplayDriver::LIGHT);
-          display.drawRect(col0x, row3y, tileW, tileH);
-          int iconX = col0x + (tileW - HOME_ICON_W) / 2;
-          int iconY = row3y + 2;
-          display.drawXbm(iconX, iconY, icon_trace, HOME_ICON_W, HOME_ICON_H);
-          display.setTextSize(_node_prefs->smallTextSize());
-          display.drawTextCentered(col0x + tileW / 2, row3y + 15, "Trace");
-
-          // Games tile (column 1)
-          int col1x = gridX + (tileW + gapX);
-          display.setColor(DisplayDriver::LIGHT);
-          display.drawRect(col1x, row3y, tileW, tileH);
-          iconX = col1x + (tileW - HOME_ICON_W) / 2;
-          iconY = row3y + 2;
-          display.drawXbm(iconX, iconY, icon_gamepad, HOME_ICON_W, HOME_ICON_H);
-          display.setTextSize(_node_prefs->smallTextSize());
-          display.drawTextCentered(col1x + tileW / 2, row3y + 15, "Games");
-        }
-
-        // Nav hint at bottom of screen
-        display.setColor(DisplayDriver::GREEN);
-        display.setTextSize(_node_prefs->smallTextSize());
-        display.drawTextCentered(display.width() / 2, display.height() - 8, "Tap tile to open");
-      }
-      display.setTextSize(1);
-
-#else
-      // Non-T5S3: keyboard shortcut menu
-#if defined(LILYGO_TECHO_LITE)
-      // T-Echo Lite: compact centered menu (tiny font fits 117px virtual width)
-      display.setColor(DisplayDriver::LIGHT);
-      display.setTextSize(0);  // 6×8 built-in font
-      y += 2;
-      display.drawTextCentered(display.width() / 2, y, "M:Msgs  C:Contacts");
-      y += 8;
-      display.drawTextCentered(display.width() / 2, y, "S:Set   F:Discover");
-      y += 8;
-      display.drawTextCentered(display.width() / 2, y, "H:Last Heard");
-      y += 9;
-      if (y < display.height() - 14) {
-        display.setColor(DisplayDriver::GREEN);
-        display.drawTextCentered(display.width() / 2, y, "Arrows: cycle views");
-      }
-      display.setTextSize(1);  // restore
-#else
+      // Keyboard shortcut menu
       // ----- T-Deck Pro: Keyboard shortcut text menu -----
       display.setColor(DisplayDriver::LIGHT);
       display.setTextSize(_node_prefs->smallTextSize());
@@ -877,8 +720,6 @@ public:
           (_node_prefs->large_font || display.getFontStyle() > 0) ? "A/D: cycle views" : "Press A/D to cycle home views");
       }
       display.setTextSize(1);  // restore
-#endif // LILYGO_TECHO_LITE
-#endif
 #endif // not LilyGo_TDeck_Pro
     } else if (_page == HomePage::RECENT) {
       the_mesh.getRecentlyHeard(recent, UI_RECENT_LIST_SIZE);
@@ -908,13 +749,8 @@ public:
       // Hint for full Last Heard screen
       display.setColor(DisplayDriver::LIGHT);
       display.setTextSize(_node_prefs->smallTextSize());
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      display.drawTextCentered(display.width() / 2, display.height() - 24,
-                               "Tap here for full Last Heard list");
-#else
       display.drawTextCentered(display.width() / 2, display.height() - 24,
                                "H: Full Last Heard list");
-#endif
     } else if (_page == HomePage::RADIO) {
       display.setColor(DisplayDriver::YELLOW);
       display.setTextSize(1);
@@ -940,39 +776,23 @@ public:
 #ifdef BLE_PIN_CODE
     } else if (_page == HomePage::BLUETOOTH) {
       display.setColor(DisplayDriver::GREEN);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      display.drawXbm((display.width() - 32) / 2, 28,
-#else
       display.drawXbm((display.width() - 32) / 2, 18,
-#endif
           _task->isSerialEnabled() ? bluetooth_on : bluetooth_off,
           32, 32);
       if (_task->hasConnection()) {
         display.setColor(DisplayDriver::GREEN);
         display.setTextSize(1);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        display.drawTextCentered(display.width() / 2, 64, "< Connected >");
-#else
         display.drawTextCentered(display.width() / 2, 53, "< Connected >");
-#endif
       } else if (_task->isSerialEnabled() && the_mesh.getBLEPin() != 0) {
         display.setColor(DisplayDriver::RED);
         display.setTextSize(2);
         sprintf(tmp, "Pin:%d", the_mesh.getBLEPin());
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        display.drawTextCentered(display.width() / 2, 64, tmp);
-#else
         display.drawTextCentered(display.width() / 2, 53, tmp);
-#endif
       }
       display.setColor(DisplayDriver::GREEN);
       display.setTextSize(1);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      display.drawTextCentered(display.width() / 2, 80, "toggle: " PRESS_LABEL);
-#else
       display.drawTextCentered(display.width() / 2, 68, "toggle: " PRESS_LABEL);
       display.drawTextCentered(display.width() / 2, 78, "or press Enter key");
-#endif
 #endif
 #ifdef MECK_WIFI_COMPANION
     } else if (_page == HomePage::WIFI_STATUS) {
@@ -1015,17 +835,9 @@ public:
 #endif
     } else if (_page == HomePage::ADVERT) {
       display.setColor(DisplayDriver::GREEN);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      display.drawXbm((display.width() - 32) / 2, 28, advert_icon, 32, 32);
-#else
       display.drawXbm((display.width() - 32) / 2, 18, advert_icon, 32, 32);
-#endif
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      display.drawTextCentered(display.width() / 2, 64, "advert: " PRESS_LABEL);
-#else
       display.drawTextCentered(display.width() / 2, 57, "advert: " PRESS_LABEL);
       display.drawTextCentered(display.width() / 2, 67, "or press Enter key");
-#endif
 #if ENV_INCLUDE_GPS == 1 && !defined(MECK_40MHZ_TEST)
     } else if (_page == HomePage::GPS) {
       extern GPSStreamCounter gpsStream;
@@ -1254,34 +1066,17 @@ public:
       display.setColor(DisplayDriver::GREEN);
       display.setTextSize(1);
       if (_shutdown_init) {
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        board.setBacklight(false);
-#endif
         display.drawTextCentered(display.width() / 2, 34, "hibernating...");
       } else if (_poweroff_confirm) {
         // Confirmation prompt for power off
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        display.drawXbm((display.width() - 32) / 2, 28, power_icon, 32, 32);
-#else
         display.drawXbm((display.width() - 32) / 2, 20, power_icon, 32, 32);
-#endif
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        display.drawTextCentered(display.width() / 2, 64, "power off device?");
-        display.drawTextCentered(display.width() / 2, 76, "usb-c to wake");
-#else
         display.drawTextCentered(display.width() / 2, 56, "power off device?");
         display.drawTextCentered(display.width() / 2, 66, "usb-c to wake");
         display.drawTextCentered(display.width() / 2, 82, "Enter:yes  q:no");
-#endif
       } else {
         // Menu: hibernate / power off
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        display.drawXbm((display.width() - 32) / 2, 20, power_icon, 32, 32);
-        const int y1 = 58, y2 = 70;
-#else
         display.drawXbm((display.width() - 32) / 2, 20, power_icon, 32, 32);
         const int y1 = 56, y2 = 68;
-#endif
         char line1[48], line2[48];
 #if defined(LilyGo_TDeck_Pro)
         snprintf(line1, sizeof(line1), "%shibernate: long press/Enter", _poweroff_selected ? " " : ">");
@@ -1422,13 +1217,12 @@ public:
 // MsgPreviewScreen removed — all platforms now use toast alerts for new messages
 
 // ==========================================================================
-// Lock Screen — T5S3 and T-Deck Pro
+// Lock Screen -- T-Deck Pro
 // Big clock, battery %, unread message count.
-// T5S3: Long press boot button to lock/unlock. Touch disabled while locked.
 // T-Deck Pro: Double-press boot button to lock/unlock. Touch+keyboard disabled.
 // ==========================================================================
 
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
 class LockScreen : public UIScreen {
   UITask* _task;
   mesh::RTCClock* _rtc;
@@ -1452,11 +1246,7 @@ public:
     }
 
     // ---- Huge clock: HH:MM on one line ----
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    display.setTextSize(5);  // T5S3: FreeSansBold24pt × 5
-#else
     display.setTextSize(5);  // T-Deck Pro: FreeSansBold12pt at GxEPD 2× scale
-#endif
     display.setColor(DisplayDriver::LIGHT);
     display.drawTextCentered(display.width() / 2, 55, timeBuf);
 
@@ -1512,11 +1302,6 @@ public:
 #endif
 
     // ---- Unlock hint ----
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    display.setTextSize(_node_prefs->smallTextSize());
-    display.setColor(DisplayDriver::LIGHT);
-    display.drawTextCentered(display.width() / 2, 120, "Hold button to unlock");
-#endif
 
     return 30000;
   }
@@ -1590,7 +1375,7 @@ void UITask::begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* no
 
   ui_started_at = millis();
   _alert_expiry = 0;
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
   _lastInputMillis = millis();
 #endif
 
@@ -1602,13 +1387,8 @@ void UITask::begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* no
   ((ChannelPickerScreen*)channel_picker_screen)->setChannelScreen((ChannelScreen*)channel_screen);
   contacts_screen = new ContactsScreen(this, &rtc_clock);
   ((ContactsScreen*)contacts_screen)->setDMUnreadPtr(_dmUnread);
-#if !defined(LILYGO_TECHO_LITE) && !defined(LILYGO_TECHO_CARD)
   text_reader = new TextReaderScreen(this, node_prefs);
   notes_screen = new NotesScreen(this, node_prefs);
-#else
-  text_reader = nullptr;   // T-Echo Lite: excluded to save RAM (256KB nRF52)
-  notes_screen = nullptr;
-#endif
   settings_screen = new SettingsScreen(this, &rtc_clock, node_prefs);
   repeater_admin = nullptr;  // Lazy-initialized on first use to preserve heap for audio
   path_editor = nullptr;     // Lazy-initialized on first use from contacts screen
@@ -1622,7 +1402,7 @@ void UITask::begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* no
 #if defined(LilyGo_TDeck_Pro)
   gbc_screen = new GBCEmulatorScreen(this);
 #endif
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
   lock_screen = new LockScreen(this, &rtc_clock, node_prefs);
 #endif
   audiobook_screen = nullptr;  // Created and assigned from main.cpp if audio hardware present
@@ -1633,21 +1413,14 @@ void UITask::begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* no
 #ifdef HAS_4G_MODEM
   sms_screen = new SMSScreen(this, node_prefs);
 #endif
-#if   HAS_GPS && !defined(LILYGO_TECHO_CARD)
+#if   HAS_GPS
   map_screen = new MapScreen(this);
 #else
   map_screen = nullptr;
 #endif
 
-#if defined(LilyGo_T5S3_EPaper_Pro)
-  // Apply saved display preferences before first render
-  if (_node_prefs->portrait_mode) {
-    ::display.setPortraitMode(true);
-  }
-#endif
-
-  // Apply saved dark mode preference (both T-Deck Pro and T5S3)
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+  // Apply saved dark mode preference (T-Deck Pro)
+#if defined(LilyGo_TDeck_Pro)
   if (_node_prefs->dark_mode) {
     ::display.setDarkMode(true);
   }
@@ -2125,50 +1898,7 @@ void UITask::loop() {
 #if (defined(PIN_USER_BTN))
   int ev = user_btn.check();
   if (ev == BUTTON_EVENT_CLICK) {
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    // T5S3: single click = cycle pages on home, go back to home from elsewhere
-    // Ignored while locked — long press required to unlock
-    if (_locked) {
-      c = 0;
-    } else if (_vkbActive) {
-      onVKBCancel();
-      c = 0;
-    } else if (curr == home) {
-      c = checkDisplayOn(KEY_NEXT);
-    } else {
-      // Navigate back: reader reading→file list, file list→home, others→home
-#if !defined(LILYGO_TECHO_LITE) && !defined(LILYGO_TECHO_CARD)
-      if (isOnTextReader()) {
-        TextReaderScreen* reader = (TextReaderScreen*)text_reader;
-        if (reader && reader->isReading()) {
-          c = checkDisplayOn('q');  // reading mode: close book → file list
-        } else {
-          gotoHomeScreen();  // file list: go home
-          c = 0;
-        }
-      } else if (isOnNotesScreen()) {
-        NotesScreen* notes = (NotesScreen*)notes_screen;
-        if (notes && notes->isEditing()) {
-          notes->triggerSaveAndExit();  // save and return to file list
-        } else {
-          notes->exitNotes();
-          gotoHomeScreen();
-        }
-        c = 0;
-      } else
-#endif
-      if (isOnChannelPickerScreen()) {
-        gotoHomeScreen();  // picker → home
-        c = 0;
-      } else if (isOnChannelScreen()) {
-        gotoChannelPickerScreen();  // channel messages → picker
-        c = 0;
-      } else {
-        gotoHomeScreen();
-        c = 0;  // consumed
-      }
-    }
-#elif defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
     // T-Deck Pro: single click ignored while locked — double-press to unlock
     if (_locked) {
       c = 0;
@@ -2214,7 +1944,7 @@ void UITask::loop() {
 #endif
 
   if (c != 0 && curr) {
-    // Dismiss boot hint on any button input (boot button on T5S3)
+    // Dismiss boot hint on any button input
     if (_hintActive) {
       dismissBootHint();
       c = 0;  // Consume the press
@@ -2225,7 +1955,7 @@ void UITask::loop() {
     curr->handleInput(c);
     _auto_off = millis() + AUTO_OFF_MILLIS;   // extend auto-off timer
     _next_refresh = 100;  // trigger refresh
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
     _lastInputMillis = millis();  // Reset auto-lock idle timer
 #endif
   }
@@ -2308,126 +2038,18 @@ if (curr) curr->poll();
         _next_refresh = millis() + 500;  // Re-check in 500ms
       } else {
       // Sync dark mode with prefs (settings toggle takes effect here)
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
       if (_node_prefs && display.isDarkMode() != (_node_prefs->dark_mode != 0)) {
         display.setDarkMode(_node_prefs->dark_mode != 0);
       }
 #endif
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      // Sync portrait mode with prefs (T5S3 only)
-      if (_node_prefs && display.isPortraitMode() != (_node_prefs->portrait_mode != 0)) {
-        display.setPortraitMode(_node_prefs->portrait_mode != 0);
-        // Text reader layout depends on orientation -- force recalculation
-        if (text_reader) {
-          ((TextReaderScreen*)text_reader)->invalidateLayout();
-        }
-      }
-#endif
       // Sync font style with prefs (settings toggle takes effect here)
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
       if (_node_prefs && display.getFontStyle() != _node_prefs->ui_font_style) {
         display.setFontStyle(_node_prefs->ui_font_style);
       }
 #endif
       _display->startFrame();
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      if (_vkbActive) {
-        display.setForcePartial(true);  // No flash while typing
-        _vkb.render(*_display);
-        _next_refresh = millis() + 500;  // Moderate refresh for cursor blink
-        // Check if keyboard was submitted or cancelled during render cycle
-        if (_vkb.status() == VKB_SUBMITTED) {
-          onVKBSubmit();
-        } else if (_vkb.status() == VKB_CANCELLED) {
-          onVKBCancel();
-        }
-      } else {
-        // Default: allow full refresh. Override for notes editing (no flash while typing).
-        display.setForcePartial(false);
-        if (isOnNotesScreen() && ((NotesScreen*)notes_screen)->isEditing()) {
-          display.setForcePartial(true);
-        }
-        int delay_millis = curr->render(*_display);
-
-        // Check if settings screen needs VKB for WiFi password entry
-#ifdef MECK_WIFI_COMPANION
-        if (isOnSettingsScreen() && !_vkbActive) {
-          SettingsScreen* ss = (SettingsScreen*)settings_screen;
-          if (ss->needsWifiVKB()) {
-            ss->clearWifiNeedsVKB();
-            showVirtualKeyboard(VKB_WIFI_PASSWORD, "WiFi Password", "", 63);
-          }
-        }
-#endif
-
-        // Check if settings screen needs VKB for text editing (channel name, freq, APN)
-        if (isOnSettingsScreen() && !_vkbActive) {
-          SettingsScreen* ss = (SettingsScreen*)settings_screen;
-          if (ss->needsTextVKB()) {
-            ss->clearTextNeedsVKB();
-            // Pick a context-appropriate label
-            const char* label = "Edit";
-            SettingsRowType rt = ss->getCurrentRowType();
-            if (rt == ROW_NAME) label = "Node Name";
-            else if (rt == ROW_ADD_CHANNEL) label = "Channel Name";
-            else if (rt == ROW_FREQ) label = "Frequency";
-            showVirtualKeyboard(VKB_SETTINGS_TEXT, label, ss->getEditBuf(), 31);
-          }
-          if (ss->needsCannedVKB()) {
-            ss->clearCannedNeedsVKB();
-            showVirtualKeyboard(VKB_CANNED_TEXT, "Canned Message", ss->getCannedBuf(), CANNED_MSG_LEN - 1);
-          }
-        }
-
-        if (_hintActive && millis() < _hintExpiry) {
-          // Boot navigation hint overlay — multi-line, larger box
-          _display->setTextSize(1);
-          int w = _display->width();
-          int h = _display->height();
-          int boxX = w / 8;
-          int boxY = h / 5;
-          int boxW = w - boxX * 2;
-          int boxH = h * 3 / 5;
-          _display->setColor(DisplayDriver::DARK);
-          _display->fillRect(boxX, boxY, boxW, boxH);
-          _display->setColor(DisplayDriver::LIGHT);
-          _display->drawRect(boxX, boxY, boxW, boxH);
-          int cx = w / 2;
-          int lineH = 11;
-          int startY = boxY + 6;
-#if defined(LilyGo_T5S3_EPaper_Pro)
-          _display->drawTextCentered(cx, startY, "Swipe: Navigate");
-          _display->drawTextCentered(cx, startY + lineH, "Tap: Select");
-          _display->drawTextCentered(cx, startY + lineH * 2, "Long Press: Action");
-          _display->drawTextCentered(cx, startY + lineH * 3, "Boot Btn: Home");
-          _display->drawTextCentered(cx, startY + lineH * 4 + 4, "[Tap to dismiss hint]");
-#else
-          _display->drawTextCentered(cx, startY, "M:Msgs  C:Contacts");
-          _display->drawTextCentered(cx, startY + lineH, "S:Settings  E:Reader");
-          _display->drawTextCentered(cx, startY + lineH * 2, "N:Notes  W/S:Scroll");
-          _display->drawTextCentered(cx, startY + lineH * 3, "A/D:Cycle Left/Right");
-          _display->drawTextCentered(cx, startY + lineH * 4 + 4, "[X to dismiss hint]");
-#endif
-          _next_refresh = _hintExpiry;
-        } else if (_hintActive) {
-          // Hint expired — auto-dismiss
-          dismissBootHint();
-          _next_refresh = millis() + 200;
-        } else if (millis() < _alert_expiry) {
-          _display->setTextSize(1);
-          int y = _display->height() / 3;
-          int p = _display->height() / 32;
-          _display->setColor(DisplayDriver::DARK);
-          _display->fillRect(p, y, _display->width() - p*2, y);
-          _display->setColor(DisplayDriver::LIGHT);
-          _display->drawRect(p, y, _display->width() - p*2, y);
-          _display->drawTextCentered(_display->width() / 2, y + p*3, _alert);
-          _next_refresh = _alert_expiry;
-        } else {
-          _next_refresh = millis() + delay_millis;
-        }
-      }
-#else
       int delay_millis = curr->render(*_display);
       if (_hintActive && millis() < _hintExpiry) {
         // Boot navigation hint overlay — multi-line, larger box
@@ -2468,7 +2090,6 @@ if (curr) curr->poll();
       } else {
         _next_refresh = millis() + delay_millis;
       }
-#endif
       _display->endFrame();
 
       // E-ink render throttle: enforce minimum interval between renders.
@@ -2507,7 +2128,7 @@ if (curr) curr->poll();
   }
 
   // Auto-lock idle timer — runs regardless of display on/off state
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
   if (_node_prefs && _node_prefs->auto_lock_minutes > 0 && !_locked) {
     uint8_t alm = _node_prefs->auto_lock_minutes;
     // Only act on valid option values (guards against garbage from uninitialised prefs)
@@ -2520,19 +2141,9 @@ if (curr) curr->poll();
   }
 
   // Lock screen clock refresh — keeps the displayed time current.
-  // T-Deck Pro: every 1 minute. T5S3: every 2 minutes.
+  // T-Deck Pro: every 1 minute.
   // Wakes the display driver briefly to render, then auto-off handles it.
-  // T5S3 standalone: no refreshes once powersaving begins — the device
-  // shows "hibernating..." and enters light sleep instead.
-#if defined(LilyGo_T5S3_EPaper_Pro) && !defined(BLE_PIN_CODE) && !defined(MECK_WIFI_COMPANION)
-  // T5S3 standalone: only refresh while still active (before powersaving kicks in)
-  if (_locked && _display != NULL && _display->isOn()) {
-    const unsigned long LOCK_REFRESH_INTERVAL = 2UL * 60UL * 1000UL;  // 2 minutes
-#elif defined(LilyGo_T5S3_EPaper_Pro)
-  // T5S3 BLE/WiFi: refresh every 2 minutes
-  if (_locked && _display != NULL) {
-    const unsigned long LOCK_REFRESH_INTERVAL = 2UL * 60UL * 1000UL;  // 2 minutes
-#elif defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
   // T-Deck Pro: refresh every 1 minute
   if (_locked && _display != NULL) {
     const unsigned long LOCK_REFRESH_INTERVAL = 1UL * 60UL * 1000UL;  // 1 minute
@@ -2551,56 +2162,6 @@ if (curr) curr->poll();
   }
 #endif
 
-  // ── T5S3 standalone powersaving ──────────────────────────────────────────
-  // When locked with display off, enter ESP32 light sleep (~8 mA total).
-  // Radio stays in continuous RX — DIO1 going HIGH wakes the CPU instantly.
-  // Boot button (GPIO0 LOW) and a 30-min safety timer also wake.
-  // First sleep starts 60s after lock; subsequent cycles wake for 5s to let
-  // the mesh stack process/relay any received packet, then sleep again.
-#if defined(LilyGo_T5S3_EPaper_Pro) && !defined(BLE_PIN_CODE) && !defined(MECK_WIFI_COMPANION)
-  if (_locked && _display != NULL && !_display->isOn()) {
-    unsigned long now = millis();
-    if (now - _psLastActive >= _psNextSleepSecs * 1000UL) {
-      // First sleep entry: render a static "hibernating..." frame on the
-      // e-ink. Since e-ink retains its image indefinitely without power,
-      // this tells the user the device is in low-power mode until they
-      // wake it with the boot button.
-      if (_psNextSleepSecs == 60) {
-        _display->turnOn();
-        _display->startFrame();
-        _display->setTextSize(1);
-        _display->setColor(DisplayDriver::GREEN);
-        _display->drawTextCentered(_display->width() / 2, 34, "hibernating...");
-        _display->endFrame();
-        delay(700);  // Allow e-ink refresh to complete
-        _display->turnOff();
-      }
-      Serial.println("[POWERSAVE] Entering light sleep (locked+idle)");
-      board.sleep(1800);  // Light sleep up to 30 min
-      // ── CPU resumes here on wake ──
-      unsigned long wakeAt = millis();
-      _psLastActive = wakeAt;
-      _psNextSleepSecs = 5;  // Stay awake 5s for mesh processing
-
-      esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
-      if (cause == ESP_SLEEP_WAKEUP_GPIO) {
-        // Boot button pressed — unlock and return to normal use
-        Serial.println("[POWERSAVE] Woke by button — unlocking");
-        unlockScreen();
-        _psNextSleepSecs = 60;  // Reset to long delay after user interaction
-      } else if (cause == ESP_SLEEP_WAKEUP_EXT1) {
-        Serial.println("[POWERSAVE] Woke by LoRa packet");
-      } else if (cause == ESP_SLEEP_WAKEUP_TIMER) {
-        Serial.println("[POWERSAVE] Woke by timer");
-      }
-    }
-  } else if (!_locked) {
-    // Not locked — keep powersaving timer reset so first sleep is 60s after lock
-    _psLastActive = millis();
-    _psNextSleepSecs = 60;
-  }
-#endif
-
 #ifdef PIN_VIBRATION
   vibration.loop();
 #endif
@@ -2613,7 +2174,7 @@ if (curr) curr->poll();
       if (_low_batt_count >= 3) {  // 3 consecutive low readings (~24s) to avoid transient sags
 
       // show low battery shutdown alert on e-ink (persists after power loss)
-      #if defined(THINKNODE_M1) || defined(LILYGO_TECHO) || defined(LilyGo_TDeck_Pro)
+      #if defined(LilyGo_TDeck_Pro)
       if (_display != NULL) {
         _display->startFrame();
         _display->setTextSize(2);
@@ -2646,7 +2207,7 @@ char UITask::checkDisplayOn(char c) {
     }
     _auto_off = millis() + AUTO_OFF_MILLIS;   // extend auto-off timer
     _next_refresh = 0;  // trigger refresh
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
     _lastInputMillis = millis();  // Reset auto-lock idle timer
 #endif
   }
@@ -2658,33 +2219,12 @@ char UITask::handleLongPress(char c) {
     the_mesh.enterCLIRescue();
     c = 0;   // consume event
   }
-#if defined(LilyGo_T5S3_EPaper_Pro)
-  else if (_vkbActive) {
-    onVKBCancel();  // Long press while VKB → cancel
-    c = 0;
-  } else if (_locked) {
-    unlockScreen();
-    c = 0;
-  } else {
-    lockScreen();
-    c = 0;
-  }
-#endif
   return c;
 }
 
 char UITask::handleDoubleClick(char c) {
   MESH_DEBUG_PRINTLN("UITask: double click triggered");
-#if defined(LilyGo_T5S3_EPaper_Pro)
-  // Double-click boot button → full brightness backlight toggle
-  if (board.isBacklightOn()) {
-    board.setBacklight(false);
-  } else {
-    board.setBacklightBrightness(153);
-    board.setBacklight(true);
-  }
-  c = 0;  // consume event — don't pass through as navigation
-#elif defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
   // Double-click boot button → lock/unlock screen
   if (_locked) {
     unlockScreen();
@@ -2700,22 +2240,12 @@ char UITask::handleDoubleClick(char c) {
 char UITask::handleTripleClick(char c) {
   MESH_DEBUG_PRINTLN("UITask: triple click triggered");
   checkDisplayOn(c);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-  // Triple-click → half brightness backlight (comfortable reading)
-  if (board.isBacklightOn()) {
-    board.setBacklight(false);  // If already on, turn off
-  } else {
-    board.setBacklightBrightness(4);
-    board.setBacklight(true);
-  }
-#else
   toggleBuzzer();
-#endif
   c = 0;
   return c;
 }
 
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
 void UITask::lockScreen() {
   if (_locked) return;
   _locked = true;
@@ -2725,9 +2255,7 @@ void UITask::lockScreen() {
   if (_display != NULL && !_display->isOn()) {
     _display->turnOn();
   }
-#if defined(LilyGo_T5S3_EPaper_Pro)
-  board.setBacklight(false);  // Save power (T5S3 backlight)
-#elif defined(LilyGo_TDeck_Pro_Max)
+#if defined(LilyGo_TDeck_Pro_Max)
   // MAX: IO41 frontlight stays lit otherwise, burning power behind the
   // lock screen. Plain Pro V1.1 has no working frontlight to switch off.
   if (board.isBacklightOn()) board.backlightOff();
@@ -2735,10 +2263,6 @@ void UITask::lockScreen() {
   _next_refresh = 0;  // Draw lock screen immediately
   _auto_off = millis() + 60000;  // 60s before display off while locked
   _lastLockRefresh = millis();   // Start lock screen clock refresh cycle
-#if defined(LilyGo_T5S3_EPaper_Pro) && !defined(BLE_PIN_CODE) && !defined(MECK_WIFI_COMPANION)
-  _psLastActive = millis();      // Start powersaving countdown (60s to first sleep)
-  _psNextSleepSecs = 60;
-#endif
   Serial.println("[UI] Screen locked — entering low-power mode");
 }
 
@@ -2760,261 +2284,7 @@ void UITask::unlockScreen() {
   _next_refresh = 0;
   Serial.println("[UI] Screen unlocked — exiting low-power mode");
 }
-#endif // LilyGo_T5S3_EPaper_Pro || LilyGo_TDeck_Pro
-
-#if defined(LilyGo_T5S3_EPaper_Pro)
-void UITask::showVirtualKeyboard(VKBPurpose purpose, const char* label, const char* initial, int maxLen, int contextIdx) {
-  _vkb.open(purpose, label, initial, maxLen, contextIdx);
-  _vkbActive = true;
-  _vkbOpenedAt = millis();
-  _screenBeforeVKB = curr;
-  _next_refresh = 0;
-  _auto_off = millis() + 120000;  // 2min timeout while typing
-  Serial.printf("[UI] VKB opened: %s\n", label);
-}
-
-void UITask::onVKBSubmit() {
-  _vkbActive = false;
-  const char* text = _vkb.getText();
-  VKBPurpose purpose = _vkb.purpose();
-  int idx = _vkb.contextIdx();
-
-  Serial.printf("[UI] VKB submit: purpose=%d idx=%d text='%s'\n", purpose, idx, text);
-
-  switch (purpose) {
-    case VKB_CHANNEL_MSG: {
-      if (strlen(text) == 0) break;
-
-      ChannelDetails channel;
-      if (the_mesh.getChannel(idx, channel)) {
-        uint32_t timestamp = rtc_clock.getCurrentTime();
-        int textLen = strlen(text);
-        if (the_mesh.sendGroupMessage(timestamp, channel.channel,
-                                       the_mesh.getNodePrefs()->node_name,
-                                       text, textLen)) {
-          addSentChannelMessage(idx, the_mesh.getNodePrefs()->node_name, text);
-          the_mesh.queueSentChannelMessage(idx, timestamp,
-                                            the_mesh.getNodePrefs()->node_name, text);
-          showAlert("Sent!", 1500);
-        } else {
-          showAlert("Send failed!", 1500);
-        }
-      }
-      if (_screenBeforeVKB) setCurrScreen(_screenBeforeVKB);
-      break;
-    }
-    case VKB_DM: {
-      if (strlen(text) == 0) break;
-
-      bool dmSuccess = false;
-      uint32_t sendRef = 0;
-      uint8_t sendTotal = 0;
-      if (the_mesh.uiSendDirectMessage((uint32_t)idx, text, &sendRef, &sendTotal)) {
-        // Add to channel screen so sent DM appears in conversation view
-        ContactInfo dmRecipient;
-        if (the_mesh.getContactByIdx(idx, dmRecipient)) {
-          addSentDM(dmRecipient.name, the_mesh.getNodePrefs()->node_name, text,
-                    sendRef, sendTotal);
-        }
-        dmSuccess = true;
-      }
-      // Return to DM conversation if we have contact info
-      ContactInfo dmContact;
-      if (the_mesh.getContactByIdx(idx, dmContact)) {
-        ChannelScreen* cs = (ChannelScreen*)channel_screen;
-        uint8_t savedPerms = (cs && cs->isDMConversation()) ? cs->getDMContactPerms() : 0;
-        gotoDMConversation(dmContact.name, idx, savedPerms);
-      } else if (_screenBeforeVKB) {
-        setCurrScreen(_screenBeforeVKB);
-      }
-      // Show alert AFTER navigation (setCurrScreen clears prior alerts)
-      showAlert(dmSuccess ? "DM sent!" : "DM failed!", 1500);
-      break;
-    }
-    case VKB_ADMIN_PASSWORD: {
-      // Feed each character to the admin screen, then Enter
-      RepeaterAdminScreen* admin = (RepeaterAdminScreen*)getRepeaterAdminScreen();
-      if (admin) {
-        for (int i = 0; text[i]; i++) {
-          admin->handleInput(text[i]);
-        }
-        admin->handleInput('\r');
-      }
-      if (_screenBeforeVKB) setCurrScreen(_screenBeforeVKB);
-      break;
-    }
-    case VKB_ADMIN_CLI: {
-      RepeaterAdminScreen* admin = (RepeaterAdminScreen*)getRepeaterAdminScreen();
-      if (admin) {
-        for (int i = 0; text[i]; i++) {
-          admin->handleInput(text[i]);
-        }
-        admin->handleInput('\r');
-      }
-      if (_screenBeforeVKB) setCurrScreen(_screenBeforeVKB);
-      break;
-    }
-    case VKB_SETTINGS_NAME: {
-      if (strlen(text) > 0) {
-        strncpy(_node_prefs->node_name, text, sizeof(_node_prefs->node_name) - 1);
-        _node_prefs->node_name[sizeof(_node_prefs->node_name) - 1] = '\0';
-        the_mesh.savePrefs();
-        showAlert("Name saved", 1000);
-      }
-      if (_screenBeforeVKB) setCurrScreen(_screenBeforeVKB);
-      break;
-    }
-    case VKB_SETTINGS_TEXT: {
-      // Generic settings text edit — copy text back to settings edit buffer
-      // and confirm via the normal Enter path (handles name/freq/channel/APN)
-      SettingsScreen* ss = (SettingsScreen*)settings_screen;
-      if (strlen(text) > 0) {
-        ss->submitEditText(text);
-      } else {
-        // Empty submission — cancel the edit
-        ss->handleInput('q');
-      }
-      if (_screenBeforeVKB) setCurrScreen(_screenBeforeVKB);
-      break;
-    }
-    case VKB_CANNED_TEXT: {
-      // Canned slot edit -- commit even when empty (empty clears the slot)
-      SettingsScreen* ss = (SettingsScreen*)settings_screen;
-      ss->submitCannedText(text);
-      if (_screenBeforeVKB) setCurrScreen(_screenBeforeVKB);
-      break;
-    }
-    case VKB_NOTES: {
-#if !defined(LILYGO_TECHO_LITE) && !defined(LILYGO_TECHO_CARD)
-      NotesScreen* notes = (NotesScreen*)getNotesScreen();
-      if (notes && strlen(text) > 0) {
-        for (int i = 0; text[i]; i++) {
-          notes->handleInput(text[i]);
-        }
-      }
-#endif
-      if (_screenBeforeVKB) setCurrScreen(_screenBeforeVKB);
-      break;
-    }
-#ifdef MECK_WIFI_COMPANION
-    case VKB_WIFI_PASSWORD: {
-      SettingsScreen* ss = (SettingsScreen*)settings_screen;
-      ss->submitWifiPassword(text);
-      if (WiFi.status() == WL_CONNECTED) {
-        showAlert("WiFi connected!", 2000);
-      } else {
-        showAlert("WiFi failed", 2000);
-      }
-      if (_screenBeforeVKB) setCurrScreen(_screenBeforeVKB);
-      break;
-    }
-#endif
-#ifdef MECK_WEB_READER
-    case VKB_WEB_URL: {
-      WebReaderScreen* wr = (WebReaderScreen*)getWebReaderScreen();
-      if (wr && strlen(text) > 0) {
-        wr->setUrlText(text);     // Copy text + set _urlEditing = true
-        wr->handleInput('\r');    // Triggers auto-prefix + fetch
-      }
-      if (_screenBeforeVKB) setCurrScreen(_screenBeforeVKB);
-      break;
-    }
-    case VKB_WEB_SEARCH: {
-      WebReaderScreen* wr = (WebReaderScreen*)getWebReaderScreen();
-      if (wr && strlen(text) > 0) {
-        wr->setSearchText(text);  // Copy text + set _searchEditing = true
-        wr->handleInput('\r');    // Triggers DDG search URL build + fetch
-      }
-      if (_screenBeforeVKB) setCurrScreen(_screenBeforeVKB);
-      break;
-    }
-    case VKB_WEB_WIFI_PASS: {
-      WebReaderScreen* wr = (WebReaderScreen*)getWebReaderScreen();
-      if (wr && strlen(text) > 0) {
-        wr->setWifiPassText(text);  // Copy password text
-        wr->handleInput('\r');      // Triggers WiFi connect
-      }
-      if (_screenBeforeVKB) setCurrScreen(_screenBeforeVKB);
-      break;
-    }
-    case VKB_WEB_LINK: {
-      WebReaderScreen* wr = (WebReaderScreen*)getWebReaderScreen();
-      if (wr && strlen(text) > 0) {
-        // Activate link input mode, feed digits, then submit
-        wr->handleInput('l');  // Enter link selection mode
-        for (int i = 0; text[i]; i++) {
-          if (text[i] >= '0' && text[i] <= '9') {
-            wr->handleInput(text[i]);
-          }
-        }
-        wr->handleInput('\r');  // Confirm link number → navigate
-      }
-      if (_screenBeforeVKB) setCurrScreen(_screenBeforeVKB);
-      break;
-    }
-#endif
-    case VKB_TEXT_PAGE: {
-#if !defined(LILYGO_TECHO_LITE) && !defined(LILYGO_TECHO_CARD)
-      if (strlen(text) > 0) {
-        int pageNum = atoi(text);
-        TextReaderScreen* reader = (TextReaderScreen*)getTextReaderScreen();
-        if (reader && pageNum > 0) {
-          reader->gotoPage(pageNum);
-        }
-      }
-#endif
-      if (_screenBeforeVKB) setCurrScreen(_screenBeforeVKB);
-      break;
-    }
-    case VKB_TRACE_PATH: {
-      TraceScreen* ts = (TraceScreen*)getTraceScreen();
-      if (ts) {
-        ts->setTypedPath(text);
-      }
-      if (_screenBeforeVKB) setCurrScreen(_screenBeforeVKB);
-      break;
-    }
-  }
-  _screenBeforeVKB = nullptr;
-  _next_refresh = 0;
-  display.setForcePartial(false);  // Next frame does full refresh to clear VKB ghosts
-  display.invalidateFrameCRC();
-}
-
-void UITask::onVKBCancel() {
-  _vkbActive = false;
-  if (_screenBeforeVKB) setCurrScreen(_screenBeforeVKB);
-  _screenBeforeVKB = nullptr;
-  _next_refresh = 0;
-  display.setForcePartial(false);  // Next frame does full refresh to clear VKB ghosts
-  display.invalidateFrameCRC();
-  Serial.println("[UI] VKB cancelled");
-}
-
-#ifdef MECK_CARDKB
-void UITask::feedCardKBChar(char c) {
-  if (_vkbActive) {
-    // VKB is open — feed character into its text buffer
-    if (_vkb.feedChar(c)) {
-      _next_refresh = 0;  // Redraw VKB immediately
-      _auto_off = millis() + 120000;  // Extend timeout while typing
-      // Check if feedChar triggered submit or cancel
-      if (_vkb.status() == VKB_SUBMITTED) {
-        onVKBSubmit();
-      } else if (_vkb.status() == VKB_CANCELLED) {
-        onVKBCancel();
-      }
-    } else {
-      // feedChar returned false — nav keys (arrows) while VKB is active
-      // Not consumed; could be used for cursor movement in future
-    }
-  } else {
-    // No VKB active — route as normal navigation key
-    injectKey(c);
-  }
-}
-#endif
-#endif
+#endif // LilyGo_TDeck_Pro
 
 bool UITask::getGPSState() {
   #if ENV_INCLUDE_GPS == 1
@@ -3086,7 +2356,7 @@ void UITask::injectKey(char c) {
     }
     curr->handleInput(c);
     _auto_off = millis() + AUTO_OFF_MILLIS;   // extend auto-off timer
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
     _lastInputMillis = millis();  // Reset auto-lock idle timer
 #endif
     // Debounce refresh when editing UTC offset - e-ink takes 644ms per refresh
@@ -3215,7 +2485,6 @@ void UITask::gotoContactsScreen() {
 
 void UITask::gotoTextReader() {
   if (!text_reader) return;  // Not available on this platform
-#if !defined(LILYGO_TECHO_LITE) && !defined(LILYGO_TECHO_CARD)
   TextReaderScreen* reader = (TextReaderScreen*)text_reader;
   if (_display != NULL) {
     reader->enter(*_display);
@@ -3226,12 +2495,10 @@ void UITask::gotoTextReader() {
   }
   _auto_off = millis() + AUTO_OFF_MILLIS;
   _next_refresh = 100;
-#endif
 }
 
 void UITask::gotoNotesScreen() {
   if (!notes_screen) return;  // Not available on this platform
-#if !defined(LILYGO_TECHO_LITE) && !defined(LILYGO_TECHO_CARD)
   NotesScreen* notes = (NotesScreen*)notes_screen;
   if (_display != NULL) {
     notes->enter(*_display);
@@ -3246,7 +2513,6 @@ void UITask::gotoNotesScreen() {
   }
   _auto_off = millis() + AUTO_OFF_MILLIS;
   _next_refresh = 100;
-#endif
 }
 
 void UITask::gotoSettingsScreen() {
@@ -3596,8 +2862,7 @@ void UITask::gotoWebReader() {
 
 #if HAS_GPS
 void UITask::gotoMapScreen() {
-  if (!map_screen) return;  // Not available on this platform (T-Echo Card)
-#if   !defined(LILYGO_TECHO_CARD)
+  if (!map_screen) return;  // Not available on this platform
   MapScreen* map = (MapScreen*)map_screen;
   if (_display != NULL) {
     map->enter(*_display);
@@ -3608,7 +2873,6 @@ void UITask::gotoMapScreen() {
   }
   _auto_off = millis() + AUTO_OFF_MILLIS;
   _next_refresh = 100;
-#endif
 }
 #endif
 

@@ -3,9 +3,7 @@
 #include <Arduino.h>   // needed for PlatformIO
 #include <Mesh.h>
 
-#if defined(NRF52_PLATFORM)
-  #include <InternalFileSystem.h>
-#elif defined(RP2040_PLATFORM)
+#if defined(RP2040_PLATFORM)
   #include <LittleFS.h>
 #elif defined(ESP32)
   #include <SPIFFS.h>

@@ -636,77 +636,41 @@ public:
 
     switch (_state) {
       case STATE_PASSWORD_ENTRY:
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        display.print("Boot:Exit");
-        renderFooterRight(display, footerY, "Hold:Type");
-#else
         display.print("Sh+Del:Exit");
         renderFooterRight(display, footerY, "Ent:Login");
-#endif
         break;
 
       case STATE_LOGGING_IN:
       case STATE_COMMAND_PENDING:
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        display.print("Boot:Cancel");
-#else
         display.print("Q:Cancel");
-#endif
         break;
 
       case STATE_CATEGORY_MENU:
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        display.print("Boot:Exit");
-        renderFooterMidRight(display, footerY, "Back:Exit", "Tap:Open", "Swipe:Sel");
-#else
         display.print("Q:Exit");
         renderFooterMidRight(display, footerY, "Q:Exit", "Ent:Open", "W/S:Sel");
-#endif
         break;
 
       case STATE_COMMAND_MENU:
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        display.print("Boot:Back");
-        renderFooterMidRight(display, footerY, "Back:Back", "Tap:Run", "Swipe:Sel");
-#else
         display.print("Q:Back");
         renderFooterMidRight(display, footerY, "Q:Back", "Ent:Run", "W/S:Sel");
-#endif
         break;
 
       case STATE_PARAM_ENTRY:
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        display.print("Boot:Cancel");
-        renderFooterRight(display, footerY, "Tap:Send");
-#else
         display.print("Sh+Del:Cancel");
         renderFooterRight(display, footerY, "Ent:Send");
-#endif
         break;
 
       case STATE_CONFIRM:
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        display.print("Boot:No");
-        renderFooterRight(display, footerY, "Tap:Yes");
-#else
         display.print("Q:No");
         renderFooterRight(display, footerY, "Ent:Yes");
-#endif
         break;
 
       case STATE_RESPONSE_VIEW:
       case STATE_ERROR:
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        display.print("Boot:Back");
-        if (_responseTotalLines > bodyHeight / 9) {
-          renderFooterRight(display, footerY, "Swipe:Scroll");
-        }
-#else
         display.print("Q:Back");
         if (_responseTotalLines > bodyHeight / 9) {
           renderFooterRight(display, footerY, "W/S:Scrll");
         }
-#endif
         break;
     }
 
@@ -1076,11 +1040,7 @@ private:
     if (_pendingCmd && (_pendingCmd->flags & CMDF_EXPECT_TIMEOUT)) {
       display.print("Timeout response is normal.");
     } else {
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      display.print("Tap=Yes  Back=No");
-#else
       display.print("Enter=Yes  Q=No");
-#endif
     }
 
     display.setTextSize(1);
@@ -1199,11 +1159,7 @@ private:
                       bool selected, const char* label, bool warn) {
     if (selected) {
       display.setColor(DisplayDriver::LIGHT);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      display.fillRect(0, y, display.width(), lineHeight);
-#else
       display.fillRect(0, y + the_mesh.getNodePrefs()->smallHighlightOff(), display.width(), lineHeight);
-#endif
       display.setColor(DisplayDriver::DARK);
     } else if (warn) {
       display.setColor(DisplayDriver::YELLOW);
@@ -1253,7 +1209,7 @@ inline bool RepeaterAdminScreen::doLogin() {
     _state = STATE_LOGGING_IN;
     _cmdSentAt = millis();
     // Add a 5s buffer over the mesh estimate to account for blocking e-ink
-    // refreshes (FastEPD ~1-2s per frame, VKB dismiss + login render = 2-3 frames).
+    // refreshes.
     // Fall back to ADMIN_TIMEOUT_MS if the estimate came back zero.
     _loginTimeoutMs = (timeout_ms > 0) ? timeout_ms + 5000 : ADMIN_TIMEOUT_MS;
     _waitingForLogin = true;

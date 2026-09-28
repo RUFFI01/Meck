@@ -28,9 +28,7 @@ class CustomSX1262 : public SX1262 {
   #endif
 
   #if defined(P_LORA_SCLK)
-    #ifdef NRF52_PLATFORM
-      if (spi) { spi->setPins(P_LORA_MISO, P_LORA_SCLK, P_LORA_MOSI); spi->begin(); }
-    #elif defined(RP2040_PLATFORM)
+    #if defined(RP2040_PLATFORM)
       if (spi) {
         spi->setMISO(P_LORA_MISO);
         //spi->setCS(P_LORA_NSS); // Setting CS results in freeze

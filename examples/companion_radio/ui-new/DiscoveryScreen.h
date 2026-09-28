@@ -50,11 +50,7 @@ public:
     int count = the_mesh.getDiscoveredCount();
     if (count == 0) return 0;
     const int headerH = 14, footerH = 14, lineH = the_mesh.getNodePrefs()->smallLineH();
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    const int bodyTop = headerH;
-#else
     const int bodyTop = headerH + the_mesh.getNodePrefs()->smallHighlightOff();
-#endif
     if (vy < bodyTop || vy >= 128 - footerH) return 0;
 
     int maxVisible = (128 - headerH - footerH) / lineH;
@@ -105,11 +101,7 @@ public:
       display.print(active ? "Listening for adverts..." : "No nodes found");
       if (!active) {
         display.setCursor(4, 38);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        display.print("Long press: Rescan");
-#else
         display.print("F: Scan again  Q: Back");
-#endif
       }
     } else {
       // Center visible window around selected item
@@ -126,11 +118,7 @@ public:
         // Highlight selected row
         if (selected) {
           display.setColor(DisplayDriver::LIGHT);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-          display.fillRect(0, y, display.width(), lineHeight);
-#else
           display.fillRect(0, y + the_mesh.getNodePrefs()->smallHighlightOff(), display.width(), lineHeight);
-#endif
           display.setColor(DisplayDriver::DARK);
         } else {
           display.setColor(DisplayDriver::LIGHT);
@@ -192,23 +180,11 @@ public:
     display.setColor(DisplayDriver::YELLOW);
 
     display.setCursor(0, footerY);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    display.print("Swipe:Scroll");
-
-    const char* mid = "Tap:Add";
-    display.setCursor((display.width() - display.getTextWidth(mid)) / 2, footerY);
-    display.print(mid);
-
-    const char* right = "Hold:Rescan";
-    display.setCursor(display.width() - display.getTextWidth(right) - 2, footerY);
-    display.print(right);
-#else
     display.print("Q:X F:Scan");
 
     const char* right = "Tap/Ent:Add";
     display.setCursor(display.width() - display.getTextWidth(right) - 2, footerY);
     display.print(right);
-#endif
 
     // Faster refresh while actively scanning
     return active ? 1000 : 5000;

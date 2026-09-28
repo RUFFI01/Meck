@@ -16,7 +16,7 @@ extern MyMesh the_mesh;
 // ---------------------------------------------------------------------------
 // Subscreen opened from Settings → Font Style.  Shows a live preview of each
 // font style (Classic, Noto Sans, Montserrat) with sample body and title text.
-// The user cycles through styles with W/S (or swipe on T5S3), previews the
+// The user cycles through styles with W/S, previews the
 // actual rendering on-screen, and applies with Enter or cancels with Shift+Del.
 //
 // The preview works by temporarily calling display.setFontStyle() for each
@@ -132,13 +132,8 @@ public:
     display.drawRect(0, footerY - 2, display.width(), 1);
     display.setCursor(0, footerY);
 
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    display.print("Swipe:Pick");
-    const char* rt = "Boot:Back Tap:Apply";
-#else
     display.print("W/S:Pick Q:Back");
     const char* rt = "Enter:Apply";
-#endif
     display.setCursor(display.width() - display.getTextWidth(rt) - 2, footerY);
     display.print(rt);
 

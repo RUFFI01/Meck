@@ -1317,7 +1317,7 @@ if (curr) curr->poll();
       if (_low_batt_count >= 3) {  // 3 consecutive low readings (~24s) to avoid transient sags
 
       // show low battery shutdown alert on e-ink (persists after power loss)
-      #if defined(THINKNODE_M1) || defined(LILYGO_TECHO) || defined(LilyGo_TDeck_Pro)
+      #if defined(LilyGo_TDeck_Pro)
       if (_display != NULL) {
         _display->startFrame();
         _display->setTextSize(2);

@@ -15,10 +15,10 @@ Commands:
   build-room-server-firmwares: Build all chat room server firmwares for all build targets.
 
 Examples:
-Build firmware for the "RAK_4631_repeater" device target
-$ sh build.sh build-firmware RAK_4631_repeater
+Build firmware for the "meck_max_ble" device target
+$ sh build.sh build-firmware meck_max_ble
 
-Build all firmwares for device targets containing the string "RAK_4631"
+Build all firmwares for device targets containing the string "meck_max"
 $ sh build.sh build-matching-firmwares <build-match-spec>
 
 Build all companion firmwares
@@ -38,11 +38,11 @@ Examples:
 Build without debug logging:
 $ export FIRMWARE_VERSION=v1.0.0
 $ export DISABLE_DEBUG=1
-$ sh build.sh build-firmware RAK_4631_repeater
+$ sh build.sh build-firmware meck_max_ble
 
 Build with debug logging (default, uses flags from variant files):
 $ export FIRMWARE_VERSION=v1.0.0
-$ sh build.sh build-firmware RAK_4631_repeater
+$ sh build.sh build-firmware meck_max_ble
 EOF
 }
 
@@ -109,7 +109,7 @@ build_firmware() {
   FIRMWARE_VERSION_STRING="${FIRMWARE_VERSION}-${COMMIT_HASH}"
 
   # craft filename
-  # e.g: RAK_4631_Repeater-v1.0.0-SHA
+  # e.g: meck_max_ble-v1.0.0-SHA
   FIRMWARE_FILENAME="$1-${FIRMWARE_VERSION_STRING}"
 
   # add firmware version info to end of existing platformio build flags in environment vars
@@ -126,22 +126,12 @@ build_firmware() {
     pio run -t mergebin -e $1
   fi
 
-  # build .uf2 for nrf52 boards
-  if [[ -f .pio/build/$1/firmware.zip && -f .pio/build/$1/firmware.hex ]]; then
-    python3 bin/uf2conv/uf2conv.py .pio/build/$1/firmware.hex -c -o .pio/build/$1/firmware.uf2 -f 0xADA52840
-  fi
-
-  # copy .bin, .uf2, and .zip to out folder
+  # copy .bin to out folder
   # e.g: Heltec_v3_room_server-v1.0.0-SHA.bin
-  # e.g: RAK_4631_Repeater-v1.0.0-SHA.uf2
 
   # copy .bin for esp32 boards
   cp .pio/build/$1/firmware.bin out/${FIRMWARE_FILENAME}.bin 2>/dev/null || true
   cp .pio/build/$1/firmware-merged.bin out/${FIRMWARE_FILENAME}-merged.bin 2>/dev/null || true
-
-  # copy .zip and .uf2 of nrf52 boards
-  cp .pio/build/$1/firmware.uf2 out/${FIRMWARE_FILENAME}.uf2 2>/dev/null || true
-  cp .pio/build/$1/firmware.zip out/${FIRMWARE_FILENAME}.zip 2>/dev/null || true
 
 }
 
@@ -169,7 +159,6 @@ build_repeater_firmwares() {
 #  build_firmware "Xiao_C3_Repeater_sx1262"
 #  build_firmware "Xiao_S3_WIO_Repeater"
 #  build_firmware "LilyGo_T3S3_sx1262_Repeater"
-#  build_firmware "RAK_4631_Repeater"
 
   # build all repeater firmwares
   build_all_firmwares_by_suffix "_repeater"
@@ -186,9 +175,6 @@ build_companion_firmwares() {
 #  build_firmware "Xiao_S3_WIO_companion_radio_ble"
 #  build_firmware "LilyGo_T3S3_sx1262_companion_radio_usb"
 #  build_firmware "LilyGo_T3S3_sx1262_companion_radio_ble"
-#  build_firmware "RAK_4631_companion_radio_usb"
-#  build_firmware "RAK_4631_companion_radio_ble"
-#  build_firmware "t1000e_companion_radio_ble"
 
   # build all companion firmwares
   build_all_firmwares_by_suffix "_companion_radio_usb"
@@ -200,7 +186,6 @@ build_room_server_firmwares() {
 
 #  # build specific room server firmwares
 #  build_firmware "Heltec_v3_room_server"
-#  build_firmware "RAK_4631_room_server"
 
   # build all room server firmwares
   build_all_firmwares_by_suffix "_room_server"

@@ -2671,11 +2671,7 @@ private:
         bool selected = (i == _selectedSSID);
         if (selected) {
           display.setColor(DisplayDriver::LIGHT);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-          display.fillRect(0, y, display.width(), listLineH);
-#else
           display.fillRect(0, y + _prefs->smallHighlightOff(), display.width(), listLineH);
-#endif
           display.setColor(DisplayDriver::DARK);
         } else {
           display.setColor(DisplayDriver::LIGHT);
@@ -2743,11 +2739,7 @@ private:
       }
       display.setCursor(0, 80);
       display.setColor(DisplayDriver::GREEN);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      display.print("Tap: Retry");
-#else
       display.print("Enter: Retry  Sh+Del: Back");
-#endif
     }
 
     // Footer
@@ -2756,14 +2748,7 @@ private:
     display.drawRect(0, footerY - 2, display.width(), 1);
     display.setCursor(0, footerY);
     display.setColor(DisplayDriver::YELLOW);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    if (_wifiState == WIFI_ENTERING_PASS)
-      display.print("Tap: Enter Password  Hold: Back");
-    else
-      display.print("Swipe: Navigate  Tap: Select");
-#else
     display.print("Sh+Del:Back W/S:Nav Ent:Select");
-#endif
   }
 
   void renderHome(DisplayDriver& display) {
@@ -2895,11 +2880,7 @@ private:
       if (HOME_VISIBLE(y, ircH)) {
         if (selected) {
           display.setColor(DisplayDriver::LIGHT);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-          display.fillRect(0, y, display.width() - (needsScroll ? scrollbarW + 1 : 0), listLineH);
-#else
           display.fillRect(0, y + _prefs->smallHighlightOff(), display.width() - (needsScroll ? scrollbarW + 1 : 0), listLineH);
-#endif
           display.setColor(DisplayDriver::DARK);
         } else {
           display.setColor(DisplayDriver::GREEN);
@@ -2934,11 +2915,7 @@ private:
       if (HOME_VISIBLE(y, urlBarH)) {
         if (selected) {
           display.setColor(DisplayDriver::LIGHT);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-          display.fillRect(0, y, display.width() - (needsScroll ? scrollbarW + 1 : 0), listLineH);
-#else
           display.fillRect(0, y + _prefs->smallHighlightOff(), display.width() - (needsScroll ? scrollbarW + 1 : 0), listLineH);
-#endif
           display.setColor(DisplayDriver::DARK);
         } else {
           display.setColor(DisplayDriver::LIGHT);
@@ -2971,11 +2948,7 @@ private:
       if (HOME_VISIBLE(y, searchBarH)) {
         if (selected) {
           display.setColor(DisplayDriver::LIGHT);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-          display.fillRect(0, y, display.width() - (needsScroll ? scrollbarW + 1 : 0), listLineH);
-#else
           display.fillRect(0, y + _prefs->smallHighlightOff(), display.width() - (needsScroll ? scrollbarW + 1 : 0), listLineH);
-#endif
           display.setColor(DisplayDriver::DARK);
         } else {
           display.setColor(DisplayDriver::LIGHT);
@@ -3024,11 +2997,7 @@ private:
           int contentW = display.width() - (needsScroll ? scrollbarW + 1 : 0);
           if (selected) {
             display.setColor(DisplayDriver::LIGHT);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-            display.fillRect(0, y, contentW, itemH);
-#else
             display.fillRect(0, y + _prefs->smallHighlightOff(), contentW, itemH);
-#endif
             display.setColor(DisplayDriver::DARK);
           } else {
             display.setColor(DisplayDriver::LIGHT);
@@ -3076,11 +3045,7 @@ private:
           int contentW = display.width() - (needsScroll ? scrollbarW + 1 : 0);
           if (selected) {
             display.setColor(DisplayDriver::LIGHT);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-            display.fillRect(0, y, contentW, itemH);
-#else
             display.fillRect(0, y + _prefs->smallHighlightOff(), contentW, itemH);
-#endif
             display.setColor(DisplayDriver::DARK);
           } else {
             display.setColor(DisplayDriver::LIGHT);
@@ -3146,19 +3111,6 @@ private:
       display.print("Type query Ent:Search");
     } else {
       char footerBuf[48];
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      bool onBookmark = (_homeSelected >= 3 && _homeSelected < 3 + (int)_bookmarks.size());
-      bool onUrl = (_homeSelected == 1);
-      bool onSearch = (_homeSelected == 2);
-      if (onUrl)
-        snprintf(footerBuf, sizeof(footerBuf), "Tap: Enter URL  Hold: Back");
-      else if (onSearch)
-        snprintf(footerBuf, sizeof(footerBuf), "Tap: Search  Hold: Back");
-      else if (onBookmark)
-        snprintf(footerBuf, sizeof(footerBuf), "Swipe: Navigate  Tap: Open  Hold: Delete");
-      else
-        snprintf(footerBuf, sizeof(footerBuf), "Swipe: Navigate  Tap: Open  Hold: Exit");
-#else
       bool hasData = (_cookieCount > 0 || !_history.empty());
       bool onBookmark = (_homeSelected >= 3 && _homeSelected < 3 + (int)_bookmarks.size());
       if (onBookmark && hasData)
@@ -3169,7 +3121,6 @@ private:
         snprintf(footerBuf, sizeof(footerBuf), "Q:Bk W/S Ent:Go X:Clr Ckies");
       else
         snprintf(footerBuf, sizeof(footerBuf), "Q:Bk W/S:Nav Ent:Go");
-#endif
       display.print(footerBuf);
     }
 
@@ -3268,13 +3219,9 @@ private:
 
       display.setCursor(0, y + 6);
       display.setColor(DisplayDriver::GREEN);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      display.print("Tap: Open in Reader");
-#else
       display.print("Ent: Open in Reader");
       display.setCursor(0, y + 16);
       display.print("Q:   Back to browser");
-#endif
     } else {
       display.setColor(DisplayDriver::YELLOW);
       display.print("Download Failed");
@@ -3289,11 +3236,7 @@ private:
 
       display.setCursor(0, 56);
       display.setColor(DisplayDriver::GREEN);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      display.print("Tap: Back to browser");
-#else
       display.print("Q: Back to browser");
-#endif
     }
 
     // Footer
@@ -3302,11 +3245,7 @@ private:
     display.drawRect(0, footerY - 2, display.width(), 1);
     display.setCursor(0, footerY);
     display.setColor(DisplayDriver::YELLOW);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    display.print(_downloadOk ? "Tap: Open in Reader" : "Tap: Back");
-#else
     display.print(_downloadOk ? "Ent:Read  Q:Back" : "Q:Back");
-#endif
   }
 
   void renderReading(DisplayDriver& display) {
@@ -3434,13 +3373,6 @@ private:
     if (_linkInputActive) {
       snprintf(linkBuf, sizeof(linkBuf), "#%d_ Ent:Go", _linkInput);
       hint = linkBuf;
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    } else if (_linkCount > 0) {
-      hint = "Tap: Page | Tap Footer Bar: Enter Link # | Hold: Back";
-    } else {
-      hint = "Tap: Page  Hold: Back";
-    }
-#else
     } else if (_formCount > 0 && _linkCount > 0) {
       hint = "L:Lnk F:Frm B:Bk Q:X";
     } else if (_formCount > 0) {
@@ -3450,7 +3382,6 @@ private:
     } else {
       hint = "B:Bk Q:X";
     }
-#endif
     display.setCursor(display.width() - display.getTextWidth(hint) - 2, footerY);
     display.print(hint);
 
@@ -3988,11 +3919,7 @@ private:
       // Field value
       if (isActive) {
         display.setColor(DisplayDriver::LIGHT);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        display.fillRect(0, y, display.width(), 9);
-#else
         display.fillRect(0, y + 4, display.width(), 9);
-#endif
         display.setColor(DisplayDriver::DARK);
       } else {
         display.setColor(DisplayDriver::LIGHT);
@@ -4062,14 +3989,10 @@ private:
       display.print("Type text  Ent:Next Sh+Del:Undo");
     } else {
       const char* hint;
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      hint = "Swipe: Navigate  Tap: Edit  Hold: Back";
-#else
       if (_formCount > 1)
         hint = "W/S:Nav Ent:Edit </>:Form Sh+Del:Back";
       else
         hint = "W/S:Nav Ent:Edit/Go Sh+Del:Back";
-#endif
       display.print(hint);
     }
   }
@@ -4690,11 +4613,7 @@ private:
       bool sel = (_ircSetupField == i);
       if (sel) {
         display.setColor(DisplayDriver::LIGHT);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        display.fillRect(0, y, display.width(), lineH);
-#else
         display.fillRect(0, y + 4, display.width(), lineH);
-#endif
         display.setColor(DisplayDriver::DARK);
       } else {
         display.setColor(DisplayDriver::LIGHT);
@@ -4742,11 +4661,7 @@ private:
     display.drawRect(0, footerY - 2, display.width(), 1);
     display.setCursor(0, footerY);
     display.setColor(DisplayDriver::YELLOW);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    display.print("Swipe: Navigate  Tap: Edit  Hold: Back");
-#else
     display.print("W/S:Nav Ent:Edit/Go Sh+Del:Back");
-#endif
   }
 
   bool handleIRCSetupInput(char c) {
@@ -4876,19 +4791,11 @@ private:
       display.setTextSize(1);
       display.setColor(DisplayDriver::YELLOW);
       display.setCursor(0, footerY);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      display.print("Tap: Send  Hold: Exit");
-#else
       display.print("Ent:Send Del:Exit");
-#endif
     } else {
       display.setColor(DisplayDriver::YELLOW);
       display.setCursor(0, footerY);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      display.print("Tap: Compose  Swipe: Scroll  Hold: Back");
-#else
       display.print("Ent:Msg W/S:Scrl Sh+Del:Bk");
-#endif
     }
 
     // Message area
@@ -5277,32 +5184,10 @@ public:
            (_mode == IRC_SETUP && _ircSetupEditing);
   }
 
-  // ---- Accessors for T5S3 touch mapping and VKB integration ----
+  // ---- Accessors for touch mapping ----
   int getHomeSelected() const { return _homeSelected; }
-  int getLinkCount() const { return _linkCount; }
   int getBookmarkCount() const { return (int)_bookmarks.size(); }
-  const char* getUrlText() const { return _urlBuffer; }
 
-  // Set URL text and activate editing mode (for VKB submit)
-  void setUrlText(const char* text) {
-    strncpy(_urlBuffer, text, WEB_MAX_URL_LEN - 1);
-    _urlBuffer[WEB_MAX_URL_LEN - 1] = '\0';
-    _urlLen = strlen(_urlBuffer);
-    _urlEditing = true;
-  }
-  // Set search text and activate editing mode (for VKB submit)
-  void setSearchText(const char* text) {
-    strncpy(_searchBuffer, text, sizeof(_searchBuffer) - 1);
-    _searchBuffer[sizeof(_searchBuffer) - 1] = '\0';
-    _searchLen = strlen(_searchBuffer);
-    _searchEditing = true;
-  }
-  // Set WiFi password text (for VKB submit)
-  void setWifiPassText(const char* text) {
-    strncpy(_wifiPass, text, WEB_WIFI_PASS_LEN - 1);
-    _wifiPass[WEB_WIFI_PASS_LEN - 1] = '\0';
-    _wifiPassLen = strlen(_wifiPass);
-  }
   // Returns true if a password reveal is active and needs a refresh after expiry
   bool needsRevealRefresh() const {
     if (_formLastCharAt > 0 && (millis() - _formLastCharAt) < 900) {

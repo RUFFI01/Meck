@@ -34,10 +34,6 @@
   #include "AlarmScreen.h"
 #endif
 
-#if defined(LilyGo_T5S3_EPaper_Pro)
-  #include "VirtualKeyboard.h"
-#endif
-
 // MapScreen.h included in UITask.cpp and main.cpp only (PNGdec headers
 // conflict with BLE if pulled into the global include chain)
 
@@ -115,28 +111,7 @@ class UITask : public AbstractUITask {
   UIScreen* curr;
   bool _homeShowingTiles = false;  // Set by HomeScreen render when tile grid is visible
   int _tileGridVY = 44;           // Virtual Y of tile grid top (updated each render)
-#if defined(LilyGo_T5S3_EPaper_Pro)
-  UIScreen* lock_screen;     // Lock screen (big clock + battery + unread)
-  UIScreen* _screenBeforeLock = nullptr;
-  bool _locked = false;
-  unsigned long _lastInputMillis = 0;  // Auto-lock idle tracking
-  unsigned long _lastLockRefresh = 0;  // Periodic lock screen clock update
-
-  VirtualKeyboard _vkb;
-  bool _vkbActive = false;
-  UIScreen* _screenBeforeVKB = nullptr;
-  unsigned long _vkbOpenedAt = 0;
-
-  // Powersaving: light sleep when locked + idle (standalone only -- no BLE/WiFi)
-  // Wakes on LoRa packet (DIO1), boot button (GPIO0), or 30-min timer
-#if !defined(BLE_PIN_CODE) && !defined(MECK_WIFI_COMPANION)
-  unsigned long _psLastActive = 0;       // millis() at last wake or lock entry
-  unsigned long _psNextSleepSecs = 60;   // Seconds before first sleep (60s), then 5s cycles
-#endif
-#ifdef MECK_CARDKB
-  bool _cardkbDetected = false;
-#endif
-#elif defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
   UIScreen* lock_screen;     // Lock screen (big clock + battery + unread)
   UIScreen* _screenBeforeLock = nullptr;
   bool _locked = false;
@@ -246,7 +221,7 @@ public:
   // emulator's in-game input never passes through injectKey(), so without
   // this the lock screen would land on top of a running game.
   void resetIdleTimer() {
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
     _lastInputMillis = millis();
 #endif
   }
@@ -291,23 +266,10 @@ public:
   bool isOnGBCScreen() const { return curr == gbc_screen; }
 #endif
   bool isOnMapScreen() const { return curr == map_screen; }
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
   bool isLocked() const { return _locked; }
   void lockScreen();
   void unlockScreen();
-#endif
-#if defined(LilyGo_T5S3_EPaper_Pro)
-  bool isVKBActive() const { return _vkbActive; }
-  unsigned long vkbOpenedAt() const { return _vkbOpenedAt; }
-  VirtualKeyboard& getVKB() { return _vkb; }
-  void showVirtualKeyboard(VKBPurpose purpose, const char* label, const char* initial, int maxLen, int contextIdx = 0);
-  void onVKBSubmit();
-  void onVKBCancel();
-#ifdef MECK_CARDKB
-  void setCardKBDetected(bool v) { _cardkbDetected = v; }
-  bool hasCardKB() const { return _cardkbDetected; }
-  void feedCardKBChar(char c);
-#endif
 #endif
 #ifdef MECK_WEB_READER
   bool isOnWebReader() const { return curr == web_reader; }

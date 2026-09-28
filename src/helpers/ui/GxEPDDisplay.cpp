@@ -120,10 +120,6 @@ bool GxEPDDisplay::begin() {
   // Tell GxEPD2 to use our SPI instance
   // Using slower speed (4MHz) for reliable e-ink communication
   display.epd2.selectSPI(displaySpi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
-#elif defined(LILYGO_TECHO)
-  // T-Echo Lite: display on SPI1 (pins 19/20), LoRa on SPI (pins 13/15/17)
-  SPI1.begin();
-  display.epd2.selectSPI(SPI1, SPISettings(4000000, MSBFIRST, SPI_MODE0));
 #endif
 
   // Initialize with:

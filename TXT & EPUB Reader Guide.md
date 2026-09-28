@@ -25,16 +25,6 @@ This adds a text reader accessible via the **E** key from the home screen.
 | Reading | Enter | Go to page number (type digits, Enter to confirm, Q to cancel) |
 | Reading | Q | Close book → file list |
 
-**Touch Gestures (T5S3):**
-| Context | Gesture | Action |
-|---------|---------|--------|
-| File list | Swipe up/down | Scroll file list |
-| File list | Tap | Open selected book |
-| Reading | Tap | Next page |
-| Reading | Swipe left/right | Next / previous page |
-| Reading | Tap footer | Go to page number (via virtual keyboard) |
-| Reading | Long press | Close book → file list |
-
 ---
 
 ## SD Card Setup

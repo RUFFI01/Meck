@@ -188,7 +188,7 @@
     if (SPIFFS.exists("/new_prefs")) {
       copyFile(SPIFFS, "/new_prefs", SD, "/meshcore/prefs.bin");
     }
-    // Channels may live on SPIFFS or ExtraFS - on ESP32 they are on SPIFFS
+    // Channels are on SPIFFS on ESP32
     if (SPIFFS.exists("/channels2")) {
       copyFile(SPIFFS, "/channels2", SD, "/meshcore/channels.bin");
     }
@@ -715,174 +715,17 @@
 #endif
 
 // =============================================================================
-// Touch Input — unified across T5S3 (GT911) and T-Deck Pro (CST328)
+// Touch Input -- T-Deck Pro (CST328)
 // =============================================================================
 
 // Define MECK_TOUCH_ENABLED for any platform with touch support
-#if defined(LilyGo_T5S3_EPaper_Pro) || (defined(LilyGo_TDeck_Pro) && defined(HAS_TOUCHSCREEN))
+#if defined(LilyGo_TDeck_Pro) && defined(HAS_TOUCHSCREEN)
   #define MECK_TOUCH_ENABLED 1
 #endif
 
 // --- T-Watch S3 Plus: screen headers for the touch UI ---
 // The watch needs the same concrete screen types as the gesture machine casts
-// to, but none of the T5S3/T-Deck hardware baggage (GT911, SD, TCA8418 keyboard).
-
-// --- T5S3: GT911 capacitive touch driver ---
-#if defined(LilyGo_T5S3_EPaper_Pro)
-  #include "TouchDrvGT911.hpp"
-  #include <SD.h>
-  #include "TextReaderScreen.h"
-  #include "NotesScreen.h"
-  #include "ContactsScreen.h"
-  #include "ChannelScreen.h"
-  #include "ChannelPickerScreen.h"
-  #include "MeckExport.h"
-  #include "MeckImport.h"
-  #include "SettingsScreen.h"
-  #include "RepeaterAdminScreen.h"
-  #include "DiscoveryScreen.h"
-  #include "LastHeardScreen.h"
-  #include "PathEditorScreen.h"
-  #include "Tracescreen.h"   
-  #include "GamesMenuScreen.h"
-  #include "SnakeScreen.h"
-  #include "MinesweeperScreen.h"
-#if defined(LilyGo_TDeck_Pro)
-  #include "GBCEmulatorScreen.h"
-#endif
-
-  static TouchDrvGT911 gt911Touch;
-  static bool gt911Ready = false;
-  static bool sdCardReady = false;  // T5S3 SD card state
-
-  // ---------------------------------------------------------------------------
-  // SD Settings Backup / Restore (T5S3)
-  // ---------------------------------------------------------------------------
-  static bool copyFile(fs::FS& srcFS, const char* srcPath,
-                       fs::FS& dstFS, const char* dstPath) {
-    File src = srcFS.open(srcPath, "r");
-    if (!src) return false;
-    File dst = dstFS.open(dstPath, "w", true);
-    if (!dst) { src.close(); return false; }
-
-    uint8_t buf[128];
-    while (src.available()) {
-      int n = src.read(buf, sizeof(buf));
-      if (n > 0) dst.write(buf, n);
-    }
-    src.close();
-    dst.close();
-    return true;
-  }
-
-  void backupSettingsToSD() {
-    if (!sdCardReady) return;
-
-    if (!SD.exists("/meshcore")) SD.mkdir("/meshcore");
-
-    if (SPIFFS.exists("/new_prefs")) {
-      copyFile(SPIFFS, "/new_prefs", SD, "/meshcore/prefs.bin");
-    }
-    if (SPIFFS.exists("/channels2")) {
-      copyFile(SPIFFS, "/channels2", SD, "/meshcore/channels.bin");
-    }
-    if (SPIFFS.exists("/identity/_main.id")) {
-      if (!SD.exists("/meshcore/identity")) SD.mkdir("/meshcore/identity");
-      copyFile(SPIFFS, "/identity/_main.id", SD, "/meshcore/identity/_main.id");
-    }
-    if (SPIFFS.exists("/contacts3")) {
-      copyFile(SPIFFS, "/contacts3", SD, "/meshcore/contacts.bin");
-    }
-
-    digitalWrite(SDCARD_CS, HIGH);
-    Serial.println("Settings backed up to SD");
-  }
-
-  bool restoreSettingsFromSD() {
-    if (!sdCardReady) return false;
-
-    bool restored = false;
-
-    if (!SPIFFS.exists("/new_prefs") && SD.exists("/meshcore/prefs.bin")) {
-      if (copyFile(SD, "/meshcore/prefs.bin", SPIFFS, "/new_prefs")) {
-        Serial.println("Restored prefs from SD");
-        restored = true;
-      }
-    }
-    if (!SPIFFS.exists("/channels2") && SD.exists("/meshcore/channels.bin")) {
-      if (copyFile(SD, "/meshcore/channels.bin", SPIFFS, "/channels2")) {
-        Serial.println("Restored channels from SD");
-        restored = true;
-      }
-    }
-    if (!SPIFFS.exists("/identity/_main.id") && SD.exists("/meshcore/identity/_main.id")) {
-      SPIFFS.mkdir("/identity");
-      if (copyFile(SD, "/meshcore/identity/_main.id", SPIFFS, "/identity/_main.id")) {
-        Serial.println("Restored identity from SD");
-        restored = true;
-      }
-    }
-    if (!SPIFFS.exists("/contacts3") && SD.exists("/meshcore/contacts.bin")) {
-      if (copyFile(SD, "/meshcore/contacts.bin", SPIFFS, "/contacts3")) {
-        Serial.println("Restored contacts from SD");
-        restored = true;
-      }
-    }
-
-    if (restored) {
-      Serial.println("=== Settings restored from SD card backup ===");
-    }
-    digitalWrite(SDCARD_CS, HIGH);
-    return restored;
-  }
-
-#ifdef MECK_CARDKB
-  #include "CardKBKeyboard.h"
-  static CardKBKeyboard cardkb;
-  static unsigned long lastCardKBProbe = 0;
-  #define CARDKB_PROBE_INTERVAL_MS 5000  // Re-probe for hot-plug every 5s
-#endif
-
-  // Read GT911 in landscape orientation (960×540)
-  static bool readTouchLandscape(int16_t* outX, int16_t* outY) {
-    if (!gt911Ready) return false;
-    int16_t raw_x, raw_y;
-    if (gt911Touch.getPoint(&raw_x, &raw_y)) {
-      *outX = raw_y;
-      *outY = EPD_HEIGHT - 1 - raw_x;
-      return true;
-    }
-    return false;
-  }
-
-  // Read GT911 in portrait orientation (540×960, canvas rotation 3)
-  static bool readTouchPortrait(int16_t* outX, int16_t* outY) {
-    if (!gt911Ready) return false;
-    int16_t raw_x, raw_y;
-    if (gt911Touch.getPoint(&raw_x, &raw_y)) {
-      *outX = raw_x;
-      *outY = raw_y;
-      return true;
-    }
-    return false;
-  }
-
-  // Read up to 2 touch points — returns actual finger count (0, 1 or 2)
-  static int readTouchMulti(int16_t* outX0, int16_t* outY0, int16_t* outX1, int16_t* outY1) {
-    if (!gt911Ready) return 0;
-    int16_t xs[2], ys[2];
-    uint8_t count = gt911Touch.getPoint(xs, ys, 2);
-    if (count == 0) return 0;
-    if (display.isPortraitMode()) {
-      *outX0 = xs[0]; *outY0 = ys[0];
-      if (count >= 2) { *outX1 = xs[1]; *outY1 = ys[1]; }
-    } else {
-      *outX0 = ys[0]; *outY0 = EPD_HEIGHT - 1 - xs[0];
-      if (count >= 2) { *outX1 = ys[1]; *outY1 = EPD_HEIGHT - 1 - xs[1]; }
-    }
-    return (int)count;
-  }
-#endif
+// to, but none of the T-Deck hardware baggage (SD, TCA8418 keyboard).
 
 // --- Shared touch state machine variables ---
 #ifdef MECK_TOUCH_ENABLED
@@ -894,11 +737,7 @@
   static int16_t touchLastY = 0;
   static unsigned long lastTouchSeenMs = 0;
   #define TOUCH_LONG_PRESS_MS  750
-  #if defined(LilyGo_T5S3_EPaper_Pro)
-    #define TOUCH_SWIPE_THRESHOLD 60   // T5S3: 960×540 — 60px ≈ 6% of width
-  #else
     #define TOUCH_SWIPE_THRESHOLD 30   // T-Deck Pro: 240×320 — 30px ≈ 12.5% of width
-  #endif
   #define TOUCH_LIFT_DEBOUNCE_MS 150
   #define TOUCH_MIN_INTERVAL_MS 300
   static bool longPressHandled = false;
@@ -906,21 +745,9 @@
   static bool touchCooldown = false;
   static unsigned long lastTouchEventMs = 0;
 
-#if defined(LilyGo_T5S3_EPaper_Pro)
-  // Two-finger tap detection state
-  static bool twoFingerDown = false;
-  static unsigned long twoFingerDownTime = 0;
-  #define TWO_FINGER_TAP_MS 350  // max ms from first finger down to both up
-#endif
-
   // Unified touch reader — returns physical screen coordinates
   static bool readTouch(int16_t* outX, int16_t* outY) {
-  #if defined(LilyGo_T5S3_EPaper_Pro)
-    if (display.isPortraitMode()) {
-      return readTouchPortrait(outX, outY);
-    }
-    return readTouchLandscape(outX, outY);
-  #elif defined(LilyGo_TDeck_Pro_Max) || defined(MECK_PRO_HYN_TOUCH)
+  #if defined(LilyGo_TDeck_Pro_Max) || defined(MECK_PRO_HYN_TOUCH)
     {
       int16_t hx[1], hy[1];
       if (hyn_touch_get_point(hx, hy, 1) > 0) {
@@ -939,10 +766,7 @@
 
   // Convert physical touch coords to virtual 128×128 coordinate space
   static void touchToVirtual(int16_t px, int16_t py, int& vx, int& vy) {
-  #if defined(LilyGo_T5S3_EPaper_Pro)
-    float sx = display.isPortraitMode() ? ((float)EPD_HEIGHT / 128.0f) : ((float)EPD_WIDTH / 128.0f);
-    float sy = display.isPortraitMode() ? ((float)EPD_WIDTH / 128.0f) : ((float)EPD_HEIGHT / 128.0f);
-  #elif defined(LilyGo_TDeck_Pro)
+  #if defined(LilyGo_TDeck_Pro)
     float sx = (float)EINK_WIDTH / 128.0f;   // 240/128 = 1.875
     float sy = (float)EINK_HEIGHT / 128.0f;   // 320/128 = 2.5
   #endif
@@ -956,48 +780,6 @@
     vy = (int)(py / sy);
   #endif
   }
-#endif
-
-// --- T-Echo Lite: CardKB keyboard, GxEPD2 e-ink, no touch ---
-#if defined(LILYGO_TECHO_LITE) || defined(LILYGO_TECHO_CARD)
-  #include "ContactsScreen.h"
-  #include "ChannelScreen.h"
-  #include "ChannelPickerScreen.h"
-  #include "SettingsScreen.h"
-  #include "RepeaterAdminScreen.h"
-  #include "DiscoveryScreen.h"
-  #include "LastHeardScreen.h"
-  #include "PathEditorScreen.h"
-
-  #ifdef LILYGO_TECHO_CARD
-    #include "TechoCardHomeScreen.h"
-    static TechoCardHomeScreen* _techoHome = nullptr;
-    static int _techoC2Debug = 0;
-  #endif
-
-  #ifdef MECK_CARDKB
-    #include "CardKBKeyboard.h"
-    static CardKBKeyboard cardkb;
-    static unsigned long lastCardKBProbe = 0;
-    #define CARDKB_PROBE_INTERVAL_MS 5000
-  #endif
-#endif
-
-// CardKB compose mode state — standalone so ANY variant with MECK_CARDKB gets these
-#ifdef MECK_CARDKB
-  static bool ckbComposeMode = false;
-  static char ckbComposeBuf[138];   // 137 bytes max + null
-  static int  ckbComposePos = 0;
-  static uint8_t ckbComposeChIdx = 0;
-  static bool ckbComposeDM = false;
-  static int  ckbComposeDMIdx = -1;
-  static char ckbComposeDMName[32];
-  static unsigned long ckbLastKeystroke = 0;
-  static bool ckbComposeRefresh = false;
-  #define CKB_COMPOSE_DEBOUNCE 600
-
-  void drawCardKBCompose();
-  void sendCardKBMessage();
 #endif
 
 // Board-agnostic: CPU frequency scaling and AGC reset
@@ -1015,20 +797,9 @@ static uint32_t _atoi(const char* sp) {
   return n;
 }
 
-#if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
+#if defined(STM32_PLATFORM)
   #include <InternalFileSystem.h>
-  #if defined(QSPIFLASH)
-    #include <CustomLFS_QSPIFlash.h>
-    DataStore store(InternalFS, QSPIFlash, rtc_clock);
-  #else
-  #if defined(EXTRAFS)
-    #include <CustomLFS.h>
-    CustomLFS ExtraFS(0xD4000, 0x19000, 128);
-    DataStore store(InternalFS, ExtraFS, rtc_clock);
-  #else
     DataStore store(InternalFS, rtc_clock);
-  #endif
-  #endif
 #elif defined(RP2040_PLATFORM)
   #include <LittleFS.h>
   DataStore store(LittleFS, rtc_clock);
@@ -1080,14 +851,6 @@ static uint32_t _atoi(const char* sp) {
     #include <helpers/ArduinoSerialInterface.h>
     ArduinoSerialInterface serial_interface;
   #endif
-#elif defined(NRF52_PLATFORM)
-  #ifdef BLE_PIN_CODE
-    #include <helpers/nrf52/SerialBLEInterface.h>
-    SerialBLEInterface serial_interface;
-  #else
-    #include <helpers/ArduinoSerialInterface.h>
-    ArduinoSerialInterface serial_interface;
-  #endif
 #elif defined(STM32_PLATFORM)
   #include <helpers/ArduinoSerialInterface.h>
   ArduinoSerialInterface serial_interface;
@@ -1098,7 +861,7 @@ static uint32_t _atoi(const char* sp) {
 /* GLOBAL OBJECTS */
 #ifdef DISPLAY_CLASS
   #include "UITask.h"
-  #if   HAS_GPS && !defined(LILYGO_TECHO_CARD)
+  #if   HAS_GPS
     #include "MapScreen.h"  // After BLE -- PNGdec headers conflict with BLE if included earlier
   #endif
   UITask ui_task(&board, &serial_interface);
@@ -1252,10 +1015,10 @@ static void lastHeardToggleContact() {
 #if HAS_GPS
 // Open the map screen with everything it needs: the SD flag, the GPS position
 // and the contact markers, then navigate. This is the setup the G key handler
-// has always done. The touch tile and CardKB routes used to call
+// has always done. The touch tile route used to call
 // ui_task.gotoMapScreen() bare, so a map opened from the tile before any G
 // press that boot showed "SD card not found" (MapScreen::_sdReady starts
-// false and only setSDReady() sets it). All three routes now come here.
+// false and only setSDReady() sets it). Both routes now come here.
 static void openMapScreen() {
   Serial.println("Opening map");
   cpuPower.setBoost();  // Map render is CPU-intensive (PNG decode + SD reads)
@@ -1505,15 +1268,6 @@ static void openMapScreen() {
     if (ui_task.isOnTextReader()) {
       TextReaderScreen* reader = (TextReaderScreen*)ui_task.getTextReaderScreen();
       if (reader && reader->isReading()) {
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        // Footer zone tap → go to page via VKB
-        if (vy >= 113) {
-          char label[24];
-          snprintf(label, sizeof(label), "Page (1-%d)", reader->getTotalPages());
-          ui_task.showVirtualKeyboard(VKB_TEXT_PAGE, label, "", 5);
-          return 0;
-        }
-#endif
         return 'd';  // Tap anywhere else = next page
       }
       // File list: tap-to-select, double-tap to open
@@ -1539,9 +1293,6 @@ static void openMapScreen() {
           return 0;
         }
         if (notes->isEditing()) {
-#if defined(LilyGo_T5S3_EPaper_Pro)
-          ui_task.showVirtualKeyboard(VKB_NOTES, "Edit Note", "", 137);
-#endif
           return 0;  // T-Deck Pro: keyboard handles typing directly
         }
         // READING, RENAMING, CONFIRM_DELETE: tap = confirm/enter
@@ -1555,39 +1306,14 @@ static void openMapScreen() {
       WebReaderScreen* wr = (WebReaderScreen*)ui_task.getWebReaderScreen();
       if (wr) {
         if (wr->isReading()) {
-#if defined(LilyGo_T5S3_EPaper_Pro)
-          // Footer zone tap → open link VKB (if links exist)
-          if (vy >= 113 && wr->getLinkCount() > 0) {
-            ui_task.showVirtualKeyboard(VKB_WEB_LINK, "Link #", "", 3);
-            return 0;
-          }
-#endif
           return 'd';  // Tap reading area → next page
         }
 
         if (wr->isHome()) {
-#if defined(LilyGo_T5S3_EPaper_Pro)
-          int sel = wr->getHomeSelected();
-          if (sel == 1) {
-            ui_task.showVirtualKeyboard(VKB_WEB_URL, "Enter URL",
-                                         wr->getUrlText(), WEB_MAX_URL_LEN - 1);
-            return 0;
-          }
-          if (sel == 2) {
-            ui_task.showVirtualKeyboard(VKB_WEB_SEARCH, "Search DuckDuckGo", "", 127);
-            return 0;
-          }
-#endif
           return KEY_ENTER;  // Select current item (keyboard handles text on T-Deck Pro)
         }
 
         if (wr->isWifiSetup()) {
-#if defined(LilyGo_T5S3_EPaper_Pro)
-          if (wr->isPasswordEntry()) {
-            ui_task.showVirtualKeyboard(VKB_WEB_WIFI_PASS, "WiFi Password", "", 63);
-            return 0;
-          }
-#endif
           return KEY_ENTER;  // SSID list: select, failed: retry
         }
       }
@@ -1608,7 +1334,7 @@ static void openMapScreen() {
       return 0;  // Tap on message area — consumed, no action
     }
 
-    // Channel picker screen: tap to select (T5S3: direct open, T-Deck Pro: highlight/activate)
+    // Channel picker screen: tap to select (T-Deck Pro: highlight/activate)
     if (ui_task.isOnChannelPickerScreen()) {
       ChannelPickerScreen* pick = (ChannelPickerScreen*)ui_task.getChannelPickerScreen();
       if (pick) {
@@ -1892,44 +1618,14 @@ static void openMapScreen() {
           return '\r';
         }
         // Conversation mode: long press = compose reply
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        const char* dmName = chScr->getDMFilterName();
-        if (dmName && dmName[0]) {
-          uint32_t numC = the_mesh.getNumContacts();
-          ContactInfo ci;
-          for (uint32_t j = 0; j < numC; j++) {
-            if (the_mesh.getContactByIdx(j, ci) && strcmp(ci.name, dmName) == 0) {
-              char label[40];
-              snprintf(label, sizeof(label), "DM: %s", dmName);
-              ui_task.showVirtualKeyboard(VKB_DM, label, "", 137, j);
-              ui_task.clearDMUnread(j);
-              return 0;
-            }
-          }
-        }
-        ui_task.showAlert("Contact not found", 1000);
-        return 0;
-#else
         return KEY_ENTER;
-#endif
       }
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      ChannelDetails ch;
-      if (the_mesh.getChannel(chIdx, ch)) {
-        char label[40];
-        snprintf(label, sizeof(label), "To: %s", ch.name);
-        ui_task.showVirtualKeyboard(VKB_CHANNEL_MSG, label, "", 137, chIdx);
-      }
-      return 0;
-#else
       return KEY_ENTER;  // T-Deck Pro: keyboard handles compose mode
-#endif
     }
 
     // Contacts screen: long press
     //   T-Deck Pro: toggle select mode (DM/admin handled by keyboard Enter)
-    //   T5S3: DM for chat contacts, admin for repeaters/rooms (no physical keyboard)
-    //         If in select mode, long press exits it on both platforms.
+    //         If in select mode, long press exits it.
     if (ui_task.isOnContactsScreen()) {
       ContactsScreen* cs = (ContactsScreen*)ui_task.getContactsScreen();
       if (cs) {
@@ -1940,47 +1636,11 @@ static void openMapScreen() {
           Serial.println("Contacts: exited select mode (touch long press)");
           return 0;
         }
-#if defined(LilyGo_T5S3_EPaper_Pro)
-        // T5S3: long press = DM/admin/room action (primary interaction path)
-        {
-          int idx = cs->getSelectedContactIdx();
-          uint8_t ctype = cs->getSelectedContactType();
-          if (idx >= 0 && ctype == ADV_TYPE_CHAT) {
-            if (ui_task.hasDMUnread(idx)) {
-              char cname[32];
-              cs->getSelectedContactName(cname, sizeof(cname));
-              ui_task.clearDMUnread(idx);
-              ui_task.gotoDMConversation(cname);
-              return 0;
-            }
-            char dname[32];
-            cs->getSelectedContactName(dname, sizeof(dname));
-            char label[40];
-            snprintf(label, sizeof(label), "DM: %s", dname);
-            ui_task.showVirtualKeyboard(VKB_DM, label, "", 137, idx);
-            return 0;
-          } else if (idx >= 0 && ctype == ADV_TYPE_REPEATER) {
-            ui_task.gotoRepeaterAdmin(idx);
-            return 0;
-          } else if (idx >= 0 && ctype == ADV_TYPE_ROOM) {
-            ui_task.gotoRepeaterAdmin(idx);
-            return 0;
-          } else if (idx >= 0 && ui_task.hasDMUnread(idx)) {
-            char cname[32];
-            cs->getSelectedContactName(cname, sizeof(cname));
-            ui_task.clearDMUnread(idx);
-            ui_task.gotoDMConversation(cname);
-            return 0;
-          }
-        }
-        return 0;
-#else
         // T-Deck Pro: long press enters select mode
         cs->enterSelectMode();
         ui_task.forceRefresh();
         Serial.println("Contacts: entered select mode (touch long press)");
         return 0;
-#endif
       }
       return KEY_ENTER;
     }
@@ -1995,18 +1655,8 @@ static void openMapScreen() {
       return KEY_ENTER;
     }
 
-    // Trace screen: long press = Enter on most rows; on T5S3 the Type Path row
-    // opens the virtual keyboard instead so users can enter a comma-separated
-    // hash list without a physical keyboard.
+    // Trace screen: long press = Enter.
     if (ui_task.isOnTraceScreen()) {
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      TraceScreen* ts = (TraceScreen*)ui_task.getTraceScreen();
-      if (ts && ts->isOnTypePathRow()) {
-        const char* current = ts->getCurrentPathAsText();
-        ui_task.showVirtualKeyboard(VKB_TRACE_PATH, "Type Path", current, 79);
-        return 0;
-      }
-#endif
       return KEY_ENTER;
     }
 
@@ -2016,12 +1666,7 @@ static void openMapScreen() {
       if (admin) {
         RepeaterAdminScreen::AdminState astate = admin->getState();
         if (astate == RepeaterAdminScreen::STATE_PASSWORD_ENTRY) {
-#if defined(LilyGo_T5S3_EPaper_Pro)
-          ui_task.showVirtualKeyboard(VKB_ADMIN_PASSWORD, "Admin Password", "", 32);
-          return 0;
-#else
           return KEY_ENTER;  // T-Deck Pro: keyboard handles password entry
-#endif
         }
       }
     }
@@ -2175,20 +1820,9 @@ void setup() {
   fast_rng.begin(radio_get_rng_seed());
   MESH_DEBUG_PRINTLN("setup() - fast_rng.begin() done");
 
-#if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
-  MESH_DEBUG_PRINTLN("setup() - NRF52/STM32 filesystem init");
+#if defined(STM32_PLATFORM)
+  MESH_DEBUG_PRINTLN("setup() - STM32 filesystem init");
   InternalFS.begin();
-  #if defined(QSPIFLASH)
-    if (!QSPIFlash.begin()) {
-      MESH_DEBUG_PRINTLN("CustomLFS_QSPIFlash: failed to initialize");
-    } else {
-      MESH_DEBUG_PRINTLN("CustomLFS_QSPIFlash: initialized successfully");
-    }
-  #else
-  #if defined(EXTRAFS)
-      ExtraFS.begin();
-  #endif
-  #endif
   MESH_DEBUG_PRINTLN("setup() - about to call store.begin()");
   store.begin();
   MESH_DEBUG_PRINTLN("setup() - store.begin() done");
@@ -2342,42 +1976,6 @@ void setup() {
       MESH_DEBUG_PRINTLN("setup() - SD card not available after 3 attempts");
     }
   }
-  #elif defined(LilyGo_T5S3_EPaper_Pro) && defined(HAS_SDCARD)
-  {
-    // T5S3: SD card shares LoRa SPI bus (SCK=14, MOSI=13, MISO=21)
-    // LoRa SPI already initialized by target.cpp. Create a local HSPI
-    // reference for SD init (same hardware peripheral, different CS).
-    static SPIClass sdSpi(HSPI);
-    sdSpi.begin(P_LORA_SCLK, P_LORA_MISO, P_LORA_MOSI, SDCARD_CS);
-
-    pinMode(SDCARD_CS, OUTPUT);
-    digitalWrite(SDCARD_CS, HIGH);
-    pinMode(P_LORA_NSS, OUTPUT);
-    digitalWrite(P_LORA_NSS, HIGH);
-    delay(100);
-
-    bool mounted = false;
-    for (int attempt = 0; attempt < 3 && !mounted; attempt++) {
-      if (attempt > 0) {
-        digitalWrite(SDCARD_CS, HIGH);
-        delay(250);
-        Serial.printf("setup() - SD card retry %d/3\n", attempt + 1);
-      }
-      mounted = SD.begin(SDCARD_CS, sdSpi, 4000000);
-    }
-
-    if (mounted) {
-      sdCardReady = true;
-      Serial.println("setup() - SD card initialized");
-
-      // If SPIFFS was wiped (fresh flash), restore settings from SD backup
-      if (restoreSettingsFromSD()) {
-        Serial.println("setup() - T5S3: Settings restored from SD backup");
-      }
-    } else {
-      Serial.println("setup() - SD card not available");
-    }
-  }
   #endif
 
   // Copy bundled notification sounds to SD card (audio variant only).
@@ -2494,7 +2092,7 @@ void setup() {
 
   // IMPORTANT: sensors.begin() calls initBasicGPS() which steals the GPS pins for Serial1.
   // We must end Serial1 first, then reclaim the pins for Serial2 (which feeds gpsStream).
-  // This is ESP32-specific — on nRF52, GPS Serial1 is initialised in radio_init().
+  // This is ESP32-specific.
   #if HAS_GPS && defined(ESP32)
     Serial1.end();   // Release GPS pins from Serial1's UART + ISR
     Serial2.end();   // Close any existing Serial2
@@ -2512,16 +2110,6 @@ void setup() {
   MESH_DEBUG_PRINTLN("setup() - about to call ui_task.begin()");
   ui_task.begin(disp, &sensors, the_mesh.getNodePrefs());
   MESH_DEBUG_PRINTLN("setup() - ui_task.begin() done");
-
-  // T-Echo Card: replace the generic HomeScreen with the 72x40 OLED home screen
-  #ifdef LILYGO_TECHO_CARD
-  {
-    _techoHome = new TechoCardHomeScreen(&ui_task, &rtc_clock,
-                                                  the_mesh.getNodePrefs());
-    ui_task.setHomeScreen(_techoHome);
-    MESH_DEBUG_PRINTLN("setup() - TechoCardHomeScreen installed");
-  }
-  #endif
 #endif
 
   // ---------------------------------------------------------------------------
@@ -2554,35 +2142,10 @@ void setup() {
   // Touch input (CST328) is initialised earlier, right after board.begin(),
   // on a freshly-initialised quiet I2C bus (see setup() near board.begin()).
 
-  // Initialize GT911 touch (T5S3 E-Paper Pro)
-  // Wire is already initialized by T5S3Board::begin(). The 4-arg begin() re-calls
-  // Wire.begin() which logs "bus already initialized" — cosmetic only, not harmful.
-  #if defined(LilyGo_T5S3_EPaper_Pro)
-    gt911Touch.setPins(GT911_PIN_RST, GT911_PIN_INT);
-    if (gt911Touch.begin(Wire, GT911_SLAVE_ADDRESS_L, GT911_PIN_SDA, GT911_PIN_SCL)) {
-      gt911Ready = true;
-      Serial.println("setup() - GT911 touch initialized");
-    } else {
-      Serial.println("setup() - GT911 touch FAILED");
-    }
-  #endif
-
-  // Initialize CardKB external keyboard (if connected via QWIIC)
-  #if defined(MECK_CARDKB)
-    if (cardkb.begin()) {
-      #if defined(LilyGo_T5S3_EPaper_Pro)
-      ui_task.setCardKBDetected(true);
-      #endif
-      Serial.println("setup() - CardKB detected at 0x5F");
-    } else {
-      Serial.println("setup() - CardKB not detected (will re-probe)");
-    }
-  #endif
-
   // RTC diagnostic + boot-time serial clock sync
   // Works on all Meck builds — T-Deck Pro has no hardware RTC and GPS may
-  // not fix immediately; T5S3 has hardware RTC but it needs initial setting.
-  #if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+  // not fix immediately.
+  #if defined(LilyGo_TDeck_Pro)
   {
     uint32_t rtcTime = rtc_clock.getCurrentTime();
     // Plausible range: Nov 2023 (1700000000) → May 2033 (2000000000)
@@ -2710,36 +2273,6 @@ void setup() {
   }
   #endif
 
-  // T5S3 SD-dependent features
-  #if defined(LilyGo_T5S3_EPaper_Pro) && defined(HAS_SDCARD)
-  if (sdCardReady) {
-    // Channel message history
-    ChannelScreen* chanScr = (ChannelScreen*)ui_task.getChannelScreen();
-    if (chanScr) {
-      chanScr->setSDReady(true);
-      if (chanScr->loadFromSD()) {
-        Serial.println("setup() - Message history loaded from SD");
-      }
-    }
-
-    // Text reader — set SD ready and pre-index books
-    TextReaderScreen* reader = (TextReaderScreen*)ui_task.getTextReaderScreen();
-    if (reader) {
-      reader->setSDReady(true);
-      if (disp) {
-        cpuPower.setBoost();
-        reader->bootIndex(*disp);
-      }
-    }
-
-    // Notes screen
-    NotesScreen* notesScr = (NotesScreen*)ui_task.getNotesScreen();
-    if (notesScr) {
-      notesScr->setSDReady(true);
-    }
-    Serial.println("setup() - SD features initialized");
-  }
-  #endif
   // Check if node name is still the default hex prefix (first 4 bytes of pub key)
   // If so, launch onboarding wizard to set name and radio preset
   // ---------------------------------------------------------------------------
@@ -2796,7 +2329,7 @@ void setup() {
 
   // BLE starts disabled for standalone-first operation
   // User can toggle it from the Bluetooth home page (Enter or long-press)
-  #if (defined(LilyGo_TDeck_Pro) || defined(LilyGo_T5S3_EPaper_Pro)) && defined(BLE_PIN_CODE)
+  #if defined(LilyGo_TDeck_Pro) && defined(BLE_PIN_CODE)
     serial_interface.disable();
     MESH_DEBUG_PRINTLN("setup() - BLE disabled at boot (standalone mode)");
   #endif
@@ -2859,62 +2392,25 @@ void otaResumeRadio() {
 #endif
 
 void loop() {
-  // T-Echo Card: lazy Codec2 init from shallow stack context.
-  // codec2_create needs ~3KB stack for FFT/trig init. The loop task
-  // has only 4KB total. Calling from render() (deep call chain) overflows.
-  // Calling from here (top of loop) works because stack depth is minimal.
-  #ifdef LILYGO_TECHO_CARD
-  if (_techoHome && _techoHome->needsCodec2()) {
-    void* probe = malloc(25000);
-    Serial.printf("Voice: heap probe 25K=%s, creating codec2...\n", probe?"yes":"no");
-    if (probe) free(probe);
-    Serial.flush();
-
-    struct CODEC2* c2 = codec2_create(VC_C2_MODE);
-    Serial.printf("Voice: codec2_create returned %p\n", c2);
-    Serial.flush();
-
-    if (c2) {
-      _techoHome->setCodec2Instance(c2);
-      void* postProbe = malloc(1000);
-      Serial.printf("Voice: set OK, post-probe=%s\n", postProbe?"yes":"no");
-      if (postProbe) free(postProbe);
-      Serial.flush();
-      _techoC2Debug = 99999;  // Keep printing to test if yields prevent crash
-    }
-  }
-  #endif
-
   #ifdef MECK_OTA_UPDATE
   if (!otaRadioPaused) {
   #endif
 
-  #ifdef LILYGO_TECHO_CARD
-  if (_techoC2Debug > 0) {
-    Serial.print("[pre-mesh]"); Serial.flush();
-  }
-  #endif
-
   the_mesh.loop();
 
-  #ifdef LILYGO_TECHO_CARD
-  if (_techoC2Debug > 0) {
-    Serial.print("[post-mesh]"); Serial.flush();
-  }
-  #endif
   #ifdef MECK_OTA_UPDATE
   } else {
     // OTA/File Manager active — poll the web server from the main loop for fast response.
-    // The render cycle on T5S3 (960×540 FastEPD) can block for 500ms+ during
-    // e-ink refresh, causing the browser to timeout before handleClient() runs.
+    // The e-ink render cycle can block during a refresh, causing the browser
+    // to timeout before handleClient() runs.
     // Polling here gives us ~1-5ms response time instead.
     if (ui_task.isOnSettingsScreen()) {
       SettingsScreen* ss = (SettingsScreen*)ui_task.getSettingsScreen();
       if (ss) {
         ss->pollOTAServer();
         // Detect upload completion and trigger verify → flash → reboot.
-        // Must happen here (not in render) because T5S3 e-ink refresh blocks
-        // for 500ms+ and the render-based check never fires reliably.
+        // Must happen here (not in render) because an e-ink refresh blocks
+        // and the render-based check never fires reliably.
         ss->checkOTAComplete(display);
       }
     }
@@ -2963,7 +2459,7 @@ void loop() {
 
   // Map screen: periodically update own GPS position and contact markers
   #ifdef DISPLAY_CLASS
-  #if HAS_GPS && !defined(LILYGO_TECHO_CARD)
+  #if HAS_GPS
   if (ui_task.isOnMapScreen()) {
     static unsigned long lastMapUpdate = 0;
     if (millis() - lastMapUpdate > 30000) {  // Every 30 seconds
@@ -2998,7 +2494,7 @@ void loop() {
   // is active.  The mesh radio has its own FIFO so packets are buffered;
   // 50 ms yield means the loop still runs 20×/sec which is more than enough
   // to drain the radio FIFO before overflow.
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
   {
     static bool wasLocked = false;
     bool nowLocked = ui_task.isLocked();
@@ -3676,24 +3172,8 @@ void loop() {
   #ifdef HAS_4G_MODEM
     smsMode = ui_task.isOnSMSScreen();
   #endif
-  #elif defined(MECK_CARDKB)
-  if (!ckbComposeMode) {
-    ui_task.loop();
-  } else {
-    // Compose mode: debounced rendering
-    if (ckbComposeRefresh && (millis() - ckbLastKeystroke) >= CKB_COMPOSE_DEBOUNCE) {
-      drawCardKBCompose();
-      ckbComposeRefresh = false;
-    }
-  }
   #else
-  #ifdef LILYGO_TECHO_CARD
-  if (_techoC2Debug > 0) { Serial.print("[pre-ui]"); Serial.flush(); }
-  #endif
   ui_task.loop();
-  #ifdef LILYGO_TECHO_CARD
-  if (_techoC2Debug > 0) { Serial.print("[post-ui]"); Serial.flush(); _techoC2Debug--; }
-  #endif
   #endif
 #endif
   rtc_clock.tick();
@@ -3766,22 +3246,18 @@ void loop() {
   #endif
 
   // ---------------------------------------------------------------------------
-  // Touch Input — tap/swipe/long-press state machine (T5S3 + T-Deck Pro)
+  // Touch Input -- tap/swipe/long-press state machine (T-Deck Pro)
   // Gestures:
   //   Tap = finger down + up with minimal movement → select/open
   //   Swipe = finger drag > threshold → scroll/page turn
   //   Long press = finger held > 750ms without moving → edit/enter
   // After processing an event, cooldown waits for finger lift before next event.
   // Touch is disabled while lock screen is active.
-  // When virtual keyboard is active (T5S3), taps route to keyboard.
   // ---------------------------------------------------------------------------
   #ifdef MECK_TOUCH_ENABLED
   {
-    // Guard: skip touch when locked or VKB active
+    // Guard: skip touch when locked
     bool touchBlocked = ui_task.isLocked();
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    touchBlocked = touchBlocked || ui_task.isVKBActive();
-#endif
 #ifdef HAS_4G_MODEM
     // SMS dialer has its own dedicated touch handler — don't consume touch data here
     if (smsMode) {
@@ -3802,51 +3278,6 @@ void loop() {
       if (gotPoint) {
         lastTouchSeenMs = now;
       }
-
-#if defined(LilyGo_T5S3_EPaper_Pro)
-      // Two-finger tap detection — must run before single-finger state machine
-      // so it can suppress the single-finger path when two fingers are present.
-      {
-        int16_t x0, y0, x1, y1;
-        int fingers = readTouchMulti(&x0, &y0, &x1, &y1);
-        if (fingers >= 2) {
-          if (!twoFingerDown) {
-            twoFingerDown = true;
-            twoFingerDownTime = now;
-          }
-          // Suppress single-finger tracking while two fingers are down
-          lastTouchSeenMs = now;
-          touchDown = false;
-          longPressHandled = true;  // prevent long-press triggering
-          swipeHandled = true;      // prevent swipe triggering
-        } else if (twoFingerDown) {
-          // Both fingers lifted — check if it was a quick tap
-          if ((now - twoFingerDownTime) < TWO_FINGER_TAP_MS) {
-            if (ui_task.isOnContactsScreen()) {
-              ContactsScreen* cs = (ContactsScreen*)ui_task.getContactsScreen();
-              if (cs) {
-                if (cs->isInSelectMode()) {
-                  cs->exitSelectMode();
-                  Serial.println("[Touch] Two-finger tap: exited contacts select mode");
-                } else {
-                  cs->enterSelectMode();
-                  Serial.println("[Touch] Two-finger tap: entered contacts select mode");
-                }
-                ui_task.forceRefresh();
-                touchCooldown = true;
-                lastTouchEventMs = now;
-              }
-            }
-          }
-          twoFingerDown = false;
-          longPressHandled = false;
-          swipeHandled = false;
-          touchDown = false;
-          touchCooldown = true;
-          lastTouchEventMs = now;
-        }
-      }
-#endif
 
       bool fingerPresent = (now - lastTouchSeenMs) < TOUCH_LIFT_DEBOUNCE_MS;
 
@@ -4021,442 +3452,7 @@ void loop() {
     }
   }
 
-  // Virtual keyboard touch routing (T5S3 only — T-Deck Pro uses physical keyboard)
-#if defined(LilyGo_T5S3_EPaper_Pro)
-  {
-    static bool vkbNeedLift = true;
-
-    if (ui_task.isVKBActive()) {
-      int16_t tx, ty;
-      bool gotPt = readTouch(&tx, &ty);
-
-      if (!gotPt) {
-        vkbNeedLift = false;
-      }
-
-      bool cooldownOk = (millis() - ui_task.vkbOpenedAt()) > 2000;
-
-      if (gotPt && !vkbNeedLift && cooldownOk) {
-        int vx, vy;
-        touchToVirtual(tx, ty, vx, vy);
-        if (ui_task.getVKB().handleTap(vx, vy)) {
-          ui_task.forceRefresh();
-        }
-        vkbNeedLift = true;
-      }
-    } else {
-      vkbNeedLift = true;
-    }
-  }
-#endif
   #endif // MECK_TOUCH_ENABLED
-
-  // ---------------------------------------------------------------------------
-  // CardKB external keyboard polling (via QWIIC)
-  // When VKB is active: typed characters feed into the VKB text buffer.
-  // When VKB is not active: navigation keys route through injectKey().
-  // ESC key maps to 'q' (back) when no VKB is active.
-  // ---------------------------------------------------------------------------
-#if defined(MECK_CARDKB)
-  {
-    // Hot-plug detection: re-probe periodically
-    if (millis() - lastCardKBProbe >= CARDKB_PROBE_INTERVAL_MS) {
-      lastCardKBProbe = millis();
-      bool wasDetected = cardkb.isDetected();
-      bool nowDetected = cardkb.probe();
-      if (nowDetected != wasDetected) {
-        #if defined(LilyGo_T5S3_EPaper_Pro)
-        ui_task.setCardKBDetected(nowDetected);
-        #endif
-        Serial.printf("[CardKB] %s\n", nowDetected ? "Connected" : "Disconnected");
-      }
-    }
-
-    // Poll for keypress
-    char ckb = cardkb.readKey();
-    if (ckb != 0) {
-      Serial.printf("[CardKB] key=0x%02X '%c'\n", (uint8_t)ckb, (ckb >= 32 && ckb < 127) ? ckb : '?');
-
-      // --- CardKB compose mode: intercept ALL keys ---
-      if (ckbComposeMode) {
-        cpuPower.setBoost();
-        ui_task.keepAlive();
-        if (ckb == 0x1B) {
-          // ESC: cancel compose
-          ckbComposeMode = false;
-          ui_task.forceRefresh();
-        } else if (ckb == '\r') {
-          // Enter: send message
-          if (ckbComposePos > 0) {
-            sendCardKBMessage();
-          } else {
-            ckbComposeMode = false;
-            ui_task.forceRefresh();
-          }
-        } else if (ckb == '\b') {
-          // Backspace: delete last character
-          if (ckbComposePos > 0) {
-            ckbComposeBuf[--ckbComposePos] = '\0';
-            ckbComposeRefresh = true;
-            ckbLastKeystroke = millis();
-          }
-        } else if (ckb >= 32 && ckb < 127) {
-          // Printable character
-          if (ckbComposePos < 137) {
-            ckbComposeBuf[ckbComposePos++] = ckb;
-            ckbComposeBuf[ckbComposePos] = '\0';
-            ckbComposeRefresh = true;
-            ckbLastKeystroke = millis();
-          }
-        }
-        // All keys consumed in compose mode — skip normal routing
-      } else {
-      // --- Normal (non-compose) key routing ---
-      #if defined(LilyGo_T5S3_EPaper_Pro)
-      if (!ui_task.isLocked()) {
-      #else
-      {
-      #endif
-        cpuPower.setBoost();
-        ui_task.keepAlive();
-
-        #if defined(LilyGo_T5S3_EPaper_Pro)
-        if (ui_task.isVKBActive()) {
-          // VKB is open — feed character into VKB text buffer
-          ui_task.feedCardKBChar(ckb);
-        } else
-        #endif
-        if (ui_task.isOnHomeScreen()) {
-          // Home screen: ESC does nothing special, letter shortcuts open tiles
-          if (ckb == 0x1B) {
-            // ESC on home — no-op (already home)
-          } else {
-            switch (ckb) {
-              case 'm': ui_task.gotoChannelPickerScreen(); break;
-              case 'c': ui_task.gotoContactsScreen(); break;
-#if !defined(LILYGO_TECHO_LITE)
-              case 'e': ui_task.gotoTextReader(); break;
-              case 'n': ui_task.gotoNotesScreen(); break;
-#endif
-              case 's':
-                if (ui_task.isHomeOnShutdownPage()) {
-                  ui_task.injectKey(ckb);
-                } else {
-                  ui_task.gotoSettingsScreen();
-                }
-                break;
-              case 'f': ui_task.gotoDiscoveryScreen(); break;
-              case 'h': ui_task.gotoLastHeardScreen(); break;
-              case 'r': ui_task.gotoTraceScreen(); break;
-              case 'j': ui_task.gotoGamesMenu(); break;
-              case (char)0xF3: ui_task.injectKey(KEY_LEFT);  break;  // Left arrow → prev page
-              case (char)0xF4: ui_task.injectKey(KEY_RIGHT); break;  // Right arrow → next page
-#ifdef MECK_WEB_READER
-              case 'b': ui_task.gotoWebReader(); break;
-#endif
-#if HAS_GPS
-              case 'g': openMapScreen(); break;
-#endif
-              default:  ui_task.injectKey(ckb); break;
-            }
-          }
-        } else {
-          // Non-home screens: context-specific routing
-          bool handled = false;
-
-          // Notes editing/renaming: route ALL keys directly (no VKB).
-          // This gives: Enter=newline, arrows=cursor, printable=insert, ESC=save&exit
-#if !defined(LILYGO_TECHO_LITE)
-          if (ui_task.isOnNotesScreen()) {
-            NotesScreen* notesScr = (NotesScreen*)ui_task.getNotesScreen();
-            if (notesScr && (notesScr->isEditing() || notesScr->isRenaming())) {
-              handled = true;
-              if (ckb == 0x1B) {
-                // ESC: save & exit editing, or cancel rename
-                if (notesScr->isEditing()) {
-                  notesScr->triggerSaveAndExit();
-                } else {
-                  ui_task.injectKey(KEY_CANCEL);
-                }
-              } else if (notesScr->isEditing()) {
-                // Editing mode: arrows move cursor, everything else types directly
-                switch (ckb) {
-                  case (char)0xF2: notesScr->moveCursorUp();    break;
-                  case (char)0xF1: notesScr->moveCursorDown();  break;
-                  case (char)0xF3: notesScr->moveCursorLeft();  break;
-                  case (char)0xF4: notesScr->moveCursorRight(); break;
-                  default:         ui_task.injectKey(ckb);      break;
-                }
-              } else {
-                // Renaming mode: all keys go directly to rename handler
-                ui_task.injectKey(ckb);
-              }
-              ui_task.forceRefresh();
-            }
-          }
-#endif
-
-          if (!handled) {
-            // ESC -> back navigation
-            if (ckb == 0x1B) {
-              if (ui_task.isOnSnakeScreen()) {
-                ui_task.injectKey(KEY_CANCEL);
-                SnakeScreen* ss = (SnakeScreen*)ui_task.getSnakeScreen();
-                if (ss && ss->wantsExit()) {
-                  ui_task.gotoGamesMenu();
-                }
-              } else if (ui_task.isOnMinesweeperScreen()) {
-                ui_task.injectKey(KEY_CANCEL);
-                MinesweeperScreen* ms = (MinesweeperScreen*)ui_task.getMinesweeperScreen();
-                if (ms && ms->wantsExit()) {
-                  ui_task.gotoGamesMenu();
-                }
-              } else if (ui_task.isOnGamesMenu()) {
-                ui_task.gotoHomeScreen();
-              } else if (ui_task.isOnChannelPickerScreen()) {
-                ui_task.gotoHomeScreen();
-              } else if (ui_task.isOnChannelScreen()) {
-                ChannelScreen* chScr = (ChannelScreen*)ui_task.getChannelScreen();
-                if (chScr && (chScr->isReplySelectMode() || chScr->isShowingPathOverlay())) {
-                  ui_task.injectKey(KEY_CANCEL);  // dismiss overlay/reply first
-                } else if (chScr && chScr->isDMConversation()) {
-                  ui_task.injectKey(KEY_CANCEL);  // DM conversation -> inbox
-                } else {
-                  ui_task.gotoChannelPickerScreen();
-                }
-              } else {
-                ui_task.gotoHomeScreen();  // All other screens → home
-              }
-            } else if (ckb == '\r') {
-              // Enter key — screen-specific compose or select
-              if (ui_task.isOnChannelScreen()) {
-                uint8_t chIdx = ui_task.getChannelScreenViewIdx();
-                if (chIdx == 0xFF) {
-                  ChannelScreen* chScr = (ChannelScreen*)ui_task.getChannelScreen();
-                  if (chScr->isDMInboxMode()) {
-                    // Inbox mode: inject Enter to open conversation
-                    ui_task.injectKey('\r');
-                  } else {
-                    // Conversation mode: open VKB DM compose
-                    const char* dmName = chScr->getDMFilterName();
-                    if (dmName && dmName[0]) {
-                      uint32_t numC = the_mesh.getNumContacts();
-                      ContactInfo ci;
-                      for (uint32_t j = 0; j < numC; j++) {
-                        if (the_mesh.getContactByIdx(j, ci) && strcmp(ci.name, dmName) == 0) {
-                          char label[40];
-                          snprintf(label, sizeof(label), "DM: %s", dmName);
-                          #if defined(LilyGo_T5S3_EPaper_Pro)
-                          ui_task.showVirtualKeyboard(VKB_DM, label, "", 137, j);
-                          #elif defined(MECK_CARDKB)
-                          ckbComposeMode = true;
-                          ckbComposeBuf[0] = '\0';
-                          ckbComposePos = 0;
-                          ckbComposeDM = true;
-                          ckbComposeDMIdx = (int)j;
-                          strncpy(ckbComposeDMName, dmName, sizeof(ckbComposeDMName) - 1);
-                          ckbComposeRefresh = true;
-                          ckbLastKeystroke = millis();
-                          #else
-                          ui_task.injectKey('\r');
-                          #endif
-                          ui_task.clearDMUnread(j);
-                          break;
-                        }
-                      }
-                    }
-                  }
-                } else {
-                  // Open VKB for channel message compose
-                  ChannelDetails ch;
-                  if (the_mesh.getChannel(chIdx, ch)) {
-                    char label[40];
-                    snprintf(label, sizeof(label), "To: %s", ch.name);
-                    #if defined(LilyGo_T5S3_EPaper_Pro)
-                    ui_task.showVirtualKeyboard(VKB_CHANNEL_MSG, label, "", 137, chIdx);
-                    #elif defined(MECK_CARDKB)
-                    ckbComposeMode = true;
-                    ckbComposeBuf[0] = '\0';
-                    ckbComposePos = 0;
-                    ckbComposeDM = false;
-                    ckbComposeChIdx = chIdx;
-                    ckbComposeRefresh = true;
-                    ckbLastKeystroke = millis();
-                    #else
-                    ui_task.injectKey('\r');
-                    #endif
-                  }
-                }
-              } else if (ui_task.isOnContactsScreen()) {
-                ContactsScreen* cs = (ContactsScreen*)ui_task.getContactsScreen();
-                if (cs && cs->isInSelectMode()) {
-                  // Select mode: Enter toggles checkbox
-                  cs->toggleSelected();
-                  ui_task.forceRefresh();
-                } else if (cs) {
-                  // Normal mode: DM compose for chat contacts, admin for repeaters
-                  int idx = cs->getSelectedContactIdx();
-                  uint8_t ctype = cs->getSelectedContactType();
-                  if (idx >= 0 && ctype == ADV_TYPE_CHAT) {
-                    if (ui_task.hasDMUnread(idx)) {
-                      char cname[32];
-                      cs->getSelectedContactName(cname, sizeof(cname));
-                      ui_task.clearDMUnread(idx);
-                      ui_task.gotoDMConversation(cname);
-                    } else {
-                      char dname[32];
-                      cs->getSelectedContactName(dname, sizeof(dname));
-                      char label[40];
-                      snprintf(label, sizeof(label), "DM: %s", dname);
-                      #if defined(LilyGo_T5S3_EPaper_Pro)
-                      ui_task.showVirtualKeyboard(VKB_DM, label, "", 137, idx);
-                      #elif defined(MECK_CARDKB)
-                      ckbComposeMode = true;
-                      ckbComposeBuf[0] = '\0';
-                      ckbComposePos = 0;
-                      ckbComposeDM = true;
-                      ckbComposeDMIdx = idx;
-                      strncpy(ckbComposeDMName, dname, sizeof(ckbComposeDMName) - 1);
-                      ckbComposeRefresh = true;
-                      ckbLastKeystroke = millis();
-                      #else
-                      ui_task.injectKey('\r');
-                      #endif
-                    }
-                  } else if (idx >= 0 && ctype == ADV_TYPE_REPEATER) {
-                    ui_task.gotoRepeaterAdmin(idx);
-                  } else if (idx >= 0 && ctype == ADV_TYPE_ROOM) {
-                    // Room server: open login (auto-redirects to conversation)
-                    ui_task.gotoRepeaterAdmin(idx);
-                  } else if (idx >= 0 && ui_task.hasDMUnread(idx)) {
-                    char cname[32];
-                    cs->getSelectedContactName(cname, sizeof(cname));
-                    ui_task.clearDMUnread(idx);
-                    ui_task.gotoDMConversation(cname);
-                  }
-                }
-              } else if (ui_task.isOnRepeaterAdmin()) {
-                // Open VKB for password or CLI entry
-                RepeaterAdminScreen* admin = (RepeaterAdminScreen*)ui_task.getRepeaterAdminScreen();
-                if (admin) {
-                  RepeaterAdminScreen::AdminState astate = admin->getState();
-                  if (astate == RepeaterAdminScreen::STATE_PASSWORD_ENTRY) {
-                    #if defined(LilyGo_T5S3_EPaper_Pro)
-                    ui_task.showVirtualKeyboard(VKB_ADMIN_PASSWORD, "Admin Password", "", 32);
-                    #else
-                    ui_task.injectKey('\r');
-                    #endif
-                  } else {
-                    #if defined(LilyGo_T5S3_EPaper_Pro)
-                    ui_task.showVirtualKeyboard(VKB_ADMIN_CLI, "Admin Command", "", 137);
-                    #else
-                    ui_task.injectKey('\r');
-                    #endif
-                  }
-                }
-              } else if (ui_task.isOnPathEditor()) {
-                // Path editor handles Enter internally
-                ui_task.injectKey('\r');
-                PathEditorScreen* pe = (PathEditorScreen*)ui_task.getPathEditorScreen();
-                if (pe && pe->wantsExit()) {
-                  ui_task.gotoContactsScreen();
-                }
-              } else if (ui_task.isOnTraceScreen()) {
-                // Trace screen handles Enter internally
-                ui_task.injectKey('\r');
-                TraceScreen* ts = (TraceScreen*)ui_task.getTraceScreen();
-                if (ts && ts->wantsExit()) {
-                  ui_task.gotoHomeScreen();
-                }
-              } else if (ui_task.isOnGamesMenu()) {
-                // Games menu: Enter launches selected game
-                ui_task.injectKey('\r');
-                GamesMenuScreen* gm = (GamesMenuScreen*)ui_task.getGamesMenuScreen();
-                if (gm && gm->wantsLaunch()) {
-                  GameID sel = gm->selectedGame();
-                  gm->clearFlags();
-                  switch (sel) {
-                    case GAME_SNAKE: ui_task.gotoSnakeScreen(); break;
-                    case GAME_MINESWEEPER: ui_task.gotoMinesweeperScreen(); break;
-#if defined(LilyGo_TDeck_Pro)
-                    case GAME_GBC: ui_task.gotoGBCScreen(); break;
-#endif
-                    default: break;
-                  }
-                }
-              } else if (ui_task.isOnSnakeScreen()) {
-                // Snake: Enter starts/restarts game
-                ui_task.injectKey('\r');
-                SnakeScreen* ss = (SnakeScreen*)ui_task.getSnakeScreen();
-                if (ss && ss->wantsExit()) {
-                  ui_task.gotoGamesMenu();
-                }
-              } else if (ui_task.isOnMinesweeperScreen()) {
-                // Minesweeper: Enter reveals cell or starts/restarts
-                ui_task.injectKey('\r');
-                MinesweeperScreen* ms = (MinesweeperScreen*)ui_task.getMinesweeperScreen();
-                if (ms && ms->wantsExit()) {
-                  ui_task.gotoGamesMenu();
-                }
-              } else if (ui_task.isOnChannelPickerScreen()) {
-                // Channel picker: Enter selects channel
-                ui_task.injectKey('\r');
-                ChannelPickerScreen* pick = (ChannelPickerScreen*)ui_task.getChannelPickerScreen();
-                if (pick && pick->wantsExit()) {
-                  ui_task.gotoChannelScreen(false);
-                }
-              } else {
-                // All other screens: pass Enter through for native handling
-                // (settings toggle, discovery add-contact, last heard, text reader, notes file list, etc.)
-                ui_task.injectKey('\r');
-              }
-            } else {
-              // Non-Enter keys: remap arrows to WASD, pass others through
-              // Special: 'p' on contacts screen opens path editor
-              if ((ckb == 'p' || ckb == 'P') && ui_task.isOnContactsScreen()) {
-                ContactsScreen* cs = (ContactsScreen*)ui_task.getContactsScreen();
-                if (cs) {
-                  int idx = cs->getSelectedContactIdx();
-                  if (idx >= 0) {
-                    ui_task.gotoPathEditor(idx);
-                  }
-                }
-              } else if ((ckb == 0x1B) && ui_task.isOnPathEditor()) {
-                // ESC on path editor -> back to contacts
-                ui_task.gotoContactsScreen();
-              } else if ((ckb == 0x1B) && ui_task.isOnChannelPickerScreen()) {
-                // ESC on picker -> home
-                ui_task.gotoHomeScreen();
-              } else if ((ckb == 0x1B) && ui_task.isOnChannelScreen()) {
-                // ESC on channel screen -> picker (unless overlay/DM conversation)
-                ChannelScreen* chScr = (ChannelScreen*)ui_task.getChannelScreen();
-                if (chScr && (chScr->isReplySelectMode() || chScr->isShowingPathOverlay())) {
-                  ui_task.injectKey(KEY_CANCEL);  // dismiss overlay/reply first
-                } else if (chScr && chScr->isDMConversation()) {
-                  ui_task.injectKey(KEY_CANCEL);  // DM conversation -> inbox (handled internally)
-                } else {
-                  ui_task.gotoChannelPickerScreen();
-                }
-              } else if (ui_task.isOnChannelScreen() && (ckb == (char)0xF3 || ckb == (char)0xF4)) {
-                // Channel screen: Left/Right arrows open picker
-                ui_task.gotoChannelPickerScreen();
-              } else {
-                switch (ckb) {
-                  case (char)0xF2: ui_task.injectKey('w'); break;  // Up → scroll up
-                  case (char)0xF1: ui_task.injectKey('s'); break;  // Down → scroll down
-                  case (char)0xF3: ui_task.injectKey('a'); break;  // Left → prev channel/category
-                  case (char)0xF4: ui_task.injectKey('d'); break;  // Right → next channel/category
-                  default:         ui_task.injectKey(ckb); break;
-                }
-              }
-            }
-          }
-        }
-      }
-      }  // end compose mode else
-    }
-  }
-#endif
 
   // Poll touch input for phone dialer numpad
   // Hybrid debounce: finger-up detection + 150ms minimum between accepted taps.
@@ -4511,7 +3507,7 @@ void loop() {
   // The RTOS idle task executes WFI (wait-for-interrupt) during delay(),
   // dramatically reducing CPU power draw.  50 ms gives 20 loop cycles/sec
   // which is ample for LoRa packet reception (radio has hardware FIFO).
-#if defined(LilyGo_T5S3_EPaper_Pro) || defined(LilyGo_TDeck_Pro)
+#if defined(LilyGo_TDeck_Pro)
   if (ui_task.isLocked()) {
     delay(50);
   }
@@ -6432,169 +5428,3 @@ void audio_eof_mp3(const char *info) {
 #endif // !HAS_4G_MODEM
 
 #endif // LilyGo_TDeck_Pro
-
-// ============================================================================
-// CARDKB COMPOSE FUNCTIONS (T-Echo Lite)
-// ============================================================================
-#if defined(MECK_CARDKB)
-
-void drawCardKBCompose() {
-  #ifdef DISPLAY_CLASS
-  display.startFrame();
-  display.setTextSize(1);
-  display.setColor(DisplayDriver::GREEN);
-  display.setCursor(0, 0);
-
-  // Header: "To: channel" or "DM: contact"
-  char headerBuf[40];
-  if (ckbComposeDM) {
-    snprintf(headerBuf, sizeof(headerBuf), "DM: %s", ckbComposeDMName);
-  } else {
-    ChannelDetails channel;
-    if (the_mesh.getChannel(ckbComposeChIdx, channel)) {
-      snprintf(headerBuf, sizeof(headerBuf), "To: %s", channel.name);
-    } else {
-      snprintf(headerBuf, sizeof(headerBuf), "To: Channel %d", ckbComposeChIdx);
-    }
-  }
-  display.print(headerBuf);
-
-  display.setColor(DisplayDriver::LIGHT);
-  display.drawRect(0, 11, display.width(), 1);
-
-  // Body: word-wrapped compose buffer
-  int y = 14;
-  int px = 0;
-  int lineW = display.width();
-  char charStr[2] = {0, 0};
-  char dblStr[3] = {0, 0, 0};
-  bool atWordBoundary = true;
-
-  display.setCursor(0, y);
-  display.setColor(DisplayDriver::LIGHT);
-
-  for (int i = 0; i < ckbComposePos; i++) {
-    uint8_t b = (uint8_t)ckbComposeBuf[i];
-
-    // Word wrap: check if next word fits on this line
-    if (atWordBoundary && b != ' ' && px > 0) {
-      int wordW = 0;
-      for (int j = i; j < ckbComposePos; j++) {
-        uint8_t wb = (uint8_t)ckbComposeBuf[j];
-        if (wb == ' ') break;
-        dblStr[0] = dblStr[1] = (char)wb;
-        charStr[0] = (char)wb;
-        wordW += display.getTextWidth(dblStr) - display.getTextWidth(charStr);
-      }
-      if (px + wordW > lineW) {
-        px = 0;
-        y += 12;
-      }
-    }
-
-    if (b == ' ') {
-      charStr[0] = ' ';
-      dblStr[0] = dblStr[1] = ' ';
-      int adv = display.getTextWidth(dblStr) - display.getTextWidth(charStr);
-      if (px + adv > lineW) {
-        px = 0;
-        y += 12;
-      } else {
-        display.setCursor(px, y);
-        display.print(charStr);
-        px += adv;
-      }
-      atWordBoundary = true;
-    } else {
-      charStr[0] = (char)b;
-      dblStr[0] = dblStr[1] = (char)b;
-      int adv = display.getTextWidth(dblStr) - display.getTextWidth(charStr);
-      if (px + adv > lineW) {
-        px = 0;
-        y += 12;
-      }
-      display.setCursor(px, y);
-      display.print(charStr);
-      px += adv;
-      atWordBoundary = false;
-    }
-  }
-
-  // Cursor
-  display.setCursor(px, y);
-  display.print("_");
-
-  // Footer status bar
-  int statusY = display.height() - 12;
-  display.setColor(DisplayDriver::LIGHT);
-  display.drawRect(0, statusY - 2, display.width(), 1);
-  display.setCursor(0, statusY);
-  display.setColor(DisplayDriver::YELLOW);
-
-  char status[32];
-  if (ckbComposePos == 0) {
-    display.print("Esc:Cancel");
-  } else {
-    snprintf(status, sizeof(status), "Esc:X %d/137", ckbComposePos);
-    display.print(status);
-  }
-  const char* rt = "Ent:Send";
-  display.setCursor(display.width() - display.getTextWidth(rt) - 2, statusY);
-  display.print(rt);
-
-  display.endFrame();
-  #endif
-}
-
-void sendCardKBMessage() {
-  if (ckbComposePos == 0) return;
-
-  cpuPower.setBoost();
-
-  if (ckbComposeDM) {
-    // Direct message
-    if (ckbComposeDMIdx >= 0) {
-      uint32_t sendRef = 0;
-      uint8_t sendTotal = 0;
-      if (the_mesh.uiSendDirectMessage((uint32_t)ckbComposeDMIdx, ckbComposeBuf, &sendRef, &sendTotal)) {
-        ui_task.addSentDM(ckbComposeDMName, the_mesh.getNodePrefs()->node_name, ckbComposeBuf,
-                          sendRef, sendTotal);
-        ui_task.showAlert("DM sent!", 1500);
-      } else {
-        ui_task.showAlert("DM failed!", 1500);
-      }
-    } else {
-      ui_task.showAlert("No contact!", 1500);
-    }
-  } else {
-    // Channel message
-    ChannelDetails channel;
-    if (the_mesh.getChannel(ckbComposeChIdx, channel)) {
-      uint32_t timestamp = rtc_clock.getCurrentTime();
-      int len = strlen(ckbComposeBuf);
-
-      if (the_mesh.sendGroupMessage(timestamp, channel.channel,
-                                     the_mesh.getNodePrefs()->node_name,
-                                     ckbComposeBuf, len)) {
-        ui_task.addSentChannelMessage(ckbComposeChIdx,
-                                       the_mesh.getNodePrefs()->node_name,
-                                       ckbComposeBuf);
-        the_mesh.queueSentChannelMessage(ckbComposeChIdx, timestamp,
-                                          the_mesh.getNodePrefs()->node_name,
-                                          ckbComposeBuf);
-        ui_task.showAlert("Sent!", 1500);
-      } else {
-        ui_task.showAlert("Send failed!", 1500);
-      }
-    } else {
-      ui_task.showAlert("No channel!", 1500);
-    }
-  }
-
-  ckbComposeMode = false;
-  ckbComposeBuf[0] = '\0';
-  ckbComposePos = 0;
-  ui_task.forceRefresh();
-}
-
-#endif // MECK_CARDKB

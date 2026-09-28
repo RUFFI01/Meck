@@ -268,18 +268,6 @@ set gps.baud 0
 
 Valid rates: 0 (default), 4800, 9600, 19200, 38400, 57600, 115200.
 
-#### Backlight (T5S3 E-Paper Pro Only)
-
-Control the front-light on the T5S3 display:
-
-```
-set backlight on
-set backlight off
-set backlight 128
-```
-
-Values: `on`, `off`, or a brightness level from 0–255.
-
 ### Channel Management
 
 #### List Channels
@@ -413,7 +401,7 @@ set apn
 
 ### Clock Sync
 
-Set the device's real-time clock from a Unix timestamp. This is especially important for the T5S3 E-Paper Pro which has no GPS to auto-set the clock. These are standalone commands (not `get`/`set` prefixed) — matching the same `clock sync` command used on MeshCore repeaters.
+Set the device's real-time clock from a Unix timestamp. These are standalone commands (not `get`/`set` prefixed) — matching the same `clock sync` command used on MeshCore repeaters.
 
 #### View Current Time
 
@@ -455,9 +443,9 @@ clock sync 1773554535
 
 **Tip:** On macOS/Linux, run `date +%s` to get the current epoch. On Windows PowerShell: `[int](Get-Date -UFormat %s)`.
 
-#### Boot-Time Auto-Sync (T5S3)
+#### Boot-Time Auto-Sync
 
-When the T5S3 boots with no valid RTC time and detects a USB serial host is connected, it sends a `MECK_CLOCK_REQ` handshake over serial. If you're using PlatformIO's serial monitor (`pio device monitor`), the built-in `clock_sync` monitor filter responds automatically with the host computer's current time — no user action required. The sync appears transparently in the boot log:
+When the device boots with no valid RTC time and detects a USB serial host is connected, it sends a `MECK_CLOCK_REQ` handshake over serial. If you're using PlatformIO's serial monitor (`pio device monitor`), the built-in `clock_sync` monitor filter responds automatically with the host computer's current time — no user action required. The sync appears transparently in the boot log:
 
 ```
 MECK_CLOCK_REQ

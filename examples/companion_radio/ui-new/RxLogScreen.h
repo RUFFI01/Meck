@@ -184,11 +184,7 @@ public:
     display.drawRect(0, footerY - 2, display.width(), 1);
     display.setColor(DisplayDriver::YELLOW);
     display.setCursor(0, footerY);
-#if defined(LilyGo_T5S3_EPaper_Pro)
-    display.print("Swipe:Scroll");
-#else
     display.print("Q:Bk  W/S:Scroll");
-#endif
 
     return 5000;  // refresh every 5s to pick up newly received packets
   }
