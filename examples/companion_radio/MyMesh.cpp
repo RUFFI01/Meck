@@ -482,31 +482,9 @@ void MyMesh::onDiscoveredContact(ContactInfo &contact, bool is_new, uint8_t path
     p->path_len = mesh::Packet::copyPath(p->path, path, path_len);
   }
 
-  // Buffer for on-device discovery UI
-  if (_discoveryActive && _discoveredCount < MAX_DISCOVERED_NODES) {
-    bool dup = false;
-    for (int i = 0; i < _discoveredCount; i++) {
-      if (contact.id.matches(_discovered[i].contact.id)) {
-        // Update existing entry with fresher data
-        _discovered[i].contact = contact;
-        _discovered[i].path_len = path_len;
-        _discovered[i].already_in_contacts = !is_new;
-        // Preserve snr if already set by active discovery response
-        dup = true;
-        Serial.printf("[Discovery] Updated: %s (hops=%d)\n", contact.name, path_len);
-        break;
-      }
-    }
-    if (!dup) {
-      _discovered[_discoveredCount].contact = contact;
-      _discovered[_discoveredCount].path_len = path_len;
-      _discovered[_discoveredCount].snr = 0;  // no SNR from passive advert
-      _discovered[_discoveredCount].already_in_contacts = !is_new;
-      _discoveredCount++;
-      Serial.printf("[Discovery] Found: %s (hops=%d, is_new=%d, total=%d)\n",
-                    contact.name, path_len, is_new, _discoveredCount);
-    }
-  }
+  // Discovery list is strictly tag-validated CTL_TYPE_NODE_DISCOVER_RESP
+  // entries (see onControlDataRecv). Passive adverts heard during the scan
+  // window are not listed.
 
   if (!is_new) dirty_contacts_expiry = futureMillis(LAZY_CONTACTS_WRITE_DELAY); // only schedule lazy write for contacts that are in contacts[]
 }
