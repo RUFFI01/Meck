@@ -291,6 +291,10 @@ public:
   // Check if home screen is showing the Recent Adverts page
   bool isHomeOnRecentPage() const;
   bool isHomeOnShutdownPage() const;
+  // Check if home screen is showing the Timezones (world clock) page
+  bool isHomeOnTimezonesPage() const;
+  // Touch long-press on the Timezones page: select the zone row at virtual y
+  void selectHomeTimezoneRowAt(int vy);
 
   // Inject a key press from external source (e.g., keyboard)
   void injectKey(char c);

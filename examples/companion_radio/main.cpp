@@ -1569,6 +1569,14 @@ static void openMapScreen() {
     // Home screen: long press = activate current page action
     // (BLE toggle, send advert, hibernate, GPS toggle, etc.)
     if (ui_task.isOnHomeScreen()) {
+      // Timezones page: select the zone row under the finger first, so the
+      // Enter opens that row's editor. While the editor is open the row is
+      // left alone and the Enter saves.
+      if (ui_task.isHomeOnTimezonesPage()) {
+        int vx, vy;
+        touchToVirtual(x, y, vx, vy);
+        ui_task.selectHomeTimezoneRowAt(vy);
+      }
       return (char)KEY_ENTER;
     }
 
@@ -4647,6 +4655,7 @@ void handleKeyboardInput() {
           || ui_task.isOnAlarmScreen()
 #endif
           || ui_task.isHomeOnShutdownPage()
+          || ui_task.isHomeOnTimezonesPage()
           || ui_task.isOnRxLogScreen()
          ) {
         ui_task.injectKey('s');  // Pass directly for scrolling
@@ -4696,6 +4705,7 @@ void handleKeyboardInput() {
 #ifdef MECK_AUDIO_VARIANT
           || ui_task.isOnAlarmScreen()
 #endif
+          || ui_task.isHomeOnTimezonesPage()
           || ui_task.isOnRxLogScreen()
          ) {
         ui_task.injectKey('w');  // Pass directly for scrolling

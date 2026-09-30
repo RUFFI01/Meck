@@ -161,6 +161,7 @@ class HomeScreen : public UIScreen {
     BATTERY,
 #endif
     SHUTDOWN,
+    TIMEZONES,  // world clock; last page, so A or a right swipe from the tiles reaches it
     Count    // keep as last
   };
 
@@ -176,6 +177,11 @@ class HomeScreen : public UIScreen {
   bool _poweroff_msg_shown;    // true = "powering off..." already displayed once
   bool _editing_utc;
   int8_t _saved_utc_offset;  // for cancel/undo
+  // Timezones page: selected row (0 = Home, 1 = Zone 1, 2 = Zone 2) and
+  // the zone offset editor, which holds the edited value until saved.
+  uint8_t _tz_sel;
+  bool _tz_editing;
+  int8_t _tz_edit_val;
 
   AdvertPath recent[UI_RECENT_LIST_SIZE];
 
@@ -284,6 +290,156 @@ void renderBatteryIndicator(DisplayDriver& display, uint16_t batteryMilliVolts, 
   }
 #endif
 
+  // ==========================================================================
+  // Timezones home page (world clock) -- ported from the watch and Meck-P4
+  //
+  // Row 0 = Home (the device utc_offset_hours), rows 1/2 = the two saved
+  // zones (prefs clock_slot_a/b). Each row shows the zone label and offset,
+  // the local HH:MM, a +/-1D day marker when the zone sits on a different
+  // calendar day to Home, and city codes for the offset (table copied from
+  // Meck-P4, which copied it from the watch). W/S or a long-press picks a
+  // row and Enter opens its offset editor; in the editor W/S or taps adjust
+  // the offset, Enter or a long-press saves, Q cancels. Editing Home
+  // changes the device UTC offset, as on the watch and P4.
+  // ==========================================================================
+
+  // Row 0 label y and row pitch, in virtual coordinates. Also used by
+  // selectTimezoneRowAt() for the touch long-press hit test.
+  enum { TZ_ROW_TOP = 16, TZ_ROW_H = 34 };
+
+  static const char* tzRowLabel(int r) {
+    return (r == 1) ? "Zone 1" : (r == 2) ? "Zone 2" : "Home";
+  }
+
+  static const char* tzCities(int8_t off) {
+    static const char* const CITIES[27] = {
+      "BIT/HWL",      /* -12 */  "PPG/NIU/MDY",  /* -11 */  "HNL/PPT/RAR",  /* -10 */
+      "ANC/JNU",      /*  -9 */  "LAX/VAN/SEA",  /*  -8 */  "PHX/HMO/MZT",  /*  -7 */
+      "MEX/REG/GUA",  /*  -6 */  "BOG/LIM/PTY",  /*  -5 */  "CCS/LPB/SDQ",  /*  -4 */
+      "BUE/SAO/MVD",  /*  -3 */  "FEN/SGS",      /*  -2 */  "RAI/PDL",      /*  -1 */
+      "REY/ACC/DKR",  /*   0 */  "LOS/ALG/TUN",  /*  +1 */  "JNB/KRT/HRE",  /*  +2 */
+      "NBO/MOW/ADD",  /*  +3 */  "DXB/BAK/TBS",  /*  +4 */  "KHI/TAS/SVX",  /*  +5 */
+      "DAC/ALA/OMS",  /*  +6 */  "BKK/JKT/HAN",  /*  +7 */  "PER/BEI/HKG",  /*  +8 */
+      "TYO/SEL/YKS",  /*  +9 */  "BNE/POM/VLA",  /* +10 */  "NOU/HIR/VLI",  /* +11 */
+      "SUV/TRW/MAJ",  /* +12 */  "TBU/APW",      /* +13 */  "CXI"           /* +14 */
+    };
+    int i = (int)off + 12;
+    if (i < 0 || i > 26) return "";
+    return CITIES[i];
+  }
+
+  int8_t tzRowOffset(int r) const {
+    if (r == 1) return _node_prefs->clock_slot_a;
+    if (r == 2) return _node_prefs->clock_slot_b;
+    return _node_prefs->utc_offset_hours;
+  }
+
+  // Same clock-validity test as the header clock: before the clock is set
+  // the page shows "Clock not set" and its keys do nothing.
+  bool tzClockValid() const { return _rtc->getCurrentTime() > 1700000000; }
+
+  void renderTimezonesPage(DisplayDriver& display) {
+    char buf[24];
+
+    if (_tz_editing) {
+      // Offset editor, laid out like the watch's edit page: row name, the
+      // offset being edited, its city codes, then the key and touch hints.
+      display.setTextSize(1);
+      display.setColor(DisplayDriver::GREEN);
+      display.drawTextCentered(display.width() / 2, 18, tzRowLabel(_tz_sel));
+      display.setTextSize(5);
+      display.setColor(DisplayDriver::LIGHT);
+      snprintf(buf, sizeof(buf), "UTC%+d", (int)_tz_edit_val);
+      display.drawTextCentered(display.width() / 2, 48, buf);
+      display.setTextSize(1);
+      display.setColor(DisplayDriver::GREEN);
+      display.drawTextCentered(display.width() / 2, 64, tzCities(_tz_edit_val));
+      display.setTextSize(_node_prefs->smallTextSize());
+      display.drawTextCentered(display.width() / 2, 84, "W/S:adj Enter:ok Q:cancel");
+      display.drawTextCentered(display.width() / 2, 96, "Tap:-/+  Hold:save");
+      display.setTextSize(1);
+      return;
+    }
+
+    if (!tzClockValid()) {
+      display.setTextSize(1);
+      display.setColor(DisplayDriver::GREEN);
+      display.drawTextCentered(display.width() / 2, 50, "Clock not set");
+      return;
+    }
+
+    const uint32_t now = _rtc->getCurrentTime();
+    const int32_t home_local = (int32_t)now + ((int32_t)tzRowOffset(0) * 3600);
+    for (int r = 0; r < 3; r++) {
+      const int ry = TZ_ROW_TOP + r * TZ_ROW_H;
+      const int8_t off = tzRowOffset(r);
+      const int32_t local = (int32_t)now + ((int32_t)off * 3600);
+      int hrs = (local / 3600) % 24;
+      if (hrs < 0) hrs += 24;
+      int mins = (local / 60) % 60;
+      if (mins < 0) mins += 60;
+
+      // Label line: selection marker, zone name and offset
+      display.setTextSize(1);
+      display.setColor(DisplayDriver::GREEN);
+      if (r == _tz_sel) display.drawTextLeftAlign(0, ry, ">");
+      snprintf(buf, sizeof(buf), "%s UTC%+d", tzRowLabel(r), (int)off);
+      display.drawTextLeftAlign(7, ry, buf);
+
+      // Local time, large
+      display.setTextSize(5);
+      display.setColor(DisplayDriver::LIGHT);
+      snprintf(buf, sizeof(buf), "%02d:%02d", hrs, mins);
+      display.drawTextCentered(display.width() / 2, ry + 17, buf);
+
+      // Day marker (left) and city codes (right) under the time
+      display.setTextSize(1);
+      display.setColor(DisplayDriver::GREEN);
+      const int dayDiff = (int)((local / 86400) - (home_local / 86400));
+      if (dayDiff != 0) {
+        snprintf(buf, sizeof(buf), "%+dD", dayDiff);
+        display.drawTextLeftAlign(7, ry + 27, buf);
+      }
+      display.drawTextRightAlign(display.width() - 1 - EINK_X_OFFSET, ry + 27, tzCities(off));
+    }
+  }
+
+  // Keys on the Timezones page. Returns true when the key is used here;
+  // anything else falls through to the page cycling in handleInput().
+  // Keyboard W/S arrive as 'w'/'s' because main.cpp passes them through on
+  // this page (as it passes S through on the Hibernate page). Touch taps
+  // arrive as KEY_PREV (left half) / KEY_NEXT (right half) and a long-press
+  // as KEY_ENTER, after selectTimezoneRowAt() has picked the row.
+  bool handleTimezonesKey(char c) {
+    if (_tz_editing) {
+      // Zone offset editor: intercept all keys. Q and Shift+Del never get
+      // here: main.cpp sends them to UITask::gotoHomeScreen(), whose
+      // cancelEditing() closes the editor without saving.
+      if (c == 'w' || c == KEY_NEXT) {
+        if (_tz_edit_val < 14) _tz_edit_val++;
+      } else if (c == 's' || c == KEY_PREV) {
+        if (_tz_edit_val > -12) _tz_edit_val--;
+      } else if (c == KEY_ENTER) {
+        if (_tz_sel == 1)      _node_prefs->clock_slot_a = _tz_edit_val;
+        else if (_tz_sel == 2) _node_prefs->clock_slot_b = _tz_edit_val;
+        else                   _node_prefs->utc_offset_hours = _tz_edit_val;
+        the_mesh.savePrefs();
+        Serial.printf("Timezones: %s = UTC%+d\n", tzRowLabel(_tz_sel), (int)_tz_edit_val);
+        _tz_editing = false;
+      }
+      return true;
+    }
+    if (!tzClockValid()) return false;
+    if (c == 'w') { _tz_sel = (_tz_sel + 2) % 3; return true; }
+    if (c == 's') { _tz_sel = (_tz_sel + 1) % 3; return true; }
+    if (c == KEY_ENTER) {
+      _tz_edit_val = tzRowOffset(_tz_sel);
+      _tz_editing = true;
+      return true;
+    }
+    return false;
+  }
+
   CayenneLPP sensors_lpp;
   int sensors_nb = 0;
   bool sensors_scroll = false;
@@ -315,17 +471,34 @@ public:
   HomeScreen(UITask* task, mesh::RTCClock* rtc, SensorManager* sensors, NodePrefs* node_prefs)
      : _task(task), _rtc(rtc), _sensors(sensors), _node_prefs(node_prefs), _page(0), 
        _shutdown_init(false), _shutdown_at(0), _poweroff_selected(false), _poweroff_confirm(false),
-       _poweroff_msg_shown(false), _editing_utc(false), _saved_utc_offset(0), sensors_lpp(200) {  }
+       _poweroff_msg_shown(false), _editing_utc(false), _saved_utc_offset(0),
+       _tz_sel(0), _tz_editing(false), _tz_edit_val(0), sensors_lpp(200) {  }
 
   bool isEditingUTC() const { return _editing_utc; }
   bool isFirstPage() const { return _page == HomePage::FIRST; }
   bool isOnRecentPage() const { return _page == HomePage::RECENT; }
   bool isOnShutdownPage() const { return _page == HomePage::SHUTDOWN; }
+  bool isOnTimezonesPage() const { return _page == HomePage::TIMEZONES; }
+  bool isEditingTimezone() const { return _tz_editing; }
+  // Touch long-press on the Timezones page (main.cpp mapTouchLongPress):
+  // select the zone row under the finger before the Enter that opens its
+  // editor. vy comes from touchToVirtual(), which lands 5 units below the
+  // render y of the same point (setCursor adds 5), so row r's label, time
+  // and city codes sit in the band from TZ_ROW_TOP + r * TZ_ROW_H to the
+  // next row's.
+  void selectTimezoneRowAt(int vy) {
+    if (_tz_editing) return;  // in the editor a long-press saves instead
+    int r = (vy - TZ_ROW_TOP) / TZ_ROW_H;
+    if (vy < TZ_ROW_TOP) r = 0;
+    if (r > 2) r = 2;
+    _tz_sel = (uint8_t)r;
+  }
   void cancelEditing() { 
     if (_editing_utc) {
       _node_prefs->utc_offset_hours = _saved_utc_offset;
       _editing_utc = false;
     }
+    _tz_editing = false;  // Timezones zone editor: discard the unsaved value
   }
 
   void poll() override {
@@ -1089,7 +1262,10 @@ public:
         display.drawTextCentered(display.width() / 2, y2, line2);
       }
     }
-    return _editing_utc ? 700 : 5000;
+    else if (_page == HomePage::TIMEZONES) {
+      renderTimezonesPage(display);
+    }
+    return (_editing_utc || _tz_editing) ? 700 : 5000;
   }
 
   bool handleInput(char c) override {
@@ -1125,6 +1301,13 @@ public:
         return true;
       }
       return true;  // Consume all other keys while editing
+    }
+
+    // Timezones page: W/S row select, Enter to edit, and the zone editor's
+    // keys (see handleTimezonesKey). Keys it does not use fall through to
+    // the page cycling below.
+    if (_page == HomePage::TIMEZONES && handleTimezonesKey(c)) {
+      return true;
     }
 
     // SHUTDOWN page -- intercept up/down and Enter before page cycling
@@ -2408,7 +2591,8 @@ void UITask::gotoHomeScreen() {
 }
 
 bool UITask::isEditingHomeScreen() const {
-  return curr == home && ((HomeScreen *) home)->isEditingUTC();
+  return curr == home && (((HomeScreen *) home)->isEditingUTC() ||
+                          ((HomeScreen *) home)->isEditingTimezone());
 }
 
 bool UITask::isHomeOnRecentPage() const {
@@ -2417,6 +2601,14 @@ bool UITask::isHomeOnRecentPage() const {
 
 bool UITask::isHomeOnShutdownPage() const {
   return curr == home && ((HomeScreen *) home)->isOnShutdownPage();
+}
+
+bool UITask::isHomeOnTimezonesPage() const {
+  return curr == home && ((HomeScreen *) home)->isOnTimezonesPage();
+}
+
+void UITask::selectHomeTimezoneRowAt(int vy) {
+  if (curr == home) ((HomeScreen *) home)->selectTimezoneRowAt(vy);
 }
 
 void UITask::gotoChannelScreen(bool resetDmView) {

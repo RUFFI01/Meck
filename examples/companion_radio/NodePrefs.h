@@ -87,8 +87,15 @@ struct NodePrefs {  // persisted to file
   // Ten pre-written messages, edited in Settings -> Canned Messages and sent
   // from the channel screen (Max: speech-bubble capacitive button). Each slot
   // holds up to 133 chars + NUL; an empty string marks an unused slot. Older
-  // prefs files short-read this final field and keep the all-empty default.
+  // prefs files short-read this field and keep the all-empty default.
   char canned_msgs[CANNED_MSG_SLOTS][CANNED_MSG_LEN];
+
+  // --- Timezones home page (world clock) ---
+  // UTC offsets (-12..+14) of the page's two extra zones; its Home row is
+  // utc_offset_hours. Older prefs files short-read these final fields and
+  // keep the default 0 (UTC+0).
+  int8_t clock_slot_a;             // Zone 1 UTC offset, default 0
+  int8_t clock_slot_b;             // Zone 2 UTC offset, default 0
 
   // --- Font helpers (inline, no overhead) ---
   // Returns the DisplayDriver text-size index for "small/body" text.
