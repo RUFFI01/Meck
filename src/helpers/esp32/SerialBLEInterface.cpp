@@ -11,6 +11,15 @@
 
 #define ADVERT_RESTART_DELAY  1000   // millis
 
+// BLE transmit power for connections, advertising and scanning: +9 dBm unless
+// a build sets another esp_power_level_t level with a flag, for example
+//   -D MECK_BLE_TX_POWER=ESP_PWR_LVL_P15
+// (the ESP32-S3 levels in esp_bt.h run from ESP_PWR_LVL_N24 to ESP_PWR_LVL_P21
+// in 3 dB steps).
+#ifndef MECK_BLE_TX_POWER
+#define MECK_BLE_TX_POWER  ESP_PWR_LVL_P9
+#endif
+
 #ifdef MECK_BLE_SMALL_MTU_SPLIT
 // Slice tags for small-MTU peers. No real frame can start with one of these:
 // command codes are below 0x80 and push codes stop at 0x90. When slicing is in
@@ -55,10 +64,11 @@ void SerialBLEInterface::_realBegin() {
   BLEDevice::setSecurityCallbacks(this);
   BLEDevice::setMTU(MAX_FRAME_SIZE);
 
-  // Boost BLE TX power for improved range (+9 dBm, up from default +3 dBm)
-  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, ESP_PWR_LVL_P9);
-  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, ESP_PWR_LVL_P9);
-  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_SCAN, ESP_PWR_LVL_P9);
+  // Boost BLE TX power for improved range (MECK_BLE_TX_POWER above: +9 dBm
+  // unless the build sets another level; up from default +3 dBm)
+  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, MECK_BLE_TX_POWER);
+  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, MECK_BLE_TX_POWER);
+  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_SCAN, MECK_BLE_TX_POWER);
 
   BLESecurity  sec;
   sec.setStaticPIN(_pin_code);
