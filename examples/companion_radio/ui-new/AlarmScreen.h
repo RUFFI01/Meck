@@ -482,7 +482,11 @@ private:
       // Selection highlight
       if (idx == _selectedSlot) {
         display.setColor(DisplayDriver::LIGHT);
-        display.fillRect(0, y + 5, display.width(), itemHeight - 1);
+        // Size-0 text: the built-in Classic font draws below the cursor
+        // (offset 5); the Noto/Montserrat 7pt fonts draw up from a baseline
+        // (offset 0). Same values as NodePrefs::smallHighlightOff() gives at the
+        // tiny size; this screen's list text is always size 0.
+        display.fillRect(0, y + (display.getFontStyle() > 0 ? 0 : 5), display.width(), itemHeight - 1);
         display.setColor(DisplayDriver::DARK);
       } else {
         display.setColor(slot.enabled ? DisplayDriver::GREEN : DisplayDriver::LIGHT);
@@ -587,7 +591,11 @@ private:
 
       if (f == (int)_editField) {
         display.setColor(DisplayDriver::LIGHT);
-        display.fillRect(0, fy + 5, display.width(), lineH - 1);
+        // Size-0 text: the built-in Classic font draws below the cursor
+        // (offset 5); the Noto/Montserrat 7pt fonts draw up from a baseline
+        // (offset 0). Same values as NodePrefs::smallHighlightOff() gives at the
+        // tiny size; this screen's list text is always size 0.
+        display.fillRect(0, fy + (display.getFontStyle() > 0 ? 0 : 5), display.width(), lineH - 1);
         display.setColor(DisplayDriver::DARK);
       } else {
         display.setColor(DisplayDriver::LIGHT);
@@ -691,7 +699,11 @@ private:
 
       if (idx == _soundSelected) {
         display.setColor(DisplayDriver::LIGHT);
-        display.fillRect(0, y + 5, display.width(), itemHeight - 1);
+        // Size-0 text: the built-in Classic font draws below the cursor
+        // (offset 5); the Noto/Montserrat 7pt fonts draw up from a baseline
+        // (offset 0). Same values as NodePrefs::smallHighlightOff() gives at the
+        // tiny size; this screen's list text is always size 0.
+        display.fillRect(0, y + (display.getFontStyle() > 0 ? 0 : 5), display.width(), itemHeight - 1);
         display.setColor(DisplayDriver::DARK);
       } else {
         display.setColor(DisplayDriver::LIGHT);

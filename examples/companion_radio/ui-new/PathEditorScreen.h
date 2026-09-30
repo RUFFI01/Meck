@@ -281,7 +281,11 @@ public:
 
       if (selected) {
         display.setColor(DisplayDriver::LIGHT);
-        display.fillRect(0, y + 5, display.width(), lineH);
+        // Size-0 text: the built-in Classic font draws below the cursor
+        // (offset 5); the Noto/Montserrat 7pt fonts draw up from a baseline
+        // (offset 0). Same values as NodePrefs::smallHighlightOff() gives at the
+        // tiny size; this screen's list text is always size 0.
+        display.fillRect(0, y + (display.getFontStyle() > 0 ? 0 : 5), display.width(), lineH);
         display.setColor(DisplayDriver::DARK);
       } else {
         display.setColor(DisplayDriver::LIGHT);
@@ -423,7 +427,11 @@ public:
 
         if (selected) {
           display.setColor(DisplayDriver::LIGHT);
-          display.fillRect(0, y + 5, display.width(), lineH);
+          // Size-0 text: the built-in Classic font draws below the cursor
+          // (offset 5); the Noto/Montserrat 7pt fonts draw up from a baseline
+          // (offset 0). Same values as NodePrefs::smallHighlightOff() gives at the
+          // tiny size; this screen's list text is always size 0.
+          display.fillRect(0, y + (display.getFontStyle() > 0 ? 0 : 5), display.width(), lineH);
           display.setColor(DisplayDriver::DARK);
         } else {
           display.setColor(DisplayDriver::LIGHT);

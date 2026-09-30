@@ -2430,7 +2430,13 @@ public:
           bool sel = (wi == _wifiSSIDSelected);
           if (sel) {
             display.setColor(DisplayDriver::LIGHT);
-            display.fillRect(bx + 2, wy + 5, bw - 4, 8);
+            // Row text follows the Tiny/Large setting. Tiny: the built-in
+            // Classic font draws below the cursor (offset 5), the
+            // Noto/Montserrat 7pt fonts draw up from a baseline (offset 0), as
+            // NodePrefs::smallHighlightOff() gives. Large: 9pt text draws up
+            // from a baseline in every font; with these rows only 8 apart, -1
+            // fits all three fonts (the helper's -2 suits its 11-unit rows).
+            display.fillRect(bx + 2, wy + (_prefs->large_font ? -1 : (display.getFontStyle() > 0 ? 0 : 5)), bw - 4, 8);
             display.setColor(DisplayDriver::DARK);
           } else {
             display.setColor(DisplayDriver::LIGHT);
