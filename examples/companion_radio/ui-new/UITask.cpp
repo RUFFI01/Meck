@@ -30,6 +30,12 @@
 #if defined(WIFI_SSID) || defined(MECK_WIFI_COMPANION)
   #include <WiFi.h>
 #endif
+#if defined(BLE_PIN_CODE) && defined(MECK_WIFI_COMPANION)
+  // Combined BLE + WiFi companion (meck_max_ble_wifi): defined in main.cpp
+  extern bool meckCompanionIsBLE();
+  extern bool meckCompanionUseBLE();
+  extern void meckCompanionUseNone();
+#endif
 
 #ifndef AUTO_OFF_MILLIS
   #define AUTO_OFF_MILLIS     15000   // 15 seconds
@@ -147,7 +153,8 @@ class HomeScreen : public UIScreen {
     RADIO,
 #ifdef BLE_PIN_CODE
     BLUETOOTH,
-#elif defined(MECK_WIFI_COMPANION)
+#endif
+#ifdef MECK_WIFI_COMPANION
     WIFI_STATUS,
 #endif
     ADVERT,
@@ -697,7 +704,12 @@ public:
             }
           }
       #endif
-      #ifdef BLE_PIN_CODE
+      #if defined(BLE_PIN_CODE) && defined(MECK_WIFI_COMPANION)
+          // Combined build: show the PIN only while Bluetooth is the connection
+          if (rightBuf[0] == 0 && meckCompanionIsBLE() && _task->isSerialEnabled() && the_mesh.getBLEPin() != 0) {
+            sprintf(rightBuf, "Pin:%d", the_mesh.getBLEPin());
+          }
+      #elif defined(BLE_PIN_CODE)
           if (rightBuf[0] == 0 && _task->isSerialEnabled() && the_mesh.getBLEPin() != 0) {
             sprintf(rightBuf, "Pin:%d", the_mesh.getBLEPin());
           }
@@ -946,7 +958,30 @@ public:
       display.setCursor(0, 64);
       sprintf(tmp, "RX packets: %u", (unsigned)the_mesh.getRxPacketCount());
       display.print(tmp);
-#ifdef BLE_PIN_CODE
+#if defined(BLE_PIN_CODE) && defined(MECK_WIFI_COMPANION)
+    } else if (_page == HomePage::BLUETOOTH) {
+      // Combined build: Bluetooth counts as on only while it is the
+      // connection, not while WiFi is
+      bool btOn = meckCompanionIsBLE() && _task->isSerialEnabled();
+      display.setColor(DisplayDriver::GREEN);
+      display.drawXbm((display.width() - 32) / 2, 18,
+          btOn ? bluetooth_on : bluetooth_off,
+          32, 32);
+      if (btOn && _task->hasConnection()) {
+        display.setColor(DisplayDriver::GREEN);
+        display.setTextSize(1);
+        display.drawTextCentered(display.width() / 2, 53, "< Connected >");
+      } else if (btOn && the_mesh.getBLEPin() != 0) {
+        display.setColor(DisplayDriver::RED);
+        display.setTextSize(2);
+        sprintf(tmp, "Pin:%d", the_mesh.getBLEPin());
+        display.drawTextCentered(display.width() / 2, 53, tmp);
+      }
+      display.setColor(DisplayDriver::GREEN);
+      display.setTextSize(1);
+      display.drawTextCentered(display.width() / 2, 68, "toggle: " PRESS_LABEL);
+      display.drawTextCentered(display.width() / 2, 78, "or press Enter key");
+#elif defined(BLE_PIN_CODE)
     } else if (_page == HomePage::BLUETOOTH) {
       display.setColor(DisplayDriver::GREEN);
       display.drawXbm((display.width() - 32) / 2, 18,
@@ -1356,7 +1391,18 @@ public:
       }
       return true;
     }
-#ifdef BLE_PIN_CODE
+#if defined(BLE_PIN_CODE) && defined(MECK_WIFI_COMPANION)
+    if (c == KEY_ENTER && _page == HomePage::BLUETOOTH) {
+      // Combined build: Bluetooth on turns WiFi off; Bluetooth off leaves
+      // neither on. Once the Web Reader has freed Bluetooth, it needs a reboot.
+      if (meckCompanionIsBLE()) {
+        meckCompanionUseNone();
+      } else if (!meckCompanionUseBLE()) {
+        _task->showAlert("Reboot for Bluetooth", 1500);
+      }
+      return true;
+    }
+#elif defined(BLE_PIN_CODE)
     if (c == KEY_ENTER && _page == HomePage::BLUETOOTH) {
       if (_task->isSerialEnabled()) {  // toggle Bluetooth on/off
         _task->disableSerial();

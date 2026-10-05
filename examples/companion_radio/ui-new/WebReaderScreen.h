@@ -5141,7 +5141,17 @@ public:
     if (_tlsClient) { delete _tlsClient; _tlsClient = nullptr; }
     _tlsHost = String();
 
-  #ifdef MECK_WIFI_COMPANION
+  #if defined(BLE_PIN_CODE) && defined(MECK_WIFI_COMPANION)
+    // Combined build: keep WiFi up only if it is the companion connection
+    extern bool meckCompanionIsWiFi();
+    if (meckCompanionIsWiFi()) {
+      _wifiState = WIFI_CONNECTED;  // WiFi is still up
+    } else {
+      WiFi.disconnect(true);
+      WiFi.mode(WIFI_OFF);
+      _wifiState = WIFI_IDLE;
+    }
+  #elif defined(MECK_WIFI_COMPANION)
     // WiFi companion: keep WiFi alive for the companion TCP server.
     // Don't disconnect or change mode — just reset our internal state.
     _wifiState = WIFI_CONNECTED;  // WiFi is still up

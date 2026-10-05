@@ -815,6 +815,20 @@ static uint32_t _atoi(const char* sp) {
     #ifndef TCP_PORT
       #define TCP_PORT 5000
     #endif
+  #elif defined(BLE_PIN_CODE) && defined(MECK_WIFI_COMPANION)
+    // Combined BLE + WiFi companion (meck_max_ble_wifi test build): both
+    // connections built in, both off at boot, one on at a time.
+    #include <WiFi.h>
+    #include <helpers/esp32/SerialBLEInterface.h>
+    #undef FRAME_QUEUE_SIZE   // each connection header defines its own queue size
+    #include <helpers/esp32/SerialWifiInterface.h>
+    #include "DualCompanionInterface.h"
+    SerialBLEInterface ble_companion;
+    SerialWifiInterface wifi_companion;
+    DualCompanionInterface serial_interface(&ble_companion, &wifi_companion);
+    #ifndef TCP_PORT
+      #define TCP_PORT 5000
+    #endif
   #elif defined(MECK_WIFI_COMPANION)
     #include <WiFi.h>
     #include <helpers/esp32/SerialWifiInterface.h>
@@ -881,6 +895,235 @@ MyMesh the_mesh(radio_driver, fast_rng, rtc_clock, tables, store
 );
 
 /* END GLOBAL OBJECTS */
+
+#if defined(BLE_PIN_CODE) && defined(MECK_WIFI_COMPANION)
+// ---------------------------------------------------------------------------
+// Combined BLE + WiFi companion (meck_max_ble_wifi test build)
+// Both connections are off at boot; turning one on turns the other off.
+// Free memory is logged on serial ("MEM ...") at boot, after each switch and
+// when the Web Reader starts, for the feasibility measurements.
+// ---------------------------------------------------------------------------
+static bool meckBtReleased = false;          // Web Reader has freed Bluetooth's memory
+static bool meckWifiServerStarted = false;   // app server (TCP_PORT) started once
+static int8_t meckPendingWifi = -1;          // app's "set wifi.enabled": -1 none, 0 off, 1 on
+static unsigned long meckPendingWifiAt = 0;
+
+static void meckLogMemory(const char* when) {
+  Serial.printf("MEM %s: heap free=%u largest=%u, PSRAM free=%u\n", when,
+                (unsigned)ESP.getFreeHeap(), (unsigned)ESP.getMaxAllocHeap(),
+                (unsigned)ESP.getFreePsram());
+}
+
+bool meckCompanionIsBLE() {
+  return serial_interface.getMode() == DualCompanionInterface::MODE_BLE;
+}
+
+bool meckCompanionIsWiFi() {
+  return serial_interface.getMode() == DualCompanionInterface::MODE_WIFI;
+}
+
+// Read /web/wifi.cfg (line 1 network name, line 2 password), as Settings
+// writes it. Values are cut to upstream's sizes (32 and 63 characters).
+static bool meckWifiCfgRead(char* ssid, size_t ssidLen, char* pass, size_t passLen) {
+  ssid[0] = 0;
+  pass[0] = 0;
+  if (!sdCardReady) return false;
+  if (!SD.exists("/web/wifi.cfg")) {
+    digitalWrite(SDCARD_CS, HIGH);
+    return false;
+  }
+  File f = SD.open("/web/wifi.cfg", FILE_READ);
+  if (!f) {
+    digitalWrite(SDCARD_CS, HIGH);
+    return false;
+  }
+  String s = f.readStringUntil('\n'); s.trim();
+  String p = f.readStringUntil('\n'); p.trim();
+  f.close();
+  digitalWrite(SDCARD_CS, HIGH);
+  snprintf(ssid, ssidLen, "%s", s.c_str());
+  snprintf(pass, passLen, "%s", p.c_str());
+  return true;
+}
+
+// Write /web/wifi.cfg the same way the Settings WiFi setup does.
+static bool meckWifiCfgWrite(const char* ssid, const char* pass) {
+  if (!sdCardReady) return false;
+  bool ok = false;
+  if (SD.exists("/web") || SD.mkdir("/web")) {
+    File f = SD.open("/web/wifi.cfg", FILE_WRITE);
+    if (f) {
+      f.println(ssid);
+      f.println(pass);
+      f.close();
+      ok = true;
+    }
+  }
+  digitalWrite(SDCARD_CS, HIGH);
+  return ok;
+}
+
+static void meckWifiOff() {
+  wifi_companion.disable();
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_OFF);
+}
+
+void meckCompanionUseNone() {
+  if (meckCompanionIsBLE()) ble_companion.disable();
+  if (meckCompanionIsWiFi()) meckWifiOff();
+  serial_interface.setMode(DualCompanionInterface::MODE_NONE);
+  Serial.println("Companion: Bluetooth and WiFi off");
+  meckLogMemory("both off");
+}
+
+// Bluetooth on, WiFi off. Fails once the Web Reader has freed Bluetooth's
+// memory: as in the BLE build, Bluetooth then needs a reboot.
+bool meckCompanionUseBLE() {
+  if (meckCompanionIsBLE()) return true;
+  if (meckBtReleased) {
+    Serial.println("Companion: Bluetooth unavailable until reboot (freed for the Web Reader)");
+    return false;
+  }
+  if (meckCompanionIsWiFi()) meckWifiOff();
+  serial_interface.setMode(DualCompanionInterface::MODE_BLE);
+  ble_companion.enable();
+  Serial.println("Companion: Bluetooth on");
+  meckLogMemory("Bluetooth on");
+  return true;
+}
+
+// WiFi on, Bluetooth off. connectSaved joins the network in /web/wifi.cfg,
+// waiting up to 8 s as the Settings WiFi toggle does; WiFi setup passes
+// false because it scans and joins by itself.
+bool meckCompanionUseWiFi(bool connectSaved) {
+  if (meckCompanionIsWiFi()) return true;
+  if (meckCompanionIsBLE()) ble_companion.disable();
+  serial_interface.setMode(DualCompanionInterface::MODE_NONE);
+  meckLogMemory("before WiFi on");
+  if (!WiFi.mode(WIFI_STA)) {
+    Serial.println("Companion: WiFi STA init FAILED");
+    WiFi.mode(WIFI_OFF);
+    meckLogMemory("WiFi init failed");
+    return false;
+  }
+  if (!meckWifiServerStarted) {
+    wifi_companion.begin(TCP_PORT);
+    meckWifiServerStarted = true;
+  }
+  serial_interface.setMode(DualCompanionInterface::MODE_WIFI);
+  wifi_companion.enable();
+  if (connectSaved) {
+    char ssid[33], pass[64];
+    if (meckWifiCfgRead(ssid, sizeof(ssid), pass, sizeof(pass)) && ssid[0]) {
+      WiFi.begin(ssid, pass);
+      unsigned long timeout = millis() + 8000;
+      while (WiFi.status() != WL_CONNECTED && millis() < timeout) {
+        delay(100);
+      }
+      if (WiFi.status() == WL_CONNECTED) {
+        Serial.printf("Companion: WiFi on, connected to %s, IP: %s\n",
+                      ssid, WiFi.localIP().toString().c_str());
+      } else {
+        Serial.println("Companion: WiFi on, but connection failed");
+      }
+    } else {
+      Serial.println("Companion: WiFi on, no saved network (set one in Settings)");
+    }
+  } else {
+    Serial.println("Companion: WiFi on");
+  }
+  meckLogMemory("WiFi on");
+  return true;
+}
+
+// App command line (message 66): upstream MeshCore's wifi.* commands, with
+// the network kept in /web/wifi.cfg as Settings keeps it. Replies are worded
+// as upstream's. Returns false for any other command (the caller then
+// replies "Unknown command", as upstream does).
+bool meckCompanionCommand(const char* command, char* reply) {
+  char ssid[33], pass[64];   // upstream's wifi_ssid / wifi_pwd sizes
+  if (memcmp(command, "set wifi.ssid ", 14) == 0) {
+    meckWifiCfgRead(ssid, sizeof(ssid), pass, sizeof(pass));
+    snprintf(ssid, sizeof(ssid), "%s", &command[14]);
+    if (!meckWifiCfgWrite(ssid, pass)) {
+      strcpy(reply, "Error, can't save to SD card");
+      return true;
+    }
+    sprintf(reply, "> wifi.ssid is now %s (set wifi.pwd too, then reboot)", ssid);
+    return true;
+  }
+  if (memcmp(command, "set wifi.pwd ", 13) == 0) {
+    meckWifiCfgRead(ssid, sizeof(ssid), pass, sizeof(pass));
+    snprintf(pass, sizeof(pass), "%s", &command[13]);
+    if (!meckWifiCfgWrite(ssid, pass)) {
+      strcpy(reply, "Error, can't save to SD card");
+      return true;
+    }
+    strcpy(reply, "> wifi.pwd updated (reboot to apply)");
+    return true;
+  }
+  if (strcmp(command, "get wifi.pwd") == 0) {
+    meckWifiCfgRead(ssid, sizeof(ssid), pass, sizeof(pass));
+    sprintf(reply, "> %s", pass);
+    return true;
+  }
+  if (strcmp(command, "set wifi.clear") == 0) {
+    if (!meckWifiCfgWrite("", "")) {
+      strcpy(reply, "Error, can't save to SD card");
+      return true;
+    }
+    strcpy(reply, "> wifi config cleared (reboot to apply)");
+    return true;
+  }
+  if (strcmp(command, "get wifi.ssid") == 0) {
+    meckWifiCfgRead(ssid, sizeof(ssid), pass, sizeof(pass));
+    sprintf(reply, "> %s", ssid[0] ? ssid : "(not set)");
+    return true;
+  }
+  if (memcmp(command, "set wifi.enabled ", 17) == 0) {
+    int en = atoi(&command[17]) ? 1 : 0;
+    // Both are off at boot in this build, so this switches WiFi now: one
+    // second after the reply, so the reply still reaches the app. WiFi on
+    // turns Bluetooth off.
+    meckPendingWifi = en;
+    meckPendingWifiAt = millis() + 1000;
+    sprintf(reply, "> wifi.enabled is now %d (reboot to apply)", en);
+    return true;
+  }
+  if (strcmp(command, "get wifi.enabled") == 0) {
+    sprintf(reply, "> %d", meckCompanionIsWiFi() ? 1 : 0);
+    return true;
+  }
+  if (strcmp(command, "get wifi.status") == 0) {
+    strcpy(reply, WiFi.status() == WL_CONNECTED ? "> connected" : "> disconnected");
+    return true;
+  }
+  if (strcmp(command, "get wifi.ip") == 0) {
+    if (WiFi.status() == WL_CONNECTED) {
+      sprintf(reply, "> %s", WiFi.localIP().toString().c_str());
+    } else {
+      strcpy(reply, "> (not connected)");
+    }
+    return true;
+  }
+  return false;
+}
+
+// Called from MyMesh::loop(): runs the app's "set wifi.enabled" switch once
+// its reply has had time to go out.
+void meckCompanionPoll() {
+  if (meckPendingWifi < 0) return;
+  if ((long)(millis() - meckPendingWifiAt) < 0) return;
+  int8_t want = meckPendingWifi;
+  meckPendingWifi = -1;
+  if (want == 1 && !meckCompanionIsWiFi()) {
+    meckCompanionUseWiFi(true);
+  } else if (want == 0 && meckCompanionIsWiFi()) {
+    meckCompanionUseNone();
+  }
+}
+#endif
 
 // ---------------------------------------------------------------------------
 // Voice-over-LoRa: incoming raw packet handler (dz0ny VE3 protocol)
@@ -2039,6 +2282,12 @@ void setup() {
   MESH_DEBUG_PRINTLN("setup() - WiFi mode (compile-time credentials)");
   WiFi.begin(WIFI_SSID, WIFI_PWD);
   serial_interface.begin(TCP_PORT);
+#elif defined(BLE_PIN_CODE) && defined(MECK_WIFI_COMPANION)
+  // Combined BLE + WiFi companion: both off at boot. Bluetooth is only
+  // prepared here (its controller starts on first use); WiFi and the app
+  // server start when the user turns WiFi on.
+  MESH_DEBUG_PRINTLN("setup() - combined BLE + WiFi companion, both off at boot");
+  ble_companion.begin(BLE_NAME_PREFIX, the_mesh.getNodePrefs()->node_name, the_mesh.getBLEPin());
 #elif defined(MECK_WIFI_COMPANION)
   {
     // WiFi companion: load credentials from SD at runtime.
@@ -2366,6 +2615,9 @@ void setup() {
 #ifdef ESP32
   Serial.printf("setup() complete - free heap: %d, largest block: %d\n",
                  ESP.getFreeHeap(), ESP.getMaxAllocHeap());
+#endif
+#if defined(BLE_PIN_CODE) && defined(MECK_WIFI_COMPANION)
+  meckLogMemory("boot, both off");
 #endif
   {
     void* p25 = malloc(25000); void* p10 = malloc(10000); void* p4 = malloc(4000);
@@ -4554,6 +4806,32 @@ void handleKeyboardInput() {
       Serial.println("Opening web reader");
       {
         static bool webReaderWifiReady = false;
+      #if defined(BLE_PIN_CODE) && defined(MECK_WIFI_COMPANION)
+        // Combined build: with the WiFi companion on, WiFi is already up and
+        // Bluetooth is off, so nothing needs freeing. Otherwise do as the BLE
+        // build does, once per boot: switch the Bluetooth companion off, free
+        // Bluetooth's memory (it then needs a reboot) and start WiFi.
+        if (!meckCompanionIsWiFi() && !webReaderWifiReady) {
+          if (meckCompanionIsBLE()) meckCompanionUseNone();
+          Serial.printf("WebReader: heap BEFORE BT release: free=%d, largest=%d\n",
+                         ESP.getFreeHeap(), ESP.getMaxAllocHeap());
+          btStop();
+          delay(50);
+          esp_bt_controller_mem_release(ESP_BT_MODE_BTDM);
+          delay(50);
+          meckBtReleased = true;
+          Serial.printf("WebReader: heap AFTER BT release: free=%d, largest=%d\n",
+                         ESP.getFreeHeap(), ESP.getMaxAllocHeap());
+          if (WiFi.mode(WIFI_STA)) {
+            Serial.println("WebReader: WiFi STA init OK");
+            webReaderWifiReady = true;
+          } else {
+            Serial.println("WebReader: WiFi STA init FAILED");
+            WiFi.mode(WIFI_OFF);
+          }
+        }
+        meckLogMemory("Web Reader start");
+      #else
       #ifdef MECK_WIFI_COMPANION
         // WiFi companion: WiFi is already up from boot, no BLE to tear down
         webReaderWifiReady = true;
@@ -4592,6 +4870,7 @@ void handleKeyboardInput() {
           Serial.printf("WebReader: heap after WiFi init: free=%d, largest=%d\n",
                          ESP.getFreeHeap(), ESP.getMaxAllocHeap());
         }
+      #endif
       }
       ui_task.gotoWebReader();
       break;

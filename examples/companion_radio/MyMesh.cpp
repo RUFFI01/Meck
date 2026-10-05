@@ -73,6 +73,12 @@
 #define CMD_SEND_CHANNEL_DATA         62
 #define CMD_SET_DEFAULT_FLOOD_SCOPE   63   // v1.15+ (device-wide default scope name+key)
 #define CMD_GET_DEFAULT_FLOOD_SCOPE   64   // v1.15+ (query current default scope)
+#if defined(BLE_PIN_CODE) && defined(MECK_WIFI_COMPANION)
+#define CMD_RUN_CLI_COMMAND           66   // v14+ (upstream app command line)
+// Combined BLE + WiFi companion (meck_max_ble_wifi): defined in main.cpp
+extern bool meckCompanionCommand(const char* command, char* reply);
+extern void meckCompanionPoll();
+#endif
 
 // Stats sub-types for CMD_GET_STATS
 #define STATS_TYPE_CORE               0
@@ -108,6 +114,9 @@
 #define RESP_ALLOWED_REPEAT_FREQ      26
 #define RESP_CODE_CHANNEL_DATA_RECV   27
 #define RESP_CODE_DEFAULT_FLOOD_SCOPE 28   // v1.15+
+#if defined(BLE_PIN_CODE) && defined(MECK_WIFI_COMPANION)
+#define RESP_CODE_CLI_REPLY           29   // v14+, a reply to CMD_RUN_CLI_COMMAND
+#endif
 
 #define SEND_TIMEOUT_BASE_MILLIS        500
 #define FLOOD_SEND_TIMEOUT_FACTOR       16.0f
@@ -2934,6 +2943,31 @@ void MyMesh::handleCmdFrame(size_t len) {
     out_frame[i++] = RESP_CODE_AUTOADD_CONFIG;
     out_frame[i++] = _prefs.autoadd_config;
     _serial->writeFrame(out_frame, i);
+#if defined(BLE_PIN_CODE) && defined(MECK_WIFI_COMPANION)
+  } else if (cmd_frame[0] == CMD_RUN_CLI_COMMAND && len >= 3) {
+    // App command line (upstream MeshCore, v14+). This build answers
+    // upstream's wifi.* commands; anything else gets "Unknown command",
+    // as upstream replies to a command it does not have.
+    char *text = (char *)&cmd_frame[1];
+    text[len - 1] = 0;  // ensure null
+    while (*text == ' ') text++;  // skip leading spaces
+    char reply_buf[166];
+    char *reply = reply_buf;
+    reply_buf[0] = 0;
+    if (strlen(text) > 4 && text[2] == '|') {  // optional prefix: reflect it back
+      memcpy(reply, text, 3);
+      reply += 3;
+      *reply = 0;
+      text += 3;
+    }
+    if (!meckCompanionCommand(text, reply)) {
+      strcat(reply_buf, "Unknown command");
+    }
+    out_frame[0] = RESP_CODE_CLI_REPLY;
+    int rlen = strlen(reply_buf);
+    memcpy(&out_frame[1], reply_buf, rlen);
+    _serial->writeFrame(out_frame, 1 + rlen);
+#endif
   } else {
     writeErrFrame(ERR_CODE_UNSUPPORTED_CMD);
     MESH_DEBUG_PRINTLN("ERROR: unknown command: %02X", cmd_frame[0]);
@@ -4140,6 +4174,9 @@ void MyMesh::loop() {
   // the unread counter (and DM counter / new-message screen wake) from updating.
   if (_ui) _ui->setHasConnection(false);
 #endif
+#endif
+#if defined(BLE_PIN_CODE) && defined(MECK_WIFI_COMPANION)
+  meckCompanionPoll();  // app's "set wifi.enabled": switch once its reply has gone
 #endif
 }
 

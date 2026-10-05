@@ -1048,7 +1048,16 @@ public:
     extern void otaResumeRadio();
     otaResumeRadio();
     // Try to restore STA WiFi from saved credentials
-    #ifdef MECK_WIFI_COMPANION
+    #if defined(BLE_PIN_CODE) && defined(MECK_WIFI_COMPANION)
+    {
+      // Combined build: only if WiFi was the companion connection
+      extern bool meckCompanionIsWiFi();
+      if (meckCompanionIsWiFi()) {
+        WiFi.mode(WIFI_STA);
+        wifiReconnectSaved();
+      }
+    }
+    #elif defined(MECK_WIFI_COMPANION)
     WiFi.mode(WIFI_STA);
     wifiReconnectSaved();
     #endif
@@ -1474,7 +1483,16 @@ public:
     _editMode = EDIT_NONE;
     extern void otaResumeRadio();
     otaResumeRadio();
-    #ifdef MECK_WIFI_COMPANION
+    #if defined(BLE_PIN_CODE) && defined(MECK_WIFI_COMPANION)
+    {
+      // Combined build: only if WiFi was the companion connection
+      extern bool meckCompanionIsWiFi();
+      if (meckCompanionIsWiFi()) {
+        WiFi.mode(WIFI_STA);
+        wifiReconnectSaved();
+      }
+    }
+    #elif defined(MECK_WIFI_COMPANION)
     WiFi.mode(WIFI_STA);
     wifiReconnectSaved();
     #endif
@@ -3529,11 +3547,33 @@ public:
         #ifdef MECK_WIFI_COMPANION
         case ROW_WIFI_SETUP: {
           // Launch WiFi scan → select → password → connect flow
+          #if defined(BLE_PIN_CODE) && defined(MECK_WIFI_COMPANION)
+          {
+            // Combined build: WiFi setup makes WiFi the companion connection
+            // (Bluetooth goes off), as one connection is on at a time
+            extern bool meckCompanionUseWiFi(bool connectSaved);
+            meckCompanionUseWiFi(false);
+          }
+          #endif
           _editMode = EDIT_WIFI;
           performWifiScan();
           break;
         }
         case ROW_WIFI_TOGGLE:
+          #if defined(BLE_PIN_CODE) && defined(MECK_WIFI_COMPANION)
+          {
+            // Combined build: WiFi on turns Bluetooth off; WiFi off leaves
+            // neither on
+            extern bool meckCompanionIsWiFi();
+            extern bool meckCompanionUseWiFi(bool connectSaved);
+            extern void meckCompanionUseNone();
+            if (meckCompanionIsWiFi()) {
+              meckCompanionUseNone();
+            } else {
+              meckCompanionUseWiFi(true);
+            }
+          }
+          #else
           if (WiFi.getMode() != WIFI_OFF) {
             // Turn WiFi OFF
             WiFi.disconnect(true);
@@ -3567,6 +3607,7 @@ public:
             }
             Serial.println("Settings: WiFi radio ON");
           }
+          #endif
           break;
         #endif
         #ifdef HAS_4G_MODEM
