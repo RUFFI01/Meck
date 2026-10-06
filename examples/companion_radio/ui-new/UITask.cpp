@@ -2426,6 +2426,17 @@ if (curr) curr->poll();
     next_batt_chck = millis() + 8000;
   }
 #endif
+
+#if defined(LilyGo_TDeck_Pro_Max)
+  // TEMPORARY: charger + fuel gauge readout on serial every 10 s (read-only)
+  {
+    static unsigned long nextChargerDump = 0;
+    if ((long)(millis() - nextChargerDump) >= 0) {
+      nextChargerDump = millis() + 10000;
+      board.chargerDebugPrint();
+    }
+  }
+#endif
 }
 
 char UITask::checkDisplayOn(char c) {

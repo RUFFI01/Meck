@@ -896,6 +896,26 @@ MyMesh the_mesh(radio_driver, fast_rng, rtc_clock, tables, store
 
 /* END GLOBAL OBJECTS */
 
+#if defined(LilyGo_TDeck_Pro)
+// ---------------------------------------------------------------------------
+// Settings > Experimental Features > Delete all contacts (ported from
+// Meck-P4 v0.7.4). Empties the contact table and saves the empty set, and
+// removes the direct-message history from the SD message store (channel
+// messages are kept). SettingsScreen restarts the device afterwards.
+// ---------------------------------------------------------------------------
+void meckPurgeAllContacts(int* contactsRemoved, bool* contactsOk, int* dmsRemoved) {
+  *contactsRemoved = the_mesh.getNumContacts();
+  the_mesh.purgeAllContacts();
+  File f = SPIFFS.open("/contacts3", "r");
+  *contactsOk = f && f.size() == 0;
+  if (f) f.close();
+  ChannelScreen* chScr = (ChannelScreen*)ui_task.getChannelScreen();
+  *dmsRemoved = chScr ? chScr->purgeDMs() : -1;
+  Serial.printf("Purge: %d contacts removed, contacts file %s, DMs removed %d\n",
+                *contactsRemoved, *contactsOk ? "empty" : "NOT EMPTY", *dmsRemoved);
+}
+#endif
+
 #if defined(BLE_PIN_CODE) && defined(MECK_WIFI_COMPANION)
 // ---------------------------------------------------------------------------
 // Combined BLE + WiFi companion (meck_max_ble_wifi test build)
@@ -1302,6 +1322,9 @@ static void openMapScreen() {
     if (!pressed) return;
     switch (key_id) {
       case 0:  // heart -- toggle frontlight at the user-set brightness
+        // Settings > Experimental Features "Change Backlight to Alt+B" turns
+        // the heart key off, leaving Alt+B as the backlight toggle.
+        if (the_mesh.getNodePrefs()->backlight_alt_b_only) break;
         if (board.isBacklightOn()) {
           board.backlightOff();
         } else {
@@ -3518,6 +3541,12 @@ void loop() {
   {
     // Guard: skip touch when locked
     bool touchBlocked = ui_task.isLocked();
+    // Settings > Experimental Features "Delete all contacts" box open: keys
+    // only, so a stray touch can't confirm it or leave Settings mid-purge
+    if (ui_task.isOnSettingsScreen()) {
+      SettingsScreen* purgeSS = (SettingsScreen*)ui_task.getSettingsScreen();
+      if (purgeSS && purgeSS->isPurgeBoxOpen()) touchBlocked = true;
+    }
 #ifdef HAS_4G_MODEM
     // SMS dialer has its own dedicated touch handler — don't consume touch data here
     if (smsMode) {
@@ -3855,6 +3884,12 @@ void handleKeyboardInput() {
   // Alt+B toggles the e-ink frontlight (MAX only -- working backlight on IO41)
   if (key == KB_KEY_BACKLIGHT) {
     if (board.isBacklightOn()) board.backlightOff();
+    else if (the_mesh.getNodePrefs()->backlight_alt_b_only) {
+      // Experimental "Change Backlight to Alt+B" on: use the Backlight
+      // Brightness setting, as the heart key does
+      uint8_t blPct = the_mesh.getNodePrefs()->backlight_brightness_pct;
+      board.backlightSetBrightness((uint8_t)((blPct * 255 + 50) / 100));
+    }
     else                       board.backlightOn();
     return;
   }

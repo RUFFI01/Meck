@@ -195,6 +195,11 @@ enum SettingsRowType : uint8_t {
   ROW_OPERATOR_INFO,  // Carrier/operator display (read-only)
   ROW_APN,            // APN setting (editable)
   #endif
+  ROW_EXPERIMENTAL_SUBMENU, // Folder row: enters Experimental Features sub-screen (last row)
+#if defined(LilyGo_TDeck_Pro_Max)
+  ROW_ALT_B_BACKLIGHT,  // Toggle: heart touch key off, Alt+B only toggles the backlight (MAX only)
+#endif
+  ROW_PURGE_CONTACTS,   // "Delete all contacts": confirm, purge, restart
 };
 
 // ---------------------------------------------------------------------------
@@ -216,6 +221,7 @@ enum EditMode : uint8_t {
   EDIT_OTA,          // OTA firmware update flow (multi-phase overlay)
   EDIT_FILEMGR,      // SD file manager flow (WiFi file browser)
   #endif
+  EDIT_PURGE,        // Delete all contacts: confirm / purging / result overlay
 };
 
 // ---------------------------------------------------------------------------
@@ -233,6 +239,15 @@ enum SubScreen : uint8_t {
   SUB_EXPORT_IMPORT,  // Export/Import menu
   SUB_EXPORT_FLAGS,   // Export checkboxes + trigger
   #endif
+  SUB_EXPERIMENTAL,   // Experimental Features sub-screen
+};
+
+// Delete all contacts (Experimental Features) overlay phases
+enum PurgePhase : uint8_t {
+  PURGE_CONFIRM,   // "Delete all contacts?" Enter:Yes  Q:No
+  PURGE_CONFIRM2,  // second confirmation popup ("Are you sure?"); Enter accepted after 1 s
+  PURGE_RUNNING,   // "Purging" shown; the work runs from poll()
+  PURGE_DONE,      // result shown; restart follows
 };
 
 #ifdef MECK_OTA_UPDATE
@@ -317,6 +332,13 @@ private:
   // Sub-screen navigation
   SubScreen _subScreen;
   int _savedTopCursor;  // cursor position to restore when leaving sub-screen
+
+  // Experimental Features > Delete all contacts (EDIT_PURGE overlay)
+  uint8_t _purgePhase;        // PurgePhase
+  unsigned long _purgeAt;     // CONFIRM2: when Enter is accepted; RUNNING: when the purge runs; DONE: when the restart happens
+  int _purgeContacts;         // contacts removed (count shown on the confirm box)
+  int _purgeDMs;              // direct messages removed, -1 = SD card not ready
+  bool _purgeContactsOk;      // the contacts file is empty afterwards
   #ifdef HAS_SDCARD
   int _savedExportCursor;  // cursor in SUB_EXPORT_IMPORT when entering SUB_EXPORT_FLAGS
   uint8_t _exportFlags;    // bitmask of MECK_EXPORT_* flags for export checkboxes
@@ -483,6 +505,12 @@ private:
       addRow(ROW_EXPORT_AUTOADD);
       addRow(ROW_EXPORT_NOW);
     #endif
+    } else if (_subScreen == SUB_EXPERIMENTAL) {
+      // --- Experimental Features sub-screen ---
+#if defined(LilyGo_TDeck_Pro_Max)
+      addRow(ROW_ALT_B_BACKLIGHT);
+#endif
+      addRow(ROW_PURGE_CONTACTS);
     } else {
       // --- Top-level settings list ---
 #if defined(LilyGo_TDeck_Pro_Max)
@@ -549,6 +577,9 @@ private:
       addRow(ROW_OPERATOR_INFO);
       addRow(ROW_APN);
       #endif
+
+      // Experimental Features (last row)
+      addRow(ROW_EXPERIMENTAL_SUBMENU);
     }
 
     // Clamp cursor
@@ -711,6 +742,11 @@ public:
     _sharePickerScroll = 0;
     _shareRequested = false;
     _shareContactIdx = -1;
+    _purgePhase = PURGE_CONFIRM;
+    _purgeAt = 0;
+    _purgeContacts = 0;
+    _purgeDMs = 0;
+    _purgeContactsOk = false;
     #ifdef MECK_OTA_UPDATE
     _otaServer = nullptr;
     _otaPhase = OTA_PHASE_CONFIRM;
@@ -768,6 +804,7 @@ public:
 
   bool isOnboarding() const { return _onboarding; }
   bool isEditing() const { return _editMode != EDIT_NONE; }
+  bool isPurgeBoxOpen() const { return _editMode == EDIT_PURGE; }  // main.cpp ignores touch while open
   bool hasRadioChanges() const { return _radioChanged; }
   bool isOnChannelsSubScreen() const { return _subScreen == SUB_CHANNELS; }
   bool isOnDeletableChannel() const {
@@ -1736,6 +1773,8 @@ public:
     } else if (_subScreen == SUB_OTA_TOOLS) {
       display.print("Settings > OTA Tools");
     #endif
+    } else if (_subScreen == SUB_EXPERIMENTAL) {
+      display.print("Settings > Experimental");
     } else {
       display.print("Settings");
     }
@@ -2225,6 +2264,23 @@ public:
           display.print(tmp);
           break;
 
+        case ROW_EXPERIMENTAL_SUBMENU:
+          display.setColor(selected ? DisplayDriver::DARK : DisplayDriver::GREEN);
+          display.print("Experimental Features >>");
+          break;
+
+#if defined(LilyGo_TDeck_Pro_Max)
+        case ROW_ALT_B_BACKLIGHT:
+          snprintf(tmp, sizeof(tmp), "Change Backlight to Alt+B: %s",
+                   _prefs->backlight_alt_b_only ? "ON" : "OFF");
+          display.print(tmp);
+          break;
+#endif
+
+        case ROW_PURGE_CONTACTS:
+          display.print("Delete all contacts");
+          break;
+
         #ifdef HAS_4G_MODEM
         case ROW_IMEI: {
           const char* imei = modemManager.getIMEI();
@@ -2317,6 +2373,85 @@ public:
         display.drawTextCentered(display.width() / 2, by + 15, "Leave unset?");
       }
       display.drawTextCentered(display.width() / 2, by + bh - 14, "Enter:Yes  Q:No");
+      display.setTextSize(1);
+    }
+
+    // === Delete all contacts overlay (Experimental Features) ===
+    if (_editMode == EDIT_PURGE) {
+      int bx = 2, by = 14, bw = display.width() - 4;
+      int bh = display.height() - 28;
+      display.setColor(DisplayDriver::DARK);
+      display.fillRect(bx, by, bw, bh);
+      display.setColor(DisplayDriver::LIGHT);
+      display.drawRect(bx, by, bw, bh);
+
+      display.setTextSize(_prefs->smallTextSize());
+      int lh = _prefs->smallLineH();
+      int cx = display.width() / 2;
+      int y = by + 4;
+      if (_purgePhase == PURGE_CONFIRM || _purgePhase == PURGE_CONFIRM2) {
+        display.setColor(DisplayDriver::YELLOW);
+        display.drawTextCentered(cx, y, "Delete all contacts?");
+        y += lh + 2;
+        display.setColor(DisplayDriver::LIGHT);
+        snprintf(tmp, sizeof(tmp), "All %d contact%s, with", _purgeContacts, _purgeContacts == 1 ? "" : "s");
+        display.drawTextCentered(cx, y, tmp);                          y += lh;
+        display.drawTextCentered(cx, y, "favourites and custom");      y += lh;
+        display.drawTextCentered(cx, y, "paths, and the DM history");  y += lh;
+        display.drawTextCentered(cx, y, "will be deleted. Channel");   y += lh;
+        display.drawTextCentered(cx, y, "messages are kept.");         y += lh + 2;
+        display.setColor(DisplayDriver::RED);
+        display.drawTextCentered(cx, y, "The device will RESTART.");
+        display.setColor(DisplayDriver::LIGHT);
+        display.drawTextCentered(cx, by + bh - lh - 2, "Enter:Yes  Q:No");
+        if (_purgePhase == PURGE_CONFIRM2) {
+          // Second confirmation popup, drawn over the first box
+          int tx = 10, tw = display.width() - 20;
+          int th = lh * 3 + 12;
+          int ty = by + (bh - th) / 2;
+          display.setColor(DisplayDriver::DARK);
+          display.fillRect(tx, ty, tw, th);
+          display.setColor(DisplayDriver::LIGHT);
+          display.drawRect(tx, ty, tw, th);
+          display.setColor(DisplayDriver::YELLOW);
+          display.drawTextCentered(cx, ty + 3, "Are you sure?");
+          display.setColor(DisplayDriver::LIGHT);
+          display.drawTextCentered(cx, ty + 3 + lh + 2, "This cannot be undone.");
+          display.drawTextCentered(cx, ty + th - lh - 2, "Enter:Yes  Q:No");
+        }
+      } else if (_purgePhase == PURGE_RUNNING) {
+        display.setColor(DisplayDriver::YELLOW);
+        display.drawTextCentered(cx, y, "Purging");
+        y += lh + 2;
+        display.setColor(DisplayDriver::LIGHT);
+        display.drawTextCentered(cx, y, "Deleting all contacts and");  y += lh;
+        display.drawTextCentered(cx, y, "the DM history.");            y += lh;
+        display.drawTextCentered(cx, y, "Please wait...");             y += lh + 4;
+        display.setColor(DisplayDriver::RED);
+        display.drawTextCentered(cx, y, "Do not switch off. The");     y += lh;
+        display.drawTextCentered(cx, y, "device restarts when done.");
+      } else {
+        bool ok = _purgeContactsOk && _purgeDMs >= 0;
+        display.setColor(DisplayDriver::YELLOW);
+        display.drawTextCentered(cx, y, ok ? "Contacts deleted" : "Purge failed");
+        y += lh + 2;
+        display.setColor(DisplayDriver::LIGHT);
+        if (ok) {
+          snprintf(tmp, sizeof(tmp), "Done. %d contact%s and the", _purgeContacts, _purgeContacts == 1 ? "" : "s");
+          display.drawTextCentered(cx, y, tmp);                          y += lh;
+          display.drawTextCentered(cx, y, "DM history have been");       y += lh;
+          display.drawTextCentered(cx, y, "deleted from this device.");  y += lh + 4;
+        } else {
+          snprintf(tmp, sizeof(tmp), "Contacts file: %s", _purgeContactsOk ? "ok" : "failed");
+          display.drawTextCentered(cx, y, tmp);                          y += lh;
+          snprintf(tmp, sizeof(tmp), "DM history: %s", _purgeDMs >= 0 ? "ok" : "SD not ready");
+          display.drawTextCentered(cx, y, tmp);                          y += lh;
+          display.drawTextCentered(cx, y, "The restart reloads what");   y += lh;
+          display.drawTextCentered(cx, y, "storage still holds.");       y += lh + 4;
+        }
+        display.setColor(DisplayDriver::RED);
+        display.drawTextCentered(cx, y, "RESTARTING NOW...");
+      }
       display.setTextSize(1);
     }
 
@@ -2851,6 +2986,29 @@ public:
         return true;
       }
       return true;  // consume all keys in confirm mode
+    }
+
+    // --- Delete all contacts (Experimental Features) ---
+    if (_editMode == EDIT_PURGE) {
+      if (_purgePhase == PURGE_CONFIRM || _purgePhase == PURGE_CONFIRM2) {
+        if (c == KEY_CANCEL || c == 'q') {
+          _editMode = EDIT_NONE;
+          return true;
+        }
+        if (c == '\r' || c == 13) {
+          if (_purgePhase == PURGE_CONFIRM) {
+            // First Yes: show the second confirmation. Its Enter is ignored for
+            // 1 s, so a double press or key bounce can't pass both boxes.
+            _purgePhase = PURGE_CONFIRM2;
+            _purgeAt = millis() + 1000;
+          } else if ((long)(millis() - _purgeAt) >= 0) {
+            _purgePhase = PURGE_RUNNING;
+            _purgeAt = millis() + 1500;  // let the "Purging" box reach the e-ink first
+          }
+          return true;
+        }
+      }
+      return true;  // other keys ignored; no dismissing once the purge has started
     }
 
     // --- Notification sound picker ---
@@ -3713,6 +3871,27 @@ public:
           startEditCanned(_rows[_cursor].param);
           break;
 
+        case ROW_EXPERIMENTAL_SUBMENU:
+          _savedTopCursor = _cursor;
+          _subScreen = SUB_EXPERIMENTAL;
+          _cursor = 0;
+          _scrollTop = 0;
+          rebuildRows();
+          Serial.println("Settings: entered Experimental Features sub-screen");
+          break;
+#if defined(LilyGo_TDeck_Pro_Max)
+        case ROW_ALT_B_BACKLIGHT:
+          _prefs->backlight_alt_b_only = _prefs->backlight_alt_b_only ? 0 : 1;
+          the_mesh.savePrefs();
+          Serial.printf("Settings: Change Backlight to Alt+B = %s\n",
+                        _prefs->backlight_alt_b_only ? "ON" : "OFF");
+          break;
+#endif
+        case ROW_PURGE_CONTACTS:
+          _purgeContacts = the_mesh.getNumContacts();
+          _purgePhase = PURGE_CONFIRM;
+          _editMode = EDIT_PURGE;
+          break;
         #ifdef MECK_OTA_UPDATE
         case ROW_OTA_TOOLS_SUBMENU:
         #ifndef MECK_40MHZ_TEST
@@ -3965,6 +4144,22 @@ public:
   }
 
   // Override handleInput for UIScreen compatibility (used by injectKey)
+  // Delete all contacts: run the purge once the "Purging" box has been drawn,
+  // then restart a few seconds after the result is on screen. The restart
+  // rebuilds everything keyed by contact index from the empty store.
+  void poll() override {
+    if (_editMode != EDIT_PURGE) return;
+    if (_purgePhase == PURGE_RUNNING && (long)(millis() - _purgeAt) >= 0) {
+      extern void meckPurgeAllContacts(int* contactsRemoved, bool* contactsOk, int* dmsRemoved);
+      meckPurgeAllContacts(&_purgeContacts, &_purgeContactsOk, &_purgeDMs);
+      _purgePhase = PURGE_DONE;
+      _purgeAt = millis() + 3000;  // result stays on screen before the restart
+    } else if (_purgePhase == PURGE_DONE && (long)(millis() - _purgeAt) >= 0) {
+      Serial.println("Settings: purge done, restarting");
+      ESP.restart();
+    }
+  }
+
   bool handleInput(char c) override {
     return handleKeyInput(c);
   }

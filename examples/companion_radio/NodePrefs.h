@@ -92,10 +92,16 @@ struct NodePrefs {  // persisted to file
 
   // --- Timezones home page (world clock) ---
   // UTC offsets (-12..+14) of the page's two extra zones; its Home row is
-  // utc_offset_hours. Older prefs files short-read these final fields and
+  // utc_offset_hours. Older prefs files short-read these fields and
   // keep the default 0 (UTC+0).
   int8_t clock_slot_a;             // Zone 1 UTC offset, default 0
   int8_t clock_slot_b;             // Zone 2 UTC offset, default 0
+
+  // --- Experimental Features ---
+  // 1 = "Change Backlight to Alt+B" is on: the Max's heart touch key no
+  // longer toggles the frontlight, leaving Alt+B. Older prefs files
+  // short-read this final field and keep the default 0 (heart key on).
+  uint8_t backlight_alt_b_only;    // default 0
 
   // --- Font helpers (inline, no overhead) ---
   // Returns the DisplayDriver text-size index for "small/body" text.

@@ -8,11 +8,11 @@
 #define FIRMWARE_VER_CODE 11
 
 #ifndef FIRMWARE_BUILD_DATE
-#define FIRMWARE_BUILD_DATE "15 Sept 2026"
+#define FIRMWARE_BUILD_DATE "7 Oct 2026"
 #endif
 
 #ifndef FIRMWARE_VERSION
-#define FIRMWARE_VERSION "Meck v1.14"
+#define FIRMWARE_VERSION "Meck v1.15"
 #endif
 
 #if defined(STM32_PLATFORM)
@@ -309,6 +309,15 @@ public:
     _store->saveChannels(this);
   }
   void saveContacts() {
+    _store->saveContacts(this);
+  }
+  // Settings > Experimental Features > Delete all contacts (Meck-P4 port).
+  // Empties the in-RAM contact table (BaseChatMesh::resetContacts is
+  // protected) and saves the empty set. A chunked background save still in
+  // progress is closed first, so it cannot later put an older list back.
+  void purgeAllContacts() {
+    if (_store->isSaveInProgress()) _store->finishSaveContacts();
+    resetContacts();
     _store->saveContacts(this);
   }
   void saveMainIdentity() {

@@ -603,6 +603,28 @@ public:
   }
 
 
+  // Settings > Experimental Features > Delete all contacts: drop every direct
+  // message and save, keeping channel messages. The file keeps the circular-
+  // buffer layout, so DM slots are marked empty in place. Returns how many
+  // were removed, or -1 if the SD card is not ready (nothing could be saved).
+  int purgeDMs() {
+#if defined(HAS_SDCARD) && defined(ESP32)
+    if (!_sdReady) return -1;
+    int removed = 0;
+    for (int i = 0; i < CHANNEL_MSG_HISTORY_SIZE; i++) {
+      if (_messages[i].valid && _messages[i].channel_idx == 0xFF) {
+        _messages[i].valid = false;
+        removed++;
+      }
+    }
+    _unread[MAX_GROUP_CHANNELS] = 0;  // DM unread slot
+    saveToSD();
+    return removed;
+#else
+    return -1;
+#endif
+  }
+
   // Load message buffer from SD card.  Returns true if messages were loaded.
   bool loadFromSD() {
 #if defined(HAS_SDCARD) && defined(ESP32)

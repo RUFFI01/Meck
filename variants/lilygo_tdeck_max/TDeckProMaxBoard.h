@@ -134,6 +134,10 @@ public:
   uint16_t getDesignCapacity();
   int16_t  getBattTemperature();
   bool     configureFuelGauge(uint16_t designCapacity_mAh = BQ27220_DESIGN_CAPACITY_MAH);
+  // TEMPORARY: read-only charger (SY6970) and fuel gauge readout on serial,
+  // called every 10 s from UITask::loop() while the charging stop is
+  // investigated. Writes nothing to either chip.
+  void     chargerDebugPrint();
 
   // -------------------------------------------------------------------------
   // Sleep / power-off (moved verbatim from TDeckBoard when MAX was decoupled).

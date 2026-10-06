@@ -866,3 +866,54 @@ int16_t TDeckProMaxBoard::getBattTemperature() {
     return 0;
   #endif
 }
+
+// ---- TEMPORARY: charger + fuel gauge readout (read-only) ----
+// Register decoding follows XPowersLib's PowersSY6970.hpp (lewisxhe). Reading
+// REG0C returns the fault bits and clears the latched ones.
+static int sy6970_readReg(uint8_t reg) {
+  Wire.beginTransmission(I2C_ADDR_SY6970);
+  Wire.write(reg);
+  if (Wire.endTransmission(false) != 0) return -1;
+  if (Wire.requestFrom((uint8_t)I2C_ADDR_SY6970, (uint8_t)1) != 1) return -1;
+  return Wire.read();
+}
+
+void TDeckProMaxBoard::chargerDebugPrint() {
+  static const char* const kInput[8] = { "none", "USB-SDP", "USB-CDP", "USB-DCP",
+                                         "HVDCP", "adapter", "non-std-adapter", "OTG" };
+  static const char* const kState[4] = { "not-charging", "pre-charge", "fast-charge", "charge-done" };
+  int r[0x15];
+  for (uint8_t i = 0; i <= 0x14; i++) r[i] = sy6970_readReg(i);
+
+  if (r[0x0B] < 0) {
+    Serial.println("CHG: SY6970 not responding at 0x6A");
+  } else {
+    int vregCode = (r[0x06] & 0xFC) >> 2;
+    int vreg = (vregCode > 0x30) ? 4608 : vregCode * 16 + 3840;
+    int ntc = r[0x0C] & 0x07;
+    const char* ntcName = (ntc == 0) ? "normal" : (ntc == 2) ? "warm" : (ntc == 3) ? "cool"
+                        : (ntc == 5) ? "cold" : (ntc == 6) ? "hot" : "other";
+    Serial.printf("CHG: input=%s pg=%d state=%s hiz=%d chg_en=%d vreg=%dmV ichg=%dmA iinlim=%dmA term_en=%d wdt=%d timer_en=%d\n",
+                  kInput[(r[0x0B] >> 5) & 0x07], (r[0x0B] >> 2) & 1, kState[(r[0x0B] >> 3) & 0x03],
+                  (r[0x00] >> 7) & 1, (r[0x03] >> 4) & 1,
+                  vreg, (r[0x04] & 0x7F) * 64, (r[0x00] & 0x3F) * 50 + 100,
+                  (r[0x07] >> 7) & 1, (r[0x07] >> 4) & 0x03, (r[0x07] >> 3) & 1);
+    Serial.printf("CHG: fault=0x%02X watchdog=%d boost=%d charge(bits5:4)=%d battery=%d ntc=%s(%d)\n",
+                  r[0x0C] & 0xFF, (r[0x0C] >> 7) & 1, (r[0x0C] >> 6) & 1, (r[0x0C] >> 4) & 0x03,
+                  (r[0x0C] >> 3) & 1, ntcName, ntc);
+  }
+  Serial.print("CHG regs:");
+  for (uint8_t i = 0; i <= 0x14; i++) {
+    if (r[i] < 0) Serial.printf(" %02X=--", i);
+    else          Serial.printf(" %02X=%02X", i, r[i]);
+  }
+  Serial.println();
+
+  #if HAS_BQ27220
+    int16_t t = getBattTemperature();
+    Serial.printf("GAUGE: V=%umV I=%dmA avgI=%dmA remain=%umAh full=%umAh design=%umAh soc=%u%% T=%d.%dC\n",
+                  getBattMilliVolts(), (int16_t)bq27220_read16(BQ27220_REG_CURRENT), getAvgCurrent(),
+                  getRemainingCapacity(), bq27220_read16(BQ27220_REG_FULL_CAP), getDesignCapacity(),
+                  bq27220_read16(BQ27220_REG_SOC), t / 10, abs(t % 10));
+  #endif
+}
