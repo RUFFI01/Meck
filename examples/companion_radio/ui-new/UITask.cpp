@@ -68,6 +68,7 @@
 #include "ContactsScreen.h"
 #include "TextReaderScreen.h"
 #include "SettingsScreen.h"
+#include "MeckLang.h"
 #ifdef MECK_AUDIO_VARIANT
 #include "AudiobookPlayerScreen.h"
 #include "VoiceMessageScreen.h"
@@ -315,7 +316,7 @@ void renderBatteryIndicator(DisplayDriver& display, uint16_t batteryMilliVolts, 
   enum { TZ_ROW_TOP = 16, TZ_ROW_H = 34 };
 
   static const char* tzRowLabel(int r) {
-    return (r == 1) ? "Zone 1" : (r == 2) ? "Zone 2" : "Home";
+    return (r == 1) ? "Zone 1" : (r == 2) ? "Zone 2" : MECK_TR("Home", "Local");
   }
 
   static const char* tzCities(int8_t off) {
@@ -371,7 +372,7 @@ void renderBatteryIndicator(DisplayDriver& display, uint16_t batteryMilliVolts, 
     if (!tzClockValid()) {
       display.setTextSize(1);
       display.setColor(DisplayDriver::GREEN);
-      display.drawTextCentered(display.width() / 2, 50, "Clock not set");
+      display.drawTextCentered(display.width() / 2, 50, MECK_TR("Clock not set", "Heure non r\xC3\xA9" "gl\xC3\xA9" "e"));
       return;
     }
 
@@ -404,7 +405,7 @@ void renderBatteryIndicator(DisplayDriver& display, uint16_t batteryMilliVolts, 
       display.setColor(DisplayDriver::GREEN);
       const int dayDiff = (int)((local / 86400) - (home_local / 86400));
       if (dayDiff != 0) {
-        snprintf(buf, sizeof(buf), "%+dD", dayDiff);
+        snprintf(buf, sizeof(buf), MECK_TR("%+dD", "%+dJ"), dayDiff);
         display.drawTextLeftAlign(7, ry + 27, buf);
       }
       display.drawTextRightAlign(display.width() - 1 - EINK_X_OFFSET, ry + 27, tzCities(off));
@@ -618,14 +619,15 @@ public:
       {
         GxEPDDisplay* eink = static_cast<GxEPDDisplay*>(&display);
         const uint16_t fg = eink->rawFgColor();
-        struct MaxTile { const uint8_t* icon; const char* label; uint8_t shade; };
+        // label_fr: French (Experimental Features > Language)
+        struct MaxTile { const uint8_t* icon; const char* label; const char* label_fr; uint8_t shade; };
         static const MaxTile tiles[12] = {
-          { icon_envelope,   "Messages",   0 }, { icon_people, "Contacts", 1 },
-          { icon_gear,       "Settings",   2 }, { icon_search, "Discover", 0 },
-          { icon_trace,      "Trace",      1 }, { icon_map,    "Maps",     2 },
-          { icon_notepad,    "Notes",      0 }, { icon_book,   "Reader",   1 },
-          { icon_headphones, "Audiobooks", 2 }, { icon_bell,   "Alarm",    0 },
-          { icon_globe,      "Browser",    1 }, { icon_gamepad, "Games",   2 },
+          { icon_envelope,   "Messages",   "Messages",     0 }, { icon_people,  "Contacts", "Contacts",  1 },
+          { icon_gear,       "Settings",   "Param\xC3\xA8tres", 2 }, { icon_search,  "Discover", "Recherche", 0 },
+          { icon_trace,      "Trace",      "Trace",        1 }, { icon_map,     "Maps",     "Cartes",    2 },
+          { icon_notepad,    "Notes",      "Notes",        0 }, { icon_book,    "Reader",   "Lecteur",   1 },
+          { icon_headphones, "Audiobooks", "Livres audio", 2 }, { icon_bell,    "Alarm",    "Alarme",    0 },
+          { icon_globe,      "Browser",    "Navigateur",   1 }, { icon_gamepad, "Games",    "Jeux",      2 },
         };
         // Physical layout matching the approved mockup: 2 cols x 6 rows
         // plus a full-width Phone tile, icon stacked above the label.
@@ -643,8 +645,9 @@ public:
           int ty = gridY + row * (tileH + gapY);
           eink->drawRoundRectShadedRaw(tx, ty, tileW, tileH, radius, borderT, tiles[i].shade, fg);
           eink->drawXbmRaw(tx + (tileW - HOME_ICON_W) / 2, ty + 5, tiles[i].icon, HOME_ICON_W, HOME_ICON_H, fg);
-          int lw = eink->measureTextRawStyled(tiles[i].label);
-          eink->drawTextRawStyled(tx + (tileW - lw) / 2, ty + 17, tiles[i].label, fg);
+          const char* label = MECK_TR(tiles[i].label, tiles[i].label_fr);
+          int lw = eink->measureTextRawStyled(label);
+          eink->drawTextRawStyled(tx + (tileW - lw) / 2, ty + 17, label, fg);
 #ifdef MECK_40MHZ_TEST
           // 40 MHz test build: Maps(5), Audiobooks(8), Alarm(9) and Browser(10)
           // are gated -- knock out every other pixel so the tile reads greyed.
@@ -669,8 +672,9 @@ public:
           int tw = tileW * 2 + gapX;
           eink->drawRoundRectShadedRaw(gridX, ty, tw, tileH, radius, borderT, 0, fg);
           eink->drawXbmRaw(gridX + (tw - HOME_ICON_W) / 2, ty + 5, icon_phone, HOME_ICON_W, HOME_ICON_H, fg);
-          int lw = eink->measureTextRawStyled("Phone");
-          eink->drawTextRawStyled(gridX + (tw - lw) / 2, ty + 17, "Phone", fg);
+          const char* phoneLabel = MECK_TR("Phone", "T\xC3\xA9l\xC3\xA9phone");
+          int lw = eink->measureTextRawStyled(phoneLabel);
+          eink->drawTextRawStyled(gridX + (tw - lw) / 2, ty + 17, phoneLabel, fg);
 #ifdef MECK_40MHZ_TEST
           // Phone is gated on the 40 MHz test build -- grey it out too
           {
@@ -693,7 +697,7 @@ public:
           rightBuf[0] = 0;
       #if defined(BLE_PIN_CODE) || defined(WIFI_SSID) || defined(MECK_WIFI_COMPANION)
           if (_task->hasConnection()) {
-            strcpy(rightBuf, "< Connected >");
+            strcpy(rightBuf, MECK_TR("< Connected >", "< Connect\xC3\xA9 >"));
           }
       #endif
       #if defined(WIFI_SSID) || defined(MECK_WIFI_COMPANION)
@@ -917,7 +921,7 @@ public:
         if (secs < 60) {
           sprintf(tmp, "%ds", secs);
         } else if (secs < 60*60) {
-          sprintf(tmp, "%dm", secs / 60);
+          sprintf(tmp, MECK_TR("%dm", "%dmin"), secs / 60);
         } else {
           sprintf(tmp, "%dh", secs / (60*60));
         }
@@ -935,7 +939,7 @@ public:
       display.setColor(DisplayDriver::LIGHT);
       display.setTextSize(_node_prefs->smallTextSize());
       display.drawTextCentered(display.width() / 2, display.height() - 24,
-                               "H: Full Last Heard list");
+                               MECK_TR("H: Full Last Heard list", "H: Liste compl\xC3\xA8" "te"));
     } else if (_page == HomePage::RADIO) {
       display.setColor(DisplayDriver::YELLOW);
       display.setTextSize(1);
@@ -953,10 +957,10 @@ public:
       sprintf(tmp, "TX: %ddBm", _node_prefs->tx_power_dbm);
       display.print(tmp);
       display.setCursor(0, 53);
-      sprintf(tmp, "Noise floor: %d", radio_driver.getNoiseFloor());
+      sprintf(tmp, MECK_TR("Noise floor: %d", "Bruit de fond : %d"), radio_driver.getNoiseFloor());
       display.print(tmp);
       display.setCursor(0, 64);
-      sprintf(tmp, "RX packets: %u", (unsigned)the_mesh.getRxPacketCount());
+      sprintf(tmp, MECK_TR("RX packets: %u", "Paquets RX : %u"), (unsigned)the_mesh.getRxPacketCount());
       display.print(tmp);
 #if defined(BLE_PIN_CODE) && defined(MECK_WIFI_COMPANION)
     } else if (_page == HomePage::BLUETOOTH) {
@@ -970,7 +974,7 @@ public:
       if (btOn && _task->hasConnection()) {
         display.setColor(DisplayDriver::GREEN);
         display.setTextSize(1);
-        display.drawTextCentered(display.width() / 2, 53, "< Connected >");
+        display.drawTextCentered(display.width() / 2, 53, MECK_TR("< Connected >", "< Connect\xC3\xA9" " >"));
       } else if (btOn && the_mesh.getBLEPin() != 0) {
         display.setColor(DisplayDriver::RED);
         display.setTextSize(2);
@@ -979,8 +983,8 @@ public:
       }
       display.setColor(DisplayDriver::GREEN);
       display.setTextSize(1);
-      display.drawTextCentered(display.width() / 2, 68, "toggle: " PRESS_LABEL);
-      display.drawTextCentered(display.width() / 2, 78, "or press Enter key");
+      display.drawTextCentered(display.width() / 2, 68, MECK_TR("toggle: " PRESS_LABEL, "basculer : appui long"));
+      display.drawTextCentered(display.width() / 2, 78, MECK_TR("or press Enter key", "ou touche Entr\xC3\xA9" "e"));
 #elif defined(BLE_PIN_CODE)
     } else if (_page == HomePage::BLUETOOTH) {
       display.setColor(DisplayDriver::GREEN);
@@ -990,7 +994,7 @@ public:
       if (_task->hasConnection()) {
         display.setColor(DisplayDriver::GREEN);
         display.setTextSize(1);
-        display.drawTextCentered(display.width() / 2, 53, "< Connected >");
+        display.drawTextCentered(display.width() / 2, 53, MECK_TR("< Connected >", "< Connect\xC3\xA9" " >"));
       } else if (_task->isSerialEnabled() && the_mesh.getBLEPin() != 0) {
         display.setColor(DisplayDriver::RED);
         display.setTextSize(2);
@@ -999,14 +1003,14 @@ public:
       }
       display.setColor(DisplayDriver::GREEN);
       display.setTextSize(1);
-      display.drawTextCentered(display.width() / 2, 68, "toggle: " PRESS_LABEL);
-      display.drawTextCentered(display.width() / 2, 78, "or press Enter key");
+      display.drawTextCentered(display.width() / 2, 68, MECK_TR("toggle: " PRESS_LABEL, "basculer : appui long"));
+      display.drawTextCentered(display.width() / 2, 78, MECK_TR("or press Enter key", "ou touche Entr\xC3\xA9" "e"));
 #endif
 #ifdef MECK_WIFI_COMPANION
     } else if (_page == HomePage::WIFI_STATUS) {
       display.setColor(DisplayDriver::GREEN);
       display.setTextSize(1);
-      display.drawTextCentered(display.width() / 2, 18, "WiFi Companion");
+      display.drawTextCentered(display.width() / 2, 18, MECK_TR("WiFi Companion", "Compagnon WiFi"));
 
       int wy = 36;
       display.setTextSize(_node_prefs->smallTextSize());
@@ -1026,26 +1030,26 @@ public:
         if (_task->hasConnection()) {
           display.setColor(DisplayDriver::GREEN);
           display.setTextSize(1);
-          display.drawTextCentered(display.width() / 2, wy, "< App Connected >");
+          display.drawTextCentered(display.width() / 2, wy, MECK_TR("< App Connected >", "< Appli connect\xC3\xA9" "e >"));
         } else {
           display.setColor(DisplayDriver::YELLOW);
           display.setTextSize(1);
-          display.drawTextCentered(display.width() / 2, wy, "Waiting for app...");
+          display.drawTextCentered(display.width() / 2, wy, MECK_TR("Waiting for app...", "Attente de l'appli..."));
         }
       } else {
         display.setColor(DisplayDriver::RED);
-        display.drawTextCentered(display.width() / 2, wy, "Not connected");
+        display.drawTextCentered(display.width() / 2, wy, MECK_TR("Not connected", "Non connect\xC3\xA9"));
         wy += wLH + 2;
         display.setColor(DisplayDriver::LIGHT);
-        display.drawTextCentered(display.width() / 2, wy, "Configure in Settings");
+        display.drawTextCentered(display.width() / 2, wy, MECK_TR("Configure in Settings", "Configurer dans Param\xC3\xA8tres"));
       }
       display.setTextSize(1);
 #endif
     } else if (_page == HomePage::ADVERT) {
       display.setColor(DisplayDriver::GREEN);
       display.drawXbm((display.width() - 32) / 2, 18, advert_icon, 32, 32);
-      display.drawTextCentered(display.width() / 2, 57, "advert: " PRESS_LABEL);
-      display.drawTextCentered(display.width() / 2, 67, "or press Enter key");
+      display.drawTextCentered(display.width() / 2, 57, MECK_TR("advert: " PRESS_LABEL, "annonce : appui long"));
+      display.drawTextCentered(display.width() / 2, 67, MECK_TR("or press Enter key", "ou touche Entr\xC3\xA9" "e"));
 #if ENV_INCLUDE_GPS == 1 && !defined(MECK_40MHZ_TEST)
     } else if (_page == HomePage::GPS) {
       extern GPSStreamCounter gpsStream;
@@ -1055,17 +1059,17 @@ public:
 
       // GPS state line
       if (!_node_prefs->gps_enabled) {
-        strcpy(buf, "gps off");
+        strcpy(buf, MECK_TR("gps off", "gps \xC3\xA9" "teint"));
       } else {
-        strcpy(buf, "gps on");
+        strcpy(buf, MECK_TR("gps on", "gps allum\xC3\xA9"));
       }
       display.drawTextLeftAlign(0, y, buf);
 
       if (nmea == NULL) {
         y = y + 12;
-        display.drawTextLeftAlign(0, y, "Can't access GPS");
+        display.drawTextLeftAlign(0, y, MECK_TR("Can't access GPS", "GPS inaccessible"));
       } else {
-        strcpy(buf, nmea->isValid()?"fix":"no fix");
+        strcpy(buf, nmea->isValid() ? "fix" : MECK_TR("no fix", "sans fix"));
         display.drawTextRightAlign(display.width()-1-EINK_X_OFFSET, y, buf);
         y = y + 12;
         display.drawTextLeftAlign(0, y, "sat");
@@ -1074,13 +1078,13 @@ public:
         y = y + 12;
 
         // NMEA sentence counter — confirms baud rate and data flow
-        display.drawTextLeftAlign(0, y, "sentences");
+        display.drawTextLeftAlign(0, y, MECK_TR("sentences", "phrases"));
         if (_node_prefs->gps_enabled) {
           uint16_t sps = gpsStream.getSentencesPerSec();
           uint32_t total = gpsStream.getSentenceCount();
           sprintf(buf, "%u/s (%lu)", sps, (unsigned long)total);
         } else {
-          strcpy(buf, "hw off");
+          strcpy(buf, MECK_TR("hw off", "\xC3\xA9" "teint"));
         }
         display.drawTextRightAlign(display.width()-1-EINK_X_OFFSET, y, buf);
         y = y + 12;
@@ -1104,12 +1108,12 @@ public:
           if (hrs < 0) hrs += 24;
           int mins = (local / 60) % 60;
           if (mins < 0) mins += 60;
-          display.drawTextLeftAlign(0, y, "time(U)");
+          display.drawTextLeftAlign(0, y, MECK_TR("time(U)", "heure(U)"));
           sprintf(buf, "%02d:%02d UTC%+d", hrs, mins, _node_prefs->utc_offset_hours);
           display.drawTextRightAlign(display.width()-1-EINK_X_OFFSET, y, buf);
         } else {
-          display.drawTextLeftAlign(0, y, "time(U)");
-          display.drawTextRightAlign(display.width()-1-EINK_X_OFFSET, y, "no sync");
+          display.drawTextLeftAlign(0, y, MECK_TR("time(U)", "heure(U)"));
+          display.drawTextRightAlign(display.width()-1-EINK_X_OFFSET, y, MECK_TR("no sync", "non synchro"));
         }
         y = y + 12;
       }
@@ -1214,18 +1218,18 @@ public:
 
       // Title
       display.setColor(DisplayDriver::GREEN);
-      display.drawTextCentered(display.width() / 2, y, "Battery Gauge");
+      display.drawTextCentered(display.width() / 2, y, MECK_TR("Battery Gauge", "Jauge batterie"));
       y += 12;
 
       display.setColor(DisplayDriver::LIGHT);
 
       // Time to empty
       uint16_t tte = board.getTimeToEmpty();
-      display.drawTextLeftAlign(0, y, "remaining");
+      display.drawTextLeftAlign(0, y, MECK_TR("remaining", "autonomie"));
       if (tte == 0xFFFF || tte == 0) {
-        strcpy(buf, tte == 0 ? "depleted" : "charging");
+        strcpy(buf, tte == 0 ? MECK_TR("depleted", "\xC3\xA9" "puis\xC3\xA9" "e") : MECK_TR("charging", "en charge"));
       } else if (tte >= 60) {
-        sprintf(buf, "%dh %dm", tte / 60, tte % 60);
+        sprintf(buf, MECK_TR("%dh %dm", "%dh %dmin"), tte / 60, tte % 60);
       } else {
         sprintf(buf, "%d min", tte);
       }
@@ -1234,21 +1238,21 @@ public:
 
       // Average current
       int16_t avgCur = board.getAvgCurrent();
-      display.drawTextLeftAlign(0, y, "avg current");
+      display.drawTextLeftAlign(0, y, MECK_TR("avg current", "courant moyen"));
       sprintf(buf, "%d mA", avgCur);
       display.drawTextRightAlign(display.width()-1-EINK_X_OFFSET, y, buf);
       y += 10;
 
       // Average power
       int16_t avgPow = board.getAvgPower();
-      display.drawTextLeftAlign(0, y, "avg power");
+      display.drawTextLeftAlign(0, y, MECK_TR("avg power", "puissance moy."));
       sprintf(buf, "%d mW", avgPow);
       display.drawTextRightAlign(display.width()-1-EINK_X_OFFSET, y, buf);
       y += 10;
 
       // Voltage (already available)
       uint16_t mv = board.getBattMilliVolts();
-      display.drawTextLeftAlign(0, y, "voltage");
+      display.drawTextLeftAlign(0, y, MECK_TR("voltage", "tension"));
       sprintf(buf, "%d.%03d V", mv / 1000, mv % 1000);
       display.drawTextRightAlign(display.width()-1-EINK_X_OFFSET, y, buf);
       y += 10;
@@ -1258,14 +1262,14 @@ public:
       uint16_t remCap = board.getRemainingCapacity();
       uint16_t desCap = board.getDesignCapacity();
       if (desCap > 0 && remCap > desCap) remCap = desCap;
-      display.drawTextLeftAlign(0, y, "remaining cap");
+      display.drawTextLeftAlign(0, y, MECK_TR("remaining cap", "capacit\xC3\xA9" " rest."));
       sprintf(buf, "%d mAh", remCap);
       display.drawTextRightAlign(display.width()-1-EINK_X_OFFSET, y, buf);
       y += 10;
 
       // Battery temperature
       int16_t battTemp = board.getBattTemperature();
-      display.drawTextLeftAlign(0, y, "temperature");
+      display.drawTextLeftAlign(0, y, MECK_TR("temperature", "temp\xC3\xA9" "rature"));
       sprintf(buf, "%d.%d C", battTemp / 10, abs(battTemp % 10));
       display.drawTextRightAlign(display.width()-1-EINK_X_OFFSET, y, buf);
 #endif
@@ -1287,8 +1291,8 @@ public:
         const int y1 = 56, y2 = 68;
         char line1[48], line2[48];
 #if defined(LilyGo_TDeck_Pro)
-        snprintf(line1, sizeof(line1), "%shibernate: long press/Enter", _poweroff_selected ? " " : ">");
-        snprintf(line2, sizeof(line2), "%spower off: long press/Enter", _poweroff_selected ? ">" : " ");
+        snprintf(line1, sizeof(line1), MECK_TR("%shibernate: long press/Enter", "%sveille : appui long/Entr\xC3\xA9" "e"), _poweroff_selected ? " " : ">");
+        snprintf(line2, sizeof(line2), MECK_TR("%spower off: long press/Enter", "%sarr\xC3\xAA" "t : appui long/Entr\xC3\xA9" "e"), _poweroff_selected ? ">" : " ");
 #else
         snprintf(line1, sizeof(line1), "%shibernate: " PRESS_LABEL, _poweroff_selected ? " " : ">");
         snprintf(line2, sizeof(line2), "%spower off: " PRESS_LABEL, _poweroff_selected ? ">" : " ");
@@ -2297,10 +2301,10 @@ if (curr) curr->poll();
         int lineH = 11;
         int startY = boxY + 6;
         _display->drawTextCentered(cx, startY, "M:Msgs  C:Contacts");
-        _display->drawTextCentered(cx, startY + lineH, "S:Settings  E:Reader");
-        _display->drawTextCentered(cx, startY + lineH * 2, "N:Notes  W/S:Scroll");
-        _display->drawTextCentered(cx, startY + lineH * 3, "A/D:Cycle Left/Right");
-        _display->drawTextCentered(cx, startY + lineH * 4 + 4, "[X to dismiss]");
+        _display->drawTextCentered(cx, startY + lineH, MECK_TR("S:Settings  E:Reader", "S:Options  E:Lecteur"));
+        _display->drawTextCentered(cx, startY + lineH * 2, MECK_TR("N:Notes  W/S:Scroll", "N:Notes  W/S:D\xC3\xA9" "filer"));
+        _display->drawTextCentered(cx, startY + lineH * 3, MECK_TR("A/D:Cycle Left/Right", "A/D:Gauche/Droite"));
+        _display->drawTextCentered(cx, startY + lineH * 4 + 4, MECK_TR("[X to dismiss]", "[X pour fermer]"));
         _next_refresh = _hintExpiry;
       } else if (_hintActive) {
         // Hint expired — auto-dismiss

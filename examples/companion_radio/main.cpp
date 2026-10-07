@@ -896,6 +896,9 @@ MyMesh the_mesh(radio_driver, fast_rng, rtc_clock, tables, store
 
 /* END GLOBAL OBJECTS */
 
+// UI language for MECK_TR() (ui-new/MeckLang.h)
+uint8_t meckUiLang() { return the_mesh.getNodePrefs()->ui_lang; }
+
 #if defined(LilyGo_TDeck_Pro)
 // ---------------------------------------------------------------------------
 // Settings > Experimental Features > Delete all contacts (ported from

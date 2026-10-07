@@ -36,16 +36,16 @@ static inline const char* meckFontStyleName(uint8_t style) {
 // ---------------------------------------------------------------------------
 // Font includes — Noto Sans family
 // ---------------------------------------------------------------------------
-#include "fonts/NotoSans7pt7b.h"
+#include "fonts/NotoSans7pt8b.h"
 #include "fonts/NotoSans9pt8b.h"
 #include "fonts/NotoSansBold7pt7b.h"
 #include "fonts/NotoSansBold9pt7b.h"
-#include "fonts/NotoSansBold12pt7b.h"
+#include "fonts/NotoSansBold12pt8b.h"
 
 // ---------------------------------------------------------------------------
 // Font includes — Montserrat family
 // ---------------------------------------------------------------------------
-#include "fonts/Montserrat7pt7b.h"
+#include "fonts/Montserrat7pt8b.h"
 #include "fonts/Montserrat9pt7b.h"
 #include "fonts/MontserratBold7pt7b.h"
 #include "fonts/MontserratBold9pt8b.h"
@@ -75,18 +75,18 @@ static inline const GFXfont* meckGetFont_TDeckPro(uint8_t style, int textSize) {
 
   if (style == MECK_FONT_NOTO) {
     switch (textSize) {
-      case 0:  return &NotoSans_Regular7pt7b;
+      case 0:  return &NotoSans_Regular7pt8b;
       case 1:  return &NotoSans9pt8b;
       case 2:  return &NotoSans9pt8b;
-      case 3:  return &NotoSans_Bold12pt7b;
-      case 5:  return &NotoSans_Bold12pt7b;  // caller applies x2 scale
+      case 3:  return &NotoSans_Bold12pt8b;
+      case 5:  return &NotoSans_Bold12pt8b;  // caller applies x2 scale
       default: return &NotoSans9pt8b;
     }
   }
 
   // MECK_FONT_MONTSERRAT
   switch (textSize) {
-    case 0:  return &Montserrat_Regular7pt7b;
+    case 0:  return &Montserrat_Regular7pt8b;
     case 1:  return &Montserrat_Regular9pt7b;
     case 2:  return &Montserrat_Regular9pt7b;
     case 3:  return &MontserratBold12pt8b;

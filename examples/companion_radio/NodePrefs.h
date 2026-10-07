@@ -100,8 +100,13 @@ struct NodePrefs {  // persisted to file
   // --- Experimental Features ---
   // 1 = "Change Backlight to Alt+B" is on: the Max's heart touch key no
   // longer toggles the frontlight, leaving Alt+B. Older prefs files
-  // short-read this final field and keep the default 0 (heart key on).
+  // short-read this field and keep the default 0 (heart key on).
   uint8_t backlight_alt_b_only;    // default 0
+
+  // UI language (Experimental Features): 0 = English, 1 = French
+  // (ui-new/MeckLang.h). Older prefs files short-read this final field
+  // and keep the default 0 (English).
+  uint8_t ui_lang;                 // default 0
 
   // --- Font helpers (inline, no overhead) ---
   // Returns the DisplayDriver text-size index for "small/body" text.

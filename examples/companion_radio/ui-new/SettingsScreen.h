@@ -7,6 +7,7 @@
 #include <MeshCore.h>
 #include "../NodePrefs.h"
 #include "MeckFonts.h"
+#include "MeckLang.h"
 #if defined(MECK_AUDIO_VARIANT) || defined(HAS_4G_MODEM)
 #include "NotifSounds.h"
 #endif
@@ -195,7 +196,8 @@ enum SettingsRowType : uint8_t {
   ROW_OPERATOR_INFO,  // Carrier/operator display (read-only)
   ROW_APN,            // APN setting (editable)
   #endif
-  ROW_EXPERIMENTAL_SUBMENU, // Folder row: enters Experimental Features sub-screen (last row)
+  ROW_EXPERIMENTAL_SUBMENU, // Folder row: enters Experimental Features sub-screen (after Rx Log)
+  ROW_LANGUAGE,         // UI language: English / French (French swaps Classic to Noto Sans)
 #if defined(LilyGo_TDeck_Pro_Max)
   ROW_ALT_B_BACKLIGHT,  // Toggle: heart touch key off, Alt+B only toggles the backlight (MAX only)
 #endif
@@ -507,6 +509,7 @@ private:
     #endif
     } else if (_subScreen == SUB_EXPERIMENTAL) {
       // --- Experimental Features sub-screen ---
+      addRow(ROW_LANGUAGE);
 #if defined(LilyGo_TDeck_Pro_Max)
       addRow(ROW_ALT_B_BACKLIGHT);
 #endif
@@ -567,6 +570,9 @@ private:
       // Rx Log packet sniffer (opens RxLogScreen)
       addRow(ROW_RXLOG);
 
+      // Experimental Features (after Rx Log)
+      addRow(ROW_EXPERIMENTAL_SUBMENU);
+
       // Info section (stays at top level)
       addRow(ROW_INFO_HEADER);
       addRow(ROW_PUB_KEY);
@@ -577,9 +583,6 @@ private:
       addRow(ROW_OPERATOR_INFO);
       addRow(ROW_APN);
       #endif
-
-      // Experimental Features (last row)
-      addRow(ROW_EXPERIMENTAL_SUBMENU);
     }
 
     // Clamp cursor
@@ -2269,6 +2272,10 @@ public:
           display.print("Experimental Features >>");
           break;
 
+        case ROW_LANGUAGE:
+          display.print(_prefs->ui_lang == MECK_LANG_FR ? "Langue : Passer \xC3\xA0 l'anglais" : "Language: Change to French");
+          break;
+
 #if defined(LilyGo_TDeck_Pro_Max)
         case ROW_ALT_B_BACKLIGHT:
           snprintf(tmp, sizeof(tmp), "Change Backlight to Alt+B: %s",
@@ -3393,6 +3400,8 @@ public:
         } else if (type == ROW_FONT_STYLE) {
           _editPickerIdx--;
           if (_editPickerIdx < 0) _editPickerIdx = MECK_FONT_STYLE_COUNT - 1;
+          // French: Classic has no accents, so it is skipped
+          if (_prefs->ui_lang == MECK_LANG_FR && _editPickerIdx == MECK_FONT_CLASSIC) _editPickerIdx = MECK_FONT_STYLE_COUNT - 1;
           _prefs->ui_font_style = _editPickerIdx;  // Live preview
         } else {
           // Radio preset
@@ -3416,6 +3425,8 @@ public:
         } else if (type == ROW_FONT_STYLE) {
           _editPickerIdx++;
           if (_editPickerIdx >= MECK_FONT_STYLE_COUNT) _editPickerIdx = 0;
+          // French: Classic has no accents, so it is skipped
+          if (_prefs->ui_lang == MECK_LANG_FR && _editPickerIdx == MECK_FONT_CLASSIC) _editPickerIdx = MECK_FONT_NOTO;
           _prefs->ui_font_style = _editPickerIdx;  // Live preview
         } else {
           // Radio preset
@@ -3878,6 +3889,18 @@ public:
           _scrollTop = 0;
           rebuildRows();
           Serial.println("Settings: entered Experimental Features sub-screen");
+          break;
+        case ROW_LANGUAGE:
+          if (_prefs->ui_lang == MECK_LANG_FR) {
+            _prefs->ui_lang = MECK_LANG_EN;  // fonts stay as they are
+          } else {
+            // French: any size, but Classic has no accents, so swap it to Noto Sans
+            _prefs->ui_lang = MECK_LANG_FR;
+            if (_prefs->ui_font_style == MECK_FONT_CLASSIC) _prefs->ui_font_style = MECK_FONT_NOTO;
+          }
+          the_mesh.savePrefs();
+          Serial.printf("Settings: Language = %s\n",
+                        _prefs->ui_lang == MECK_LANG_FR ? "French" : "English");
           break;
 #if defined(LilyGo_TDeck_Pro_Max)
         case ROW_ALT_B_BACKLIGHT:

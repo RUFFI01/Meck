@@ -485,6 +485,19 @@ int16_t GxEPDDisplay::measureTextRawStyled(const char* text) {
   if (f) {
     display.setFont(f);
     display.setTextSize(1);
+    if (hasNonAscii(text) && f->last > 0xFF) {
+      // Accented text with an 8b font: sum the advance of each decoded
+      // codepoint (getTextBounds skips the UTF-8 bytes)
+      const uint8_t* s = (const uint8_t*)text;
+      int len = strlen(text), pos = 0, adv = 0;
+      while (pos < len) {
+        int consumed;
+        uint32_t cp = utf8Decode(s + pos, len - pos, &consumed);
+        if (cp >= f->first && cp <= f->last) adv += f->glyph[cp - f->first].xAdvance;
+        pos += consumed;
+      }
+      return (int16_t)(adv + 1);
+    }
     int16_t x1, y1;
     uint16_t w, h;
     display.getTextBounds(text, 0, 0, &x1, &y1, &w, &h);
@@ -511,6 +524,33 @@ void GxEPDDisplay::drawTextRawStyled(int16_t x, int16_t yTop, const char* text, 
     uint16_t w, h;
     display.getTextBounds(text, 0, 0, &x1, &y1, &w, &h);
     display.setCursor(x, yTop - y1);
+    if (hasNonAscii(text) && f->last > 0xFF) {
+      // Accented text with an 8b font: ASCII through Adafruit GFX, other
+      // characters from the font's glyph table, as print() does
+      const GFXfont* savedFont = _currentFont;
+      uint8_t savedScale = _currentTextScale;
+      uint16_t savedColor = _curr_color;
+      _currentFont = f;
+      _currentTextScale = 1;
+      _curr_color = color;
+      const uint8_t* s = (const uint8_t*)text;
+      int len = strlen(text), pos = 0;
+      while (pos < len) {
+        if (s[pos] < 0x80) {
+          display.write(s[pos]);
+          pos++;
+        } else {
+          int consumed;
+          uint32_t cp = utf8Decode(s + pos, len - pos, &consumed);
+          drawGlyphAtCursor((uint16_t)cp);
+          pos += consumed;
+        }
+      }
+      _currentFont = savedFont;
+      _currentTextScale = savedScale;
+      _curr_color = savedColor;
+      return;
+    }
     display.print(text);
     return;
   }
