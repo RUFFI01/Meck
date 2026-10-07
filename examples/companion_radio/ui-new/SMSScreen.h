@@ -32,6 +32,7 @@
 
 #include <helpers/ui/UIScreen.h>
 #include <helpers/ui/DisplayDriver.h>
+#include "MeckLang.h"
 #include <time.h>
 #include "ModemManager.h"
 #include "SMSStore.h"
@@ -397,7 +398,7 @@ public:
     display.setTextSize(1);
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, 0);
-    display.print("Phone & SMS");
+    display.print(MECK_TR("Phone & SMS", "T\xC3\xA9l\xC3\xA9phone et SMS"));
 
     // Signal strength at top-right
     renderSignalIndicator(display, display.width() - 2, 0);
@@ -415,7 +416,7 @@ public:
     display.setColor(_menuCursor == 0 ? DisplayDriver::GREEN : DisplayDriver::LIGHT);
     if (_menuCursor == 0) display.print("> ");
     else display.print("  ");
-    display.print("Dial");
+    display.print(MECK_TR("Dial", "Composer"));
 
     y += lineHeight;
 
@@ -424,7 +425,7 @@ public:
     display.setColor(_menuCursor == 1 ? DisplayDriver::GREEN : DisplayDriver::LIGHT);
     if (_menuCursor == 1) display.print("> ");
     else display.print("  ");
-    display.print("Call Log");
+    display.print(MECK_TR("Call Log", "Journal d'appels"));
 
     // Show unseen missed-call count (hidden when there are none)
     if (_unseenMissed > 0) {
@@ -450,7 +451,7 @@ public:
     display.setColor(_menuCursor == 3 ? DisplayDriver::GREEN : DisplayDriver::LIGHT);
     if (_menuCursor == 3) display.print("> ");
     else display.print("  ");
-    display.print("SMS Inbox");
+    display.print(MECK_TR("SMS Inbox", "SMS re\xC3\xA7us"));
 
     // Show unread count hint (hidden when there are none)
     int unread = 0;
@@ -469,16 +470,16 @@ public:
     if (ms == ModemState::OFF || ms == ModemState::POWERING_ON || 
         ms == ModemState::INITIALIZING) {
       display.setColor(DisplayDriver::YELLOW);
-      display.print("Please wait...");
+      display.print(MECK_TR("Please wait...", "Veuillez patienter..."));
     } else if (ms == ModemState::ERROR) {
       display.setColor(DisplayDriver::YELLOW);
       char statBuf[40];
-      snprintf(statBuf, sizeof(statBuf), "Modem: %s", ModemManager::stateToString(ms));
+      snprintf(statBuf, sizeof(statBuf), MECK_TR("Modem: %s", "Modem : %s"), ModemManager::stateToString(ms));
       display.print(statBuf);
     } else if (ms == ModemState::REGISTERING || ms == ModemState::READY || 
                ms == ModemState::SENDING_SMS) {
       display.setColor(DisplayDriver::GREEN);
-      display.print("Ready!");
+      display.print(MECK_TR("Ready!", "Pr\xC3\xAAt !"));
     }
     display.setTextSize(1);
 
@@ -488,8 +489,8 @@ public:
     display.drawRect(0, footerY - 2, display.width(), 1);
     display.setColor(DisplayDriver::YELLOW);
     display.setCursor(0, footerY);
-    display.print("Q:Back");
-    const char* rt = "Ent:Open";
+    display.print(MECK_TR("Q:Back", "Q:Retour"));
+    const char* rt = MECK_TR("Ent:Open", "Ent:Ouvrir");
     display.setCursor(display.width() - display.getTextWidth(rt) - 6, footerY);
     display.print(rt);
 
@@ -514,7 +515,14 @@ public:
       {"*", "0", "#"},
       {"+", "DEL", "CALL"}
     };
-    return labels[row][col];
+    static const char* labels_fr[5][3] = {
+      {"1", "2", "3"},
+      {"4", "5", "6"},
+      {"7", "8", "9"},
+      {"*", "0", "#"},
+      {"+", "EFF", "APPEL"}
+    };
+    return MECK_TR(labels[row][col], labels_fr[row][col]);
   }
 
   // Button character values: '\b' = backspace, '\r' = call
@@ -546,7 +554,7 @@ public:
     display.setTextSize(1);
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, 0);
-    display.print("Dial Number");
+    display.print(MECK_TR("Dial Number", "Composer un num\xC3\xA9ro"));
 
     // Signal strength at top-right
     renderSignalIndicator(display, W - 2, 0);
@@ -619,9 +627,9 @@ public:
     display.drawRect(0, footerY - 1, W, 1);
     display.setColor(DisplayDriver::YELLOW);
     display.setCursor(0, footerY);
-    display.print("Sh+Del:Bk");
+    display.print(MECK_TR("Sh+Del:Bk", "S+D:Ret"));
     if (_phoneInputPos > 0) {
-      const char* rt = "Ent:Call";
+      const char* rt = MECK_TR("Ent:Call", "Ent:Appel");
       display.setCursor(W - display.getTextWidth(rt) - 2, footerY);
       display.print(rt);
     } else {
@@ -642,7 +650,7 @@ public:
     display.setTextSize(1);
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, 0);
-    display.print("Call Log");
+    display.print(MECK_TR("Call Log", "Journal d'appels"));
 
     // Signal strength at top-right
     renderSignalIndicator(display, display.width() - 2, 0);
@@ -654,7 +662,7 @@ public:
       display.setTextSize(_prefs->smallTextSize());
       display.setColor(DisplayDriver::LIGHT);
       display.setCursor(0, 20);
-      display.print("No calls");
+      display.print(MECK_TR("No calls", "Aucun appel"));
       display.setTextSize(1);
     } else {
       display.setTextSize(_prefs->smallTextSize());
@@ -681,7 +689,7 @@ public:
         if (e.phone[0]) {
           smsContacts.displayName(e.phone, dispName, sizeof(dispName));
         } else {
-          strncpy(dispName, "Unknown", sizeof(dispName) - 1);
+          strncpy(dispName, MECK_TR("Unknown", "Inconnu"), sizeof(dispName) - 1);
           dispName[sizeof(dispName) - 1] = '\0';
         }
 
@@ -692,8 +700,8 @@ public:
         y += lineHeight;
 
         // Detail line: type, duration for connected calls, local date/time
-        const char* typeStr = (e.type == CALL_LOG_MISSED) ? "Missed"
-                            : (e.type == CALL_LOG_INCOMING) ? "In" : "Out";
+        const char* typeStr = (e.type == CALL_LOG_MISSED) ? MECK_TR("Missed", "Manqu\xC3\xA9")
+                            : (e.type == CALL_LOG_INCOMING) ? MECK_TR("In", "Re\xC3\xA7u") : MECK_TR("Out", "\xC3\x89mis");
         int32_t local = (int32_t)e.timestamp + ((int32_t)_prefs->utc_offset_hours * 3600);
         time_t lt = (time_t)local;
         struct tm tmv;
@@ -721,11 +729,11 @@ public:
     display.drawRect(0, footerY - 2, display.width(), 1);
     display.setColor(DisplayDriver::YELLOW);
     display.setCursor(0, footerY);
-    display.print("Q:Back");
-    const char* mid = "D:Del";
+    display.print(MECK_TR("Q:Back", "Q:Ret"));
+    const char* mid = MECK_TR("D:Del", "D:Suppr");
     display.setCursor((display.width() - display.getTextWidth(mid)) / 2, footerY);
     display.print(mid);
-    const char* rt = "Ent:Dial";
+    const char* rt = MECK_TR("Ent:Dial", "Ent:Appel");
     display.setCursor(display.width() - display.getTextWidth(rt) - 2, footerY);
     display.print(rt);
 
@@ -775,7 +783,7 @@ public:
     display.setTextSize(1);
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, 0);
-    display.print("SMS Inbox");
+    display.print(MECK_TR("SMS Inbox", "SMS re\xC3\xA7us"));
 
     // Signal strength at top-right
     renderSignalIndicator(display, display.width() - 2, 0);
@@ -787,15 +795,15 @@ public:
       display.setTextSize(_prefs->smallTextSize());
       display.setColor(DisplayDriver::LIGHT);
       display.setCursor(0, 20);
-      display.print("No conversations");
+      display.print(MECK_TR("No conversations", "Aucune conversation"));
       display.setCursor(0, 32);
-      display.print("Press C for new SMS");
+      display.print(MECK_TR("Press C for new SMS", "C pour un nouveau SMS"));
 
       if (ms != ModemState::READY) {
         display.setCursor(0, 48);
         display.setColor(DisplayDriver::YELLOW);
         char statBuf[40];
-        snprintf(statBuf, sizeof(statBuf), "Modem: %s", ModemManager::stateToString(ms));
+        snprintf(statBuf, sizeof(statBuf), MECK_TR("Modem: %s", "Modem : %s"), ModemManager::stateToString(ms));
         display.print(statBuf);
       }
       display.setTextSize(1);
@@ -855,11 +863,11 @@ public:
     display.drawRect(0, footerY - 2, display.width(), 1);
     display.setColor(DisplayDriver::YELLOW);
     display.setCursor(0, footerY);
-    display.print("Q:Back");
+    display.print(MECK_TR("Q:Back", "Q:Ret"));
     const char* mid = "D:Contacts";
     display.setCursor((display.width() - display.getTextWidth(mid)) / 2, footerY);
     display.print(mid);
-    const char* rt = "C:New";
+    const char* rt = MECK_TR("C:New", "C:\xC3\x89" "crire");
     display.setCursor(display.width() - display.getTextWidth(rt) - 2, footerY);
     display.print(rt);
 
@@ -886,7 +894,7 @@ public:
       display.setTextSize(_prefs->smallTextSize());
       display.setColor(DisplayDriver::LIGHT);
       display.setCursor(0, 25);
-      display.print("No messages");
+      display.print(MECK_TR("No messages", "Aucun message"));
       display.setTextSize(1);
     } else {
       display.setTextSize(_prefs->smallTextSize());
@@ -920,9 +928,9 @@ public:
         if (haveEpoch && msgIsEpoch) {
           uint32_t age = (uint32_t)(now - msg.timestamp);
           if (age < 60)         snprintf(timeStr, sizeof(timeStr), "%lus", (unsigned long)age);
-          else if (age < 3600)  snprintf(timeStr, sizeof(timeStr), "%lum", (unsigned long)(age / 60));
+          else if (age < 3600)  snprintf(timeStr, sizeof(timeStr), MECK_TR("%lum", "%lumin"), (unsigned long)(age / 60));
           else if (age < 86400) snprintf(timeStr, sizeof(timeStr), "%luh", (unsigned long)(age / 3600));
-          else                  snprintf(timeStr, sizeof(timeStr), "%lud", (unsigned long)(age / 86400));
+          else                  snprintf(timeStr, sizeof(timeStr), MECK_TR("%lud", "%luj"), (unsigned long)(age / 86400));
         } else {
           strncpy(timeStr, "---", sizeof(timeStr));
         }
@@ -969,8 +977,8 @@ public:
     display.drawRect(0, footerY - 2, display.width(), 1);
     display.setColor(DisplayDriver::YELLOW);
     display.setCursor(0, footerY);
-    display.print("Q:Bk A:Add Contact");
-    const char* rt = "C:Reply";
+    display.print(MECK_TR("Q:Bk A:Add Contact", "Q:Ret A:+Contact"));
+    const char* rt = MECK_TR("C:Reply", "C:R\xC3\xA9p.");
     display.setCursor(display.width() - display.getTextWidth(rt) - 2, footerY);
     display.print(rt);
 
@@ -984,7 +992,7 @@ public:
     display.setCursor(0, 0);
 
     if (_enteringPhone) {
-      display.print("To: ");
+      display.print(MECK_TR("To: ", "\xC3\x80 : "));
       display.setColor(DisplayDriver::LIGHT);
       display.print(_phoneInputBuf);
       display.print("_");
@@ -993,7 +1001,7 @@ public:
       char dispName[SMS_CONTACT_NAME_LEN];
       smsContacts.displayName(_composePhone, dispName, sizeof(dispName));
       char toLabel[40];
-      snprintf(toLabel, sizeof(toLabel), "To: %s", dispName);
+      snprintf(toLabel, sizeof(toLabel), MECK_TR("To: %s", "\xC3\x80 : %s"), dispName);
       display.print(toLabel);
     }
 
@@ -1039,7 +1047,7 @@ public:
     display.setCursor(0, statusY);
 
     if (_enteringPhone) {
-      display.print("Phone#");
+      display.print(MECK_TR("Phone#", "Num\xC3\xA9ro"));
       const char* rt = "Ent S+D:X";
       display.setCursor(display.width() - display.getTextWidth(rt) - 2, statusY);
       display.print(rt);
@@ -1077,7 +1085,7 @@ public:
     display.setTextSize(1);
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, 0);
-    display.print(_cpIsNew ? "New Contact" : "Contact");
+    display.print(_cpIsNew ? MECK_TR("New Contact", "Nouveau contact") : "Contact");
 
     display.setColor(DisplayDriver::LIGHT);
     display.drawRect(0, 11, display.width(), 1);
@@ -1092,9 +1100,9 @@ public:
     display.setColor(_cpCursor == 0 ? DisplayDriver::GREEN : DisplayDriver::LIGHT);
     display.print(_cpCursor == 0 ? "> " : "  ");
     if (_cpEditing && _cpCursor == 0) {
-      snprintf(rowBuf, sizeof(rowBuf), "Name: %s_", _cpEditBuf);
+      snprintf(rowBuf, sizeof(rowBuf), MECK_TR("Name: %s_", "Nom : %s_"), _cpEditBuf);
     } else {
-      snprintf(rowBuf, sizeof(rowBuf), "Name: %s", _cpName);
+      snprintf(rowBuf, sizeof(rowBuf), MECK_TR("Name: %s", "Nom : %s"), _cpName);
     }
     display.print(rowBuf);
     y += lineHeight;
@@ -1104,9 +1112,9 @@ public:
     display.setColor(_cpCursor == 1 ? DisplayDriver::GREEN : DisplayDriver::LIGHT);
     display.print(_cpCursor == 1 ? "> " : "  ");
     if (_cpEditing && _cpCursor == 1) {
-      snprintf(rowBuf, sizeof(rowBuf), "Number: %s_", _cpEditBuf);
+      snprintf(rowBuf, sizeof(rowBuf), MECK_TR("Number: %s_", "Num\xC3\xA9ro : %s_"), _cpEditBuf);
     } else {
-      snprintf(rowBuf, sizeof(rowBuf), "Number: %s", _cpPhone);
+      snprintf(rowBuf, sizeof(rowBuf), MECK_TR("Number: %s", "Num\xC3\xA9ro : %s"), _cpPhone);
     }
     display.print(rowBuf);
     y += lineHeight;
@@ -1115,14 +1123,14 @@ public:
     display.setCursor(4, y);
     display.setColor(_cpCursor == 2 ? DisplayDriver::GREEN : DisplayDriver::LIGHT);
     display.print(_cpCursor == 2 ? "> " : "  ");
-    display.print("Save");
+    display.print(MECK_TR("Save", "Enregistrer"));
     y += lineHeight;
 
     if (_cpNeedNumber) {
       display.setTextSize(_prefs->smallTextSize());
       display.setColor(DisplayDriver::YELLOW);
       display.setCursor(4, y + 4);
-      display.print("A number is required");
+      display.print(MECK_TR("A number is required", "Un num\xC3\xA9ro est requis"));
       display.setTextSize(1);
     }
 
@@ -1133,18 +1141,18 @@ public:
     display.setColor(DisplayDriver::YELLOW);
     display.setCursor(0, footerY);
     if (_cpEditing) {
-      display.print("Sh+Del:Cancel");
-      const char* rt = "Ent:Done";
+      display.print(MECK_TR("Sh+Del:Cancel", "Sh+Del:Annuler"));
+      const char* rt = MECK_TR("Ent:Done", "Ent:OK");
       display.setCursor(display.width() - display.getTextWidth(rt) - 6, footerY);
       display.print(rt);
     } else {
-      display.print("Q:Back");
+      display.print(MECK_TR("Q:Back", "Q:Ret"));
       if (!_cpIsNew) {
-        const char* mid = "F:Dial D:Del";
+        const char* mid = MECK_TR("F:Dial D:Del", "F:Appel D:Sup");
         display.setCursor((display.width() - display.getTextWidth(mid)) / 2, footerY);
         display.print(mid);
       }
-      const char* rt = "Ent:Sel";
+      const char* rt = MECK_TR("Ent:Sel", "Ent:S\xC3\xA9l");
       display.setCursor(display.width() - display.getTextWidth(rt) - 6, footerY);
       display.print(rt);
     }
@@ -1257,7 +1265,7 @@ public:
     display.setTextSize(1);
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, 0);
-    display.print("SMS Contacts");
+    display.print(MECK_TR("SMS Contacts", "Contacts SMS"));
 
     display.setColor(DisplayDriver::LIGHT);
     display.drawRect(0, 11, display.width(), 1);
@@ -1268,9 +1276,9 @@ public:
       display.setTextSize(_prefs->smallTextSize());
       display.setColor(DisplayDriver::LIGHT);
       display.setCursor(0, 25);
-      display.print("No contacts saved");
+      display.print(MECK_TR("No contacts saved", "Aucun contact enregistr\xC3\xA9"));
       display.setCursor(0, 37);
-      display.print("Press A to add one");
+      display.print(MECK_TR("Press A to add one", "A pour en ajouter un"));
       display.setTextSize(1);
     } else {
       display.setTextSize(_prefs->smallTextSize());
@@ -1317,11 +1325,11 @@ public:
     display.drawRect(0, footerY - 2, display.width(), 1);
     display.setColor(DisplayDriver::YELLOW);
     display.setCursor(0, footerY);
-    display.print("Q:Back");
-    const char* mid = "A:Add";
+    display.print(MECK_TR("Q:Back", "Q:Ret"));
+    const char* mid = MECK_TR("A:Add", "A:Ajouter");
     display.setCursor((display.width() - display.getTextWidth(mid)) / 2, footerY);
     display.print(mid);
-    const char* rt = "Ent:Open";
+    const char* rt = MECK_TR("Ent:Open", "Ent:Ouvrir");
     display.setCursor(display.width() - display.getTextWidth(rt) - 6, footerY);
     display.print(rt);
 
@@ -1333,7 +1341,7 @@ public:
     display.setTextSize(1);
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, 0);
-    display.print(_editIsNew ? "Add Contact" : "Edit Contact");
+    display.print(_editIsNew ? MECK_TR("Add Contact", "Ajouter un contact") : MECK_TR("Edit Contact", "Modifier le contact"));
 
     display.setColor(DisplayDriver::LIGHT);
     display.drawRect(0, 11, display.width(), 1);
@@ -1342,13 +1350,13 @@ public:
     display.setTextSize(_prefs->smallTextSize());
     display.setColor(DisplayDriver::LIGHT);
     display.setCursor(0, 16);
-    display.print("Phone: ");
+    display.print(MECK_TR("Phone: ", "Num\xC3\xA9ro : "));
     display.print(_editPhone);
 
     // Name input
     display.setCursor(0, 30);
     display.setColor(DisplayDriver::YELLOW);
-    display.print("Name: ");
+    display.print(MECK_TR("Name: ", "Nom : "));
     display.setColor(DisplayDriver::LIGHT);
     display.print(_editNameBuf);
     display.print("_");
@@ -1362,7 +1370,7 @@ public:
     display.setColor(DisplayDriver::YELLOW);
     display.setCursor(0, footerY);
     display.print("S+D:X");
-    const char* rt = "Ent:Save";
+    const char* rt = MECK_TR("Ent:Save", "Ent:Enreg.");
     display.setCursor(display.width() - display.getTextWidth(rt) - 2, footerY);
     display.print(rt);
 
@@ -1378,7 +1386,7 @@ public:
     display.setTextSize(1);
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, 0);
-    display.print("Calling");
+    display.print(MECK_TR("Calling", "Appel"));
 
     renderSignalIndicator(display, W - 2, 0);
 
@@ -1407,7 +1415,7 @@ public:
 
     display.setTextSize(1);
     display.setColor(DisplayDriver::YELLOW);
-    const char* dialLabel = "Dialing";
+    const char* dialLabel = MECK_TR("Dialing", "Num\xC3\xA9rotation");
     uint16_t dialW = display.getTextWidth(dialLabel);
     display.setCursor((W - dialW) / 2 - 6, H / 2 + 4);
     display.print(dialLabel);
@@ -1419,7 +1427,7 @@ public:
     display.drawRect(0, footerY - 2, W, 1);
     display.setColor(DisplayDriver::YELLOW);
     display.setCursor(0, footerY);
-    display.print("Ent/Sh+Del:Hang up");
+    display.print(MECK_TR("Ent/Sh+Del:Hang up", "Ent/Sh+Del:Raccrocher"));
 
     return 800;  // Fast refresh for dot animation
   }
@@ -1433,7 +1441,7 @@ public:
     display.setTextSize(1);
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, 0);
-    display.print("Incoming Call");
+    display.print(MECK_TR("Incoming Call", "Appel entrant"));
 
     renderSignalIndicator(display, W - 2, 0);
 
@@ -1462,7 +1470,7 @@ public:
 
     display.setTextSize(1);
     display.setColor(DisplayDriver::YELLOW);
-    const char* ringLabel = "Ringing";
+    const char* ringLabel = MECK_TR("Ringing", "Sonnerie");
     uint16_t ringW = display.getTextWidth(ringLabel);
     display.setCursor((W - ringW) / 2 - 6, H / 2 + 4);
     display.print(ringLabel);
@@ -1474,8 +1482,8 @@ public:
     display.drawRect(0, footerY - 2, W, 1);
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, footerY);
-    display.print("Ent:Answer");
-    const char* rt = "Sh+Del:Reject";
+    display.print(MECK_TR("Ent:Answer", "Ent:R\xC3\xA9pondre"));
+    const char* rt = MECK_TR("Sh+Del:Reject", "Sh+Del:Rejet");
     display.setColor(DisplayDriver::YELLOW);
     display.setCursor(W - display.getTextWidth(rt) - 2, footerY);
     display.print(rt);
@@ -1492,7 +1500,7 @@ public:
     display.setTextSize(1);
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, 0);
-    display.print("In Call");
+    display.print(MECK_TR("In Call", "En appel"));
 
     renderSignalIndicator(display, W - 2, 0);
 
@@ -1543,7 +1551,7 @@ public:
     display.drawRect(0, footerY - 2, W, 1);
     display.setColor(DisplayDriver::YELLOW);
     display.setCursor(0, footerY);
-    display.print("Ent:Hang  W/S:Vol 0-9:DTMF");
+    display.print(MECK_TR("Ent:Hang  W/S:Vol 0-9:DTMF", "Ent:Racc.  W/S:Vol 0-9:DTMF"));
 
     return 1000;  // 1s refresh for timer
   }

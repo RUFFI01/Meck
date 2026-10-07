@@ -2,6 +2,7 @@
 
 #include <helpers/ui/UIScreen.h>
 #include <helpers/ui/DisplayDriver.h>
+#include "MeckLang.h"
 #include <MeshCore.h>
 
 // Forward declarations
@@ -27,6 +28,8 @@ struct AdminCmdDef {
   const char* cmd;         // CLI command string (full, or prefix if CMDF_PARAM)
   const char* paramHint;   // Prompt for parameter input (NULL if not needed)
   uint8_t flags;
+  const char* label_fr;     // French label (Experimental Features > Language)
+  const char* paramHint_fr; // French prompt (NULL if not needed)
 };
 
 // =====================================================================
@@ -35,86 +38,86 @@ struct AdminCmdDef {
 
 // --- Clock & Adverts ---
 static const AdminCmdDef CMD_OPERATIONAL[] = {
-  { "Clock Sync",    "clock sync",   nullptr,          0 },
-  { "Send Advert",   "advert",       nullptr,          0 },
-  { "Get Clock",     "clock",        nullptr,          0 },
+  { "Clock Sync",    "clock sync",   nullptr,          0, "Synchro horloge", nullptr },
+  { "Send Advert",   "advert",       nullptr,          0, "Envoyer une annonce", nullptr },
+  { "Get Clock",     "clock",        nullptr,          0, "Lire l'horloge", nullptr },
 };
 #define CMD_OPERATIONAL_COUNT 3
 
 // --- Neighbors ---
 static const AdminCmdDef CMD_NEIGHBORS[] = {
-  { "View Neighbors",  "neighbors",        nullptr,               CMDF_PARSE_NEIGHBORS },
-  { "Remove Neighbor", "neighbor.remove ",  "Pubkey hex prefix:",  CMDF_PARAM },
+  { "View Neighbors",  "neighbors",        nullptr,               CMDF_PARSE_NEIGHBORS, "Voir les voisins", nullptr },
+  { "Remove Neighbor", "neighbor.remove ",  "Pubkey hex prefix:",  CMDF_PARAM, "Retirer un voisin", "Pr\xC3\xA9" "fixe hex de la cl\xC3\xA9 :" },
 };
 #define CMD_NEIGHBORS_COUNT 2
 
 // --- Info ---
 static const AdminCmdDef CMD_INFO[] = {
-  { "Version",    "ver",    nullptr, 0 },
-  { "Board",      "board",  nullptr, 0 },
+  { "Version",    "ver",    nullptr, 0, "Version", nullptr },
+  { "Board",      "board",  nullptr, 0, "Carte", nullptr },
 };
 #define CMD_INFO_COUNT 2
 
 // --- Get Config (read-only queries) ---
 static const AdminCmdDef CMD_GET_CONFIG[] = {
-  { "Get Name",             "get name",                  nullptr, 0 },
-  { "Get TX Power",         "get tx",                    nullptr, 0 },
-  { "Get AF",               "get af",                    nullptr, 0 },
-  { "Get Repeat",           "get repeat",                nullptr, 0 },
-  { "Get Radio",            "get radio",                 nullptr, 0 },
-  { "Get Flood Max",        "get flood.max",             nullptr, 0 },
-  { "Get RX Delay",         "get rxdelay",               nullptr, 0 },
-  { "Get TX Delay",         "get txdelay",               nullptr, 0 },
-  { "Get Direct TX Delay",  "get direct.txdelay",        nullptr, 0 },
-  { "Get Int Thresh",       "get int.thresh",            nullptr, 0 },
-  { "Get AGC Reset Int",    "get agc.reset.interval",    nullptr, 0 },
-  { "Get Multi Acks",       "get multi.acks",            nullptr, 0 },
-  { "Get Advert Int",       "get advert.interval",       nullptr, 0 },
-  { "Get Flood Adv Int",    "get flood.advert.interval", nullptr, 0 },
-  { "Get Guest Password",   "get guest.password",        nullptr, 0 },
-  { "Get Allow R/O",        "get allow.read.only",       nullptr, 0 },
-  { "Get ADC Multiplier",   "get adc.multiplier",        nullptr, 0 },
+  { "Get Name",             "get name",                  nullptr, 0, "Lire le nom", nullptr },
+  { "Get TX Power",         "get tx",                    nullptr, 0, "Lire puissance TX", nullptr },
+  { "Get AF",               "get af",                    nullptr, 0, "Lire AF", nullptr },
+  { "Get Repeat",           "get repeat",                nullptr, 0, "Lire r\xC3\xA9p\xC3\xA9tition", nullptr },
+  { "Get Radio",            "get radio",                 nullptr, 0, "Lire radio", nullptr },
+  { "Get Flood Max",        "get flood.max",             nullptr, 0, "Lire flood max", nullptr },
+  { "Get RX Delay",         "get rxdelay",               nullptr, 0, "Lire d\xC3\xA9lai RX", nullptr },
+  { "Get TX Delay",         "get txdelay",               nullptr, 0, "Lire d\xC3\xA9lai TX", nullptr },
+  { "Get Direct TX Delay",  "get direct.txdelay",        nullptr, 0, "Lire d\xC3\xA9lai TX direct", nullptr },
+  { "Get Int Thresh",       "get int.thresh",            nullptr, 0, "Lire seuil interf.", nullptr },
+  { "Get AGC Reset Int",    "get agc.reset.interval",    nullptr, 0, "Lire interv. reset AGC", nullptr },
+  { "Get Multi Acks",       "get multi.acks",            nullptr, 0, "Lire multi-acks", nullptr },
+  { "Get Advert Int",       "get advert.interval",       nullptr, 0, "Lire interv. annonce", nullptr },
+  { "Get Flood Adv Int",    "get flood.advert.interval", nullptr, 0, "Lire interv. ann. flood", nullptr },
+  { "Get Guest Password",   "get guest.password",        nullptr, 0, "Lire mdp invit\xC3\xA9", nullptr },
+  { "Get Allow R/O",        "get allow.read.only",       nullptr, 0, "Lire acc\xC3\xA8s lecture seule", nullptr },
+  { "Get ADC Multiplier",   "get adc.multiplier",        nullptr, 0, "Lire multiplicateur ADC", nullptr },
 };
 #define CMD_GET_CONFIG_COUNT 17
 
 // --- Set Config (write commands, all need parameter input) ---
 static const AdminCmdDef CMD_SET_CONFIG[] = {
-  { "Set Name",             "set name ",                  "Name:",                 CMDF_PARAM },
-  { "Set TX Power",         "set tx ",                    "TX power (dBm):",       CMDF_PARAM },
-  { "Set AF",               "set af ",                    "Airtime factor:",       CMDF_PARAM },
-  { "Set Repeat",           "set repeat ",                "on/off:",               CMDF_PARAM },
-  { "Set Flood Max",        "set flood.max ",             "Max hops (0-64):",      CMDF_PARAM },
-  { "Set Flood Max Unscoped", "set flood.max.unscoped ",  "Max hops (64=off):",    CMDF_PARAM },
-  { "Set Flood Adv Max",    "set flood.max.advert ",      "Max hops (def 8):",     CMDF_PARAM },
-  { "Set RX Delay",         "set rxdelay ",               "Base (0=off):",         CMDF_PARAM },
-  { "Set TX Delay",         "set txdelay ",               "Factor:",               CMDF_PARAM },
-  { "Set Direct TX Delay",  "set direct.txdelay ",        "Factor:",               CMDF_PARAM },
-  { "Set Int Thresh",       "set int.thresh ",            "dB (0=off, def 14):",   CMDF_PARAM },
-  { "Set AGC Reset Int",    "set agc.reset.interval ",    "Seconds (0=off):",      CMDF_PARAM },
-  { "Set Multi Acks",       "set multi.acks ",            "0 or 1:",               CMDF_PARAM },
-  { "Set Advert Interval",  "set advert.interval ",       "Minutes (0=off):",      CMDF_PARAM },
-  { "Set Flood Adv Int",    "set flood.advert.interval ", "Hours (0=off, 3-48):",  CMDF_PARAM },
-  { "Set Guest Password",   "set guest.password ",        "Password:",             CMDF_PARAM },
-  { "Set Allow R/O",        "set allow.read.only ",       "on/off:",               CMDF_PARAM },
-  { "Set ADC Multiplier",   "set adc.multiplier ",        "Factor (0=default):",   CMDF_PARAM },
-  { "Set Radio",            "set radio ",                 "freq,bw,sf,cr:",        CMDF_PARAM },
-  { "Temp Radio",           "tempradio ",                 "freq,bw,sf,cr,mins:",   CMDF_PARAM },
-  { "Change Admin Pwd",     "password ",                  "New password:",          CMDF_PARAM | CMDF_CONFIRM },
+  { "Set Name",             "set name ",                  "Name:",                 CMDF_PARAM, "R\xC3\xA9gler le nom", "Nom :" },
+  { "Set TX Power",         "set tx ",                    "TX power (dBm):",       CMDF_PARAM, "R\xC3\xA9gler puissance TX", "Puissance TX (dBm) :" },
+  { "Set AF",               "set af ",                    "Airtime factor:",       CMDF_PARAM, "R\xC3\xA9gler AF", "Facteur airtime :" },
+  { "Set Repeat",           "set repeat ",                "on/off:",               CMDF_PARAM, "R\xC3\xA9gler r\xC3\xA9p\xC3\xA9tition", "on/off :" },
+  { "Set Flood Max",        "set flood.max ",             "Max hops (0-64):",      CMDF_PARAM, "R\xC3\xA9gler flood max", "Sauts max (0-64) :" },
+  { "Set Flood Max Unscoped", "set flood.max.unscoped ",  "Max hops (64=off):",    CMDF_PARAM, "R\xC3\xA9gler flood max global", "Sauts max (64=arr\xC3\xAAt) :" },
+  { "Set Flood Adv Max",    "set flood.max.advert ",      "Max hops (def 8):",     CMDF_PARAM, "R\xC3\xA9gler flood max ann.", "Sauts max (d\xC3\xA9" "f. 8) :" },
+  { "Set RX Delay",         "set rxdelay ",               "Base (0=off):",         CMDF_PARAM, "R\xC3\xA9gler d\xC3\xA9lai RX", "Base (0=arr\xC3\xAAt) :" },
+  { "Set TX Delay",         "set txdelay ",               "Factor:",               CMDF_PARAM, "R\xC3\xA9gler d\xC3\xA9lai TX", "Facteur :" },
+  { "Set Direct TX Delay",  "set direct.txdelay ",        "Factor:",               CMDF_PARAM, "R\xC3\xA9gler d\xC3\xA9lai TX direct", "Facteur :" },
+  { "Set Int Thresh",       "set int.thresh ",            "dB (0=off, def 14):",   CMDF_PARAM, "R\xC3\xA9gler seuil interf.", "dB (0=arr\xC3\xAAt, d\xC3\xA9" "f. 14) :" },
+  { "Set AGC Reset Int",    "set agc.reset.interval ",    "Seconds (0=off):",      CMDF_PARAM, "R\xC3\xA9gler interv. reset AGC", "Secondes (0=arr\xC3\xAAt) :" },
+  { "Set Multi Acks",       "set multi.acks ",            "0 or 1:",               CMDF_PARAM, "R\xC3\xA9gler multi-acks", "0 ou 1 :" },
+  { "Set Advert Interval",  "set advert.interval ",       "Minutes (0=off):",      CMDF_PARAM, "R\xC3\xA9gler interv. annonce", "Minutes (0=arr\xC3\xAAt) :" },
+  { "Set Flood Adv Int",    "set flood.advert.interval ", "Hours (0=off, 3-48):",  CMDF_PARAM, "R\xC3\xA9gler interv. ann. flood", "Heures (0=arr\xC3\xAAt, 3-48) :" },
+  { "Set Guest Password",   "set guest.password ",        "Password:",             CMDF_PARAM, "R\xC3\xA9gler mdp invit\xC3\xA9", "Mot de passe :" },
+  { "Set Allow R/O",        "set allow.read.only ",       "on/off:",               CMDF_PARAM, "R\xC3\xA9gler acc\xC3\xA8s lect. seule", "on/off :" },
+  { "Set ADC Multiplier",   "set adc.multiplier ",        "Factor (0=default):",   CMDF_PARAM, "R\xC3\xA9gler multiplic. ADC", "Facteur (0=d\xC3\xA9" "faut) :" },
+  { "Set Radio",            "set radio ",                 "freq,bw,sf,cr:",        CMDF_PARAM, "R\xC3\xA9gler la radio", "freq,bw,sf,cr :" },
+  { "Temp Radio",           "tempradio ",                 "freq,bw,sf,cr,mins:",   CMDF_PARAM, "Radio temporaire", "freq,bw,sf,cr,mins :" },
+  { "Change Admin Pwd",     "password ",                  "New password:",          CMDF_PARAM | CMDF_CONFIRM, "Changer mdp admin", "Nouveau mot de passe :" },
 };
 #define CMD_SET_CONFIG_COUNT 21
 
 // --- Power ---
 static const AdminCmdDef CMD_POWER[] = {
-  { "Powersaving Status", "powersaving",     nullptr, 0 },
-  { "Powersaving On",     "powersaving on",  nullptr, 0 },
-  { "Powersaving Off",    "powersaving off", nullptr, 0 },
+  { "Powersaving Status", "powersaving",     nullptr, 0, "\xC3\x89tat \xC3\xA9" "conomie \xC3\xA9nergie", nullptr },
+  { "Powersaving On",     "powersaving on",  nullptr, 0, "\xC3\x89" "conomie \xC3\xA9nergie : oui", nullptr },
+  { "Powersaving Off",    "powersaving off", nullptr, 0, "\xC3\x89" "conomie \xC3\xA9nergie : non", nullptr },
 };
 #define CMD_POWER_COUNT 3
 
 // --- System ---
 static const AdminCmdDef CMD_SYSTEM[] = {
-  { "Reboot",       "reboot",     nullptr, CMDF_CONFIRM | CMDF_EXPECT_TIMEOUT },
-  { "Start OTA",    "start ota",  nullptr, CMDF_CONFIRM | CMDF_EXPECT_TIMEOUT },
+  { "Reboot",       "reboot",     nullptr, CMDF_CONFIRM | CMDF_EXPECT_TIMEOUT, "Red\xC3\xA9marrer", nullptr },
+  { "Start OTA",    "start ota",  nullptr, CMDF_CONFIRM | CMDF_EXPECT_TIMEOUT, "Lancer l'OTA", nullptr },
 };
 #define CMD_SYSTEM_COUNT 2
 
@@ -136,16 +139,17 @@ struct AdminCategoryDef {
   const char* label;
   const AdminCmdDef* cmds;
   int count;
+  const char* label_fr;  // French label (Experimental Features > Language)
 };
 
 static const AdminCategoryDef CATEGORIES[CAT_COUNT] = {
-  { "Clock & Adverts",      CMD_OPERATIONAL, CMD_OPERATIONAL_COUNT },
-  { "Neighbors",            CMD_NEIGHBORS,   CMD_NEIGHBORS_COUNT },
-  { "Get Config",           CMD_GET_CONFIG,  CMD_GET_CONFIG_COUNT },
-  { "Set Config",           CMD_SET_CONFIG,  CMD_SET_CONFIG_COUNT },
-  { "Powersaving",          CMD_POWER,       CMD_POWER_COUNT },
-  { "Reboot & Start OTA",  CMD_SYSTEM,      CMD_SYSTEM_COUNT },
-  { "Firmware & Device Info", CMD_INFO,      CMD_INFO_COUNT },
+  { "Clock & Adverts",      CMD_OPERATIONAL, CMD_OPERATIONAL_COUNT, "Horloge et annonces" },
+  { "Neighbors",            CMD_NEIGHBORS,   CMD_NEIGHBORS_COUNT, "Voisins" },
+  { "Get Config",           CMD_GET_CONFIG,  CMD_GET_CONFIG_COUNT, "Lire la config" },
+  { "Set Config",           CMD_SET_CONFIG,  CMD_SET_CONFIG_COUNT, "Modifier la config" },
+  { "Powersaving",          CMD_POWER,       CMD_POWER_COUNT, "\xC3\x89" "conomie d'\xC3\xA9nergie" },
+  { "Reboot & Start OTA",  CMD_SYSTEM,      CMD_SYSTEM_COUNT, "Red\xC3\xA9marrage et OTA" },
+  { "Firmware & Device Info", CMD_INFO,      CMD_INFO_COUNT, "Firmware et infos" },
 };
 
 // =====================================================================
@@ -301,16 +305,16 @@ private:
 
   static void formatRelativeTime(char* buf, size_t bufLen, uint32_t seconds) {
     if (seconds < 60) {
-      snprintf(buf, bufLen, "%ds ago", (int)seconds);
+      snprintf(buf, bufLen, MECK_TR("%ds ago", "il y a %ds"), (int)seconds);
     } else if (seconds < 3600) {
-      snprintf(buf, bufLen, "%dm ago", (int)(seconds / 60));
+      snprintf(buf, bufLen, MECK_TR("%dm ago", "il y a %dmin"), (int)(seconds / 60));
     } else if (seconds < 86400) {
       int h = seconds / 3600;
       int m = (seconds % 3600) / 60;
-      if (m > 0) snprintf(buf, bufLen, "%dh%dm ago", h, m);
-      else       snprintf(buf, bufLen, "%dh ago", h);
+      if (m > 0) snprintf(buf, bufLen, MECK_TR("%dh%dm ago", "il y a %dh%dmin"), h, m);
+      else       snprintf(buf, bufLen, MECK_TR("%dh ago", "il y a %dh"), h);
     } else {
-      snprintf(buf, bufLen, "%dd%dh ago", (int)(seconds / 86400), (int)((seconds % 86400) / 3600));
+      snprintf(buf, bufLen, MECK_TR("%dd%dh ago", "il y a %dj%dh"), (int)(seconds / 86400), (int)((seconds % 86400) / 3600));
     }
   }
 
@@ -392,7 +396,7 @@ private:
       if (timestamp > 0 && now > timestamp) {
         formatRelativeTime(timeStr, sizeof(timeStr), now - timestamp);
       } else if (timestamp > 0) {
-        strncpy(timeStr, "just now", sizeof(timeStr));
+        strncpy(timeStr, MECK_TR("just now", "\xC3\xA0 l'instant"), sizeof(timeStr));
       } else {
         strncpy(timeStr, "?", sizeof(timeStr));
       }
@@ -411,7 +415,7 @@ private:
 
     // Prepend count header
     char header[48];
-    snprintf(header, sizeof(header), "Neighbors: %d\n", count);
+    snprintf(header, sizeof(header), MECK_TR("Neighbors: %d\n", "Voisins : %d\n"), count);
     int headerLen = strlen(header);
     int contentLen = dp - _response;
     if (headerLen + contentLen < ADMIN_RESPONSE_MAX - 1) {
@@ -528,7 +532,7 @@ public:
                       sent ? "sent" : "FAILED", _contactIdx);
       }
     } else {
-      snprintf(_response, sizeof(_response), "Login failed.\nCheck password.");
+      snprintf(_response, sizeof(_response), MECK_TR("Login failed.\nCheck password.", "\xC3\x89" "chec de connexion.\nV\xC3\xA9rifiez le mot de passe."));
       _responseLen = strlen(_response);
       _state = STATE_ERROR;
     }
@@ -572,12 +576,12 @@ public:
 
       if ((_state == STATE_LOGGING_IN || _state == STATE_COMMAND_PENDING) && elapsed > timeout) {
         if (_pendingCmd && (_pendingCmd->flags & CMDF_EXPECT_TIMEOUT)) {
-          snprintf(_response, sizeof(_response), "Command sent.\nTimeout is expected\n(device is rebooting/updating).");
+          snprintf(_response, sizeof(_response), MECK_TR("Command sent.\nTimeout is expected\n(device is rebooting/updating).", "Commande envoy\xC3\xA9" "e.\nPas de r\xC3\xA9ponse attendue\n(red\xC3\xA9marrage/mise \xC3\xA0 jour)."));
           _responseLen = strlen(_response);
           _responseTotalLines = countLines(_response);
           _state = STATE_RESPONSE_VIEW;
         } else {
-          snprintf(_response, sizeof(_response), "Timeout - no response.");
+          snprintf(_response, sizeof(_response), MECK_TR("Timeout - no response.", "Pas de r\xC3\xA9ponse (d\xC3\xA9lai)."));
           _responseLen = strlen(_response);
           _state = STATE_ERROR;
         }
@@ -598,7 +602,7 @@ public:
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, 0);
     const char* hdrPrefix = (_state == STATE_PASSWORD_ENTRY || _state == STATE_LOGGING_IN)
-                             ? "Login" : "Admin";
+                             ? MECK_TR("Login", "Connexion") : "Admin";
     snprintf(tmp, sizeof(tmp), "%s: %.16s", hdrPrefix, _repeaterName);
     display.print(tmp);
 
@@ -618,12 +622,12 @@ public:
     // --- Body ---
     switch (_state) {
       case STATE_PASSWORD_ENTRY:  renderPasswordEntry(display, bodyY); break;
-      case STATE_LOGGING_IN:      renderWaiting(display, bodyY, "Logging in..."); break;
+      case STATE_LOGGING_IN:      renderWaiting(display, bodyY, MECK_TR("Logging in...", "Connexion...")); break;
       case STATE_CATEGORY_MENU:   renderCategoryMenu(display, bodyY, bodyHeight); break;
       case STATE_COMMAND_MENU:    renderCommandMenu(display, bodyY, bodyHeight); break;
       case STATE_PARAM_ENTRY:     renderParamEntry(display, bodyY); break;
       case STATE_CONFIRM:         renderConfirm(display, bodyY); break;
-      case STATE_COMMAND_PENDING: renderWaiting(display, bodyY, "Waiting..."); break;
+      case STATE_COMMAND_PENDING: renderWaiting(display, bodyY, MECK_TR("Waiting...", "Attente...")); break;
       case STATE_RESPONSE_VIEW:   renderResponse(display, bodyY, bodyHeight); break;
       case STATE_ERROR:           renderResponse(display, bodyY, bodyHeight); break;
     }
@@ -636,40 +640,40 @@ public:
 
     switch (_state) {
       case STATE_PASSWORD_ENTRY:
-        display.print("Sh+Del:Exit");
-        renderFooterRight(display, footerY, "Ent:Login");
+        display.print(MECK_TR("Sh+Del:Exit", "Sh+Del:Sortir"));
+        renderFooterRight(display, footerY, MECK_TR("Ent:Login", "Ent:Connexion"));
         break;
 
       case STATE_LOGGING_IN:
       case STATE_COMMAND_PENDING:
-        display.print("Q:Cancel");
+        display.print(MECK_TR("Q:Cancel", "Q:Annuler"));
         break;
 
       case STATE_CATEGORY_MENU:
-        display.print("Q:Exit");
-        renderFooterMidRight(display, footerY, "Q:Exit", "Ent:Open", "W/S:Sel");
+        display.print(MECK_TR("Q:Exit", "Q:Sortir"));
+        renderFooterMidRight(display, footerY, MECK_TR("Q:Exit", "Q:Sortir"), MECK_TR("Ent:Open", "Ent:Ouvrir"), MECK_TR("W/S:Sel", "W/S:S\xC3\xA9l"));
         break;
 
       case STATE_COMMAND_MENU:
-        display.print("Q:Back");
-        renderFooterMidRight(display, footerY, "Q:Back", "Ent:Run", "W/S:Sel");
+        display.print(MECK_TR("Q:Back", "Q:Ret"));
+        renderFooterMidRight(display, footerY, MECK_TR("Q:Back", "Q:Ret"), MECK_TR("Ent:Run", "Ent:Lancer"), MECK_TR("W/S:Sel", "W/S:S\xC3\xA9l"));
         break;
 
       case STATE_PARAM_ENTRY:
-        display.print("Sh+Del:Cancel");
-        renderFooterRight(display, footerY, "Ent:Send");
+        display.print(MECK_TR("Sh+Del:Cancel", "Sh+Del:Annuler"));
+        renderFooterRight(display, footerY, MECK_TR("Ent:Send", "Ent:Envoyer"));
         break;
 
       case STATE_CONFIRM:
-        display.print("Q:No");
-        renderFooterRight(display, footerY, "Ent:Yes");
+        display.print(MECK_TR("Q:No", "Q:Non"));
+        renderFooterRight(display, footerY, MECK_TR("Ent:Yes", "Ent:Oui"));
         break;
 
       case STATE_RESPONSE_VIEW:
       case STATE_ERROR:
-        display.print("Q:Back");
+        display.print(MECK_TR("Q:Back", "Q:Retour"));
         if (_responseTotalLines > bodyHeight / 9) {
-          renderFooterRight(display, footerY, "W/S:Scrll");
+          renderFooterRight(display, footerY, MECK_TR("W/S:Scrll", "W/S:D\xC3\xA9" "fil"));
         }
         break;
     }
@@ -733,7 +737,7 @@ private:
     display.setTextSize(1);
     display.setColor(DisplayDriver::LIGHT);
     display.setCursor(0, y);
-    display.print("Password:");
+    display.print(MECK_TR("Password:", "Mot de passe :"));
 
     y += 14;
     display.setColor(DisplayDriver::YELLOW);
@@ -788,13 +792,13 @@ private:
       formatTime(srvTime, sizeof(srvTime), _serverTime);
       int drift = (int)(now - _serverTime);
       char driftStr[24];
-      if (abs(drift) < 2) snprintf(driftStr, sizeof(driftStr), "Synced");
-      else                snprintf(driftStr, sizeof(driftStr), "Drift:%+ds", drift);
+      if (abs(drift) < 2) snprintf(driftStr, sizeof(driftStr), MECK_TR("Synced", "Synchro"));
+      else                snprintf(driftStr, sizeof(driftStr), MECK_TR("Drift:%+ds", "\xC3\x89" "cart:%+ds"), drift);
 
       display.setColor(DisplayDriver::LIGHT);
       display.setCursor(0, y);
       char info[48];
-      snprintf(info, sizeof(info), "Rpt:%s Us:%s %s", srvTime, ourTime, driftStr);
+      snprintf(info, sizeof(info), MECK_TR("Rpt:%s Us:%s %s", "R\xC3\xA9p:%s Ici:%s %s"), srvTime, ourTime, driftStr);
       display.print(info);
       y += lineHeight + 2;
     }
@@ -817,14 +821,14 @@ private:
     } else if (_telemRequested) {
       display.setColor(DisplayDriver::LIGHT);
       display.setCursor(0, y);
-      display.print("Telemetry: requesting...");
+      display.print(MECK_TR("Telemetry: requesting...", "T\xC3\xA9l\xC3\xA9m\xC3\xA9trie : demande..."));
       y += lineHeight + 2;
     }
 
     // Render categories
     for (int i = 0; i < CAT_COUNT && y + lineHeight <= display.height() - 16; i++) {
       bool isSystem = (i == CAT_REBOOT_OTA);
-      renderMenuItem(display, y, lineHeight, i == _catSel, CATEGORIES[i].label, isSystem && (i != _catSel));
+      renderMenuItem(display, y, lineHeight, i == _catSel, MECK_TR(CATEGORIES[i].label, CATEGORIES[i].label_fr), isSystem && (i != _catSel));
       y += lineHeight;
     }
     display.setTextSize(1);
@@ -869,7 +873,7 @@ private:
     // Category title
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, y);
-    display.print(cat.label);
+    display.print(MECK_TR(cat.label, cat.label_fr));
     y += lineHeight + 2;
 
     // Compute visible window
@@ -882,7 +886,7 @@ private:
 
     for (int i = _scrollOffset; i < cat.count && (y + lineHeight <= display.height() - 16); i++) {
       bool warn = isSystemCat || (cat.cmds[i].flags & (CMDF_CONFIRM | CMDF_EXPECT_TIMEOUT));
-      renderMenuItem(display, y, lineHeight, i == _cmdSel, cat.cmds[i].label, warn && (i != _cmdSel));
+      renderMenuItem(display, y, lineHeight, i == _cmdSel, MECK_TR(cat.cmds[i].label, cat.cmds[i].label_fr), warn && (i != _cmdSel));
       y += lineHeight;
     }
 
@@ -959,12 +963,12 @@ private:
     display.setTextSize(1);
     display.setColor(DisplayDriver::LIGHT);
     display.setCursor(0, y);
-    if (_pendingCmd) display.print(_pendingCmd->label);
+    if (_pendingCmd) display.print(MECK_TR(_pendingCmd->label, _pendingCmd->label_fr));
 
     y += 14;
     display.setColor(DisplayDriver::LIGHT);
     display.setCursor(0, y);
-    if (_pendingCmd && _pendingCmd->paramHint) display.print(_pendingCmd->paramHint);
+    if (_pendingCmd && _pendingCmd->paramHint) display.print(MECK_TR(_pendingCmd->paramHint, _pendingCmd->paramHint_fr));
 
     y += 14;
     display.setColor(DisplayDriver::YELLOW);
@@ -1017,12 +1021,12 @@ private:
     display.setTextSize(1);
     display.setColor(DisplayDriver::YELLOW);
     display.setCursor(0, y);
-    display.print("Confirm:");
+    display.print(MECK_TR("Confirm:", "Confirmer :"));
 
     y += 16;
     display.setColor(DisplayDriver::LIGHT);
     display.setCursor(0, y);
-    if (_pendingCmd) display.print(_pendingCmd->label);
+    if (_pendingCmd) display.print(MECK_TR(_pendingCmd->label, _pendingCmd->label_fr));
 
     y += 14;
     display.setTextSize(the_mesh.getNodePrefs()->smallTextSize());
@@ -1031,16 +1035,16 @@ private:
     // Show the param value if one was collected
     if (_pendingCmd && (_pendingCmd->flags & CMDF_PARAM) && _paramLen > 0) {
       char preview[80];
-      snprintf(preview, sizeof(preview), "Value: %s", _paramBuf);
+      snprintf(preview, sizeof(preview), MECK_TR("Value: %s", "Valeur : %s"), _paramBuf);
       display.print(preview);
       y += the_mesh.getNodePrefs()->smallLineH() + 1;
       display.setCursor(0, y);
     }
 
     if (_pendingCmd && (_pendingCmd->flags & CMDF_EXPECT_TIMEOUT)) {
-      display.print("Timeout response is normal.");
+      display.print(MECK_TR("Timeout response is normal.", "Pas de r\xC3\xA9ponse : normal."));
     } else {
-      display.print("Enter=Yes  Q=No");
+      display.print(MECK_TR("Enter=Yes  Q=No", "Entr\xC3\xA9" "e=Oui  Q=Non"));
     }
 
     display.setTextSize(1);
@@ -1189,7 +1193,7 @@ private:
       _responseTotalLines = 0;
       return true;
     } else {
-      snprintf(_response, sizeof(_response), "Send failed.");
+      snprintf(_response, sizeof(_response), MECK_TR("Send failed.", "\xC3\x89" "chec de l'envoi."));
       _responseLen = strlen(_response);
       _state = STATE_ERROR;
       return true;
@@ -1215,7 +1219,7 @@ inline bool RepeaterAdminScreen::doLogin() {
     _waitingForLogin = true;
     return true;
   } else {
-    snprintf(_response, sizeof(_response), "Send failed.\nCheck contact path.");
+    snprintf(_response, sizeof(_response), MECK_TR("Send failed.\nCheck contact path.", "\xC3\x89" "chec de l'envoi.\nV\xC3\xA9rifiez le chemin."));
     _responseLen = strlen(_response);
     _state = STATE_ERROR;
     return true;

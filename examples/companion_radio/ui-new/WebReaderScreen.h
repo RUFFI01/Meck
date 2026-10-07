@@ -27,6 +27,7 @@
 
 #include <helpers/ui/UIScreen.h>
 #include <helpers/ui/DisplayDriver.h>
+#include "MeckLang.h"
 #include "variant.h"
 #include <WiFi.h>
 #include <HTTPClient.h>
@@ -752,7 +753,7 @@ inline ParseResult parseHtml(const char* html, int htmlLen,
               // Use pending label or placeholder
               if (pendingLabel[0]) { strncpy(fld.label, pendingLabel, sizeof(fld.label)-1); pendingLabel[0] = 0; }
               else extractAttr(inside, insideLen, "placeholder", fld.label, sizeof(fld.label));
-              if (!fld.label[0]) strncpy(fld.label, "Password", sizeof(fld.label)-1);
+              if (!fld.label[0]) strncpy(fld.label, MECK_TR("Password", "Mot de passe"), sizeof(fld.label)-1);
               f.textFieldCount++;
               // Emit field display
               if (ti < textMax - 40) {
@@ -762,7 +763,7 @@ inline ParseResult parseHtml(const char* html, int htmlLen,
               lastWasBreak = false; lastWasSpace = false;
             } else if (strcmp(typeBuf, "submit") == 0) {
               fld.type = 's';
-              if (!fld.value[0]) strncpy(fld.value, "Submit", sizeof(fld.value)-1);
+              if (!fld.value[0]) strncpy(fld.value, MECK_TR("Submit", "Envoyer"), sizeof(fld.value)-1);
               strncpy(fld.label, fld.value, sizeof(fld.label)-1);
             } else if (strcmp(typeBuf, "checkbox") == 0) {
               fld.type = 'c';
@@ -1424,12 +1425,12 @@ private:
       _display->setColor(DisplayDriver::GREEN);
       _display->setTextSize(1);
       _display->setCursor(0, 0);
-      _display->print("WiFi Setup");
+      _display->print(MECK_TR("WiFi Setup", "Configuration WiFi"));
       _display->drawRect(0, 11, _display->width(), 1);
       _display->setColor(DisplayDriver::LIGHT);
       _display->setTextSize(_prefs->smallTextSize());
       _display->setCursor(0, 18);
-      _display->print("Scanning for networks...");
+      _display->print(MECK_TR("Scanning for networks...", "Recherche des r\xC3\xA9seaux..."));
       _display->endFrame();
     }
 
@@ -1452,10 +1453,10 @@ private:
       _wifiState = WIFI_SCAN_DONE;
     } else if (n == 0) {
       _wifiState = WIFI_FAILED;
-      _fetchError = "No networks found";
+      _fetchError = MECK_TR("No networks found", "Aucun r\xC3\xA9seau trouv\xC3\xA9");
     } else {
       _wifiState = WIFI_FAILED;
-      _fetchError = "Scan failed (err " + String(n) + ")";
+      _fetchError = MECK_TR("Scan failed (err ", "\xC3\x89" "chec du scan (err ") + String(n) + ")";
       Serial.printf("WebReader: Scan error code: %d\n", n);
     }
   }
@@ -1466,20 +1467,20 @@ private:
       if (millis() > _wifiTimeout) {
         Serial.println("WebReader: scan timeout");
         _wifiState = WIFI_FAILED;
-        _fetchError = "Scan timeout";
+        _fetchError = MECK_TR("Scan timeout", "D\xC3\xA9lai de scan d\xC3\xA9pass\xC3\xA9");
       }
       return;
     }
     if (n == WIFI_SCAN_FAILED || n < 0) {
       Serial.printf("WebReader: scanComplete returned %d (failed)\n", n);
       _wifiState = WIFI_FAILED;
-      _fetchError = "Scan failed";
+      _fetchError = MECK_TR("Scan failed", "\xC3\x89" "chec du scan");
       return;
     }
     if (n == 0) {
       Serial.println("WebReader: scan found 0 networks");
       _wifiState = WIFI_FAILED;
-      _fetchError = "No networks found";
+      _fetchError = MECK_TR("No networks found", "Aucun r\xC3\xA9seau trouv\xC3\xA9");
       return;
     }
 
@@ -1512,7 +1513,7 @@ private:
     }
     if (millis() > _wifiTimeout) {
       _wifiState = WIFI_FAILED;
-      _fetchError = "Connection timeout";
+      _fetchError = MECK_TR("Connection timeout", "D\xC3\xA9lai de connexion d\xC3\xA9pass\xC3\xA9");
     }
   }
 
@@ -1524,12 +1525,12 @@ private:
       _display->setColor(DisplayDriver::GREEN);
       _display->setTextSize(1);
       _display->setCursor(0, 0);
-      _display->print("Web Reader");
+      _display->print(MECK_TR("Web Reader", "Navigateur"));
       _display->drawRect(0, 11, _display->width(), 1);
 
       _display->setTextSize(_prefs->smallTextSize());
       _display->setCursor(0, 18);
-      _display->print("Connected!");
+      _display->print(MECK_TR("Connected!", "Connect\xC3\xA9 !"));
       _display->setCursor(0, 30);
       _display->setColor(DisplayDriver::LIGHT);
       char ipBuf[48];
@@ -1764,7 +1765,7 @@ private:
     if (!outFile) {
       digitalWrite(SDCARD_CS, HIGH);
       http.end();
-      _fetchError = "SD write failed";
+      _fetchError = MECK_TR("SD write failed", "\xC3\x89" "chec d'\xC3\xA9" "criture SD");
       _mode = HOME;
       Serial.println("WebReader: Failed to open SD file for writing");
       return false;
@@ -1784,7 +1785,7 @@ private:
       outFile.close();
       digitalWrite(SDCARD_CS, HIGH);
       http.end();
-      _fetchError = "Out of memory";
+      _fetchError = MECK_TR("Out of memory", "M\xC3\xA9moire insuffisante");
       _mode = HOME;
       return false;
     }
@@ -1798,7 +1799,7 @@ private:
       _display->setColor(DisplayDriver::GREEN);
       _display->setTextSize(2);
       _display->setCursor(10, 10);
-      _display->print("Downloading");
+      _display->print(MECK_TR("Downloading", "T\xC3\xA9l\xC3\xA9" "chargement"));
       _display->setTextSize(1);
       _display->setColor(DisplayDriver::LIGHT);
       _display->setCursor(10, 35);
@@ -1807,7 +1808,7 @@ private:
       fnDisp[38] = '\0';
       _display->print(fnDisp);
       _display->setCursor(10, 50);
-      _display->print("to /books/");
+      _display->print(MECK_TR("to /books/", "vers /books/"));
       _display->endFrame();
       lastSplash = millis();
     }
@@ -1849,17 +1850,17 @@ private:
         _display->setColor(DisplayDriver::GREEN);
         _display->setTextSize(2);
         _display->setCursor(10, 10);
-        _display->print("Downloading");
+        _display->print(MECK_TR("Downloading", "T\xC3\xA9l\xC3\xA9" "chargement"));
         _display->setTextSize(1);
         _display->setColor(DisplayDriver::LIGHT);
         _display->setCursor(10, 35);
         char progBuf[48];
         if (contentLen > 0) {
           int pct = (totalWritten * 100) / contentLen;
-          snprintf(progBuf, sizeof(progBuf), "%d / %d KB (%d%%)",
+          snprintf(progBuf, sizeof(progBuf), MECK_TR("%d / %d KB (%d%%)", "%d / %d Ko (%d%%)"),
                    totalWritten / 1024, contentLen / 1024, pct);
         } else {
-          snprintf(progBuf, sizeof(progBuf), "%d KB downloaded",
+          snprintf(progBuf, sizeof(progBuf), MECK_TR("%d KB downloaded", "%d Ko t\xC3\xA9l\xC3\xA9" "charg\xC3\xA9s"),
                    totalWritten / 1024);
         }
         _display->print(progBuf);
@@ -1885,7 +1886,7 @@ private:
       digitalWrite(SDCARD_CS, LOW);
       SD.remove(filepath);
       digitalWrite(SDCARD_CS, HIGH);
-      _fetchError = writeError ? "SD write error" : "Empty download";
+      _fetchError = writeError ? MECK_TR("SD write error", "Erreur d'\xC3\xA9" "criture SD") : MECK_TR("Empty download", "T\xC3\xA9l\xC3\xA9" "chargement vide");
       _downloadOk = false;
     } else {
       _downloadOk = true;
@@ -1931,23 +1932,23 @@ private:
 
   // Translate ESP32 HTTPClient error codes to readable strings
   static String httpErrorString(int code) {
-    if (code == 525) return "SSL error (Cloudflare)";
-    if (code == 403) return "Blocked (403)";
-    if (code == 503) return "Unavailable (503)";
+    if (code == 525) return MECK_TR("SSL error (Cloudflare)", "Erreur SSL (Cloudflare)");
+    if (code == 403) return MECK_TR("Blocked (403)", "Bloqu\xC3\xA9 (403)");
+    if (code == 503) return MECK_TR("Unavailable (503)", "Indisponible (503)");
     if (code > 0) return "HTTP " + String(code);
     switch (code) {
-      case -1:  return "Connection refused";
-      case -2:  return "Send header failed";
-      case -3:  return "Send payload failed";
-      case -4:  return "Not connected";
-      case -5:  return "Connection lost";
-      case -6:  return "No stream";
-      case -7:  return "No HTTP server";
-      case -8:  return "Out of RAM";
-      case -9:  return "Encoding error";
-      case -10: return "Stream write error";
-      case -11: return "Read timeout";
-      default:  return "Error " + String(code);
+      case -1:  return MECK_TR("Connection refused", "Connexion refus\xC3\xA9" "e");
+      case -2:  return MECK_TR("Send header failed", "\xC3\x89" "chec d'envoi de l'en-t\xC3\xAAte");
+      case -3:  return MECK_TR("Send payload failed", "\xC3\x89" "chec d'envoi des donn\xC3\xA9" "es");
+      case -4:  return MECK_TR("Not connected", "Non connect\xC3\xA9");
+      case -5:  return MECK_TR("Connection lost", "Connexion perdue");
+      case -6:  return MECK_TR("No stream", "Pas de flux");
+      case -7:  return MECK_TR("No HTTP server", "Pas de serveur HTTP");
+      case -8:  return MECK_TR("Out of RAM", "RAM insuffisante");
+      case -9:  return MECK_TR("Encoding error", "Erreur d'encodage");
+      case -10: return MECK_TR("Stream write error", "Erreur d'\xC3\xA9" "criture du flux");
+      case -11: return MECK_TR("Read timeout", "D\xC3\xA9lai de lecture d\xC3\xA9pass\xC3\xA9");
+      default:  return MECK_TR("Error ", "Erreur ") + String(code);
     }
   }
 
@@ -1968,7 +1969,7 @@ private:
 #endif
 
     if (!allocateBuffers()) {
-      _fetchError = "Out of memory";
+      _fetchError = MECK_TR("Out of memory", "M\xC3\xA9moire insuffisante");
       _mode = HOME;
       return false;
     }
@@ -1995,7 +1996,7 @@ private:
     // Download HTML
     char* htmlBuffer = (char*)ps_malloc(WEB_MAX_PAGE_SIZE);
     if (!htmlBuffer) {
-      _fetchError = "Out of memory (HTML)";
+      _fetchError = MECK_TR("Out of memory (HTML)", "M\xC3\xA9moire insuffisante (HTML)");
       _mode = HOME;
       return false;
     }
@@ -2080,7 +2081,7 @@ private:
       }
 
       if (!beginOk) {
-        _fetchError = "Connection failed";
+        _fetchError = MECK_TR("Connection failed", "\xC3\x89" "chec de connexion");
         break;
       }
 
@@ -2169,7 +2170,7 @@ private:
           while (WiFi.status() != WL_CONNECTED && millis() - wt < 8000) delay(100);
           if (WiFi.status() != WL_CONNECTED) {
             Serial.println("WebReader: WiFi reconnect failed");
-            _fetchError = "WiFi reconnect failed";
+            _fetchError = MECK_TR("WiFi reconnect failed", "\xC3\x89" "chec de reconnexion WiFi");
             break;
           }
           Serial.printf("WebReader: WiFi reconnected, IP: %s\n",
@@ -2202,7 +2203,7 @@ private:
         // chunked responses without proper termination can hang forever.
         http.end();
         if (location.length() == 0) {
-          _fetchError = "Redirect with no Location";
+          _fetchError = MECK_TR("Redirect with no Location", "Redirection sans adresse");
           break;
         }
         char resolved[WEB_MAX_URL_LEN];
@@ -2264,7 +2265,7 @@ private:
           unsigned long wt = millis();
           while (WiFi.status() != WL_CONNECTED && millis() - wt < 8000) delay(100);
           if (WiFi.status() != WL_CONNECTED) {
-            _fetchError = "WiFi reconnect failed";
+            _fetchError = MECK_TR("WiFi reconnect failed", "\xC3\x89" "chec de reconnexion WiFi");
             break;
           }
           Serial.printf("WebReader: WiFi reconnected, IP: %s\n",
@@ -2293,7 +2294,7 @@ private:
     // Cleaned up by exitReader() or on next fetch to a different host.
 
     if (redirectCount > maxRedirects && !success) {
-      _fetchError = "Too many redirects";
+      _fetchError = MECK_TR("Too many redirects", "Trop de redirections");
     }
 
     if (!success) {
@@ -2306,12 +2307,12 @@ private:
         _display->setColor(DisplayDriver::GREEN);
         _display->setTextSize(1);
         _display->setCursor(0, 0);
-        _display->print("Web Reader");
+        _display->print(MECK_TR("Web Reader", "Navigateur"));
         _display->drawRect(0, 11, _display->width(), 1);
         _display->setColor(DisplayDriver::YELLOW);
         _display->setTextSize(_prefs->smallTextSize());
         _display->setCursor(0, 18);
-        _display->print("Fetch failed:");
+        _display->print(MECK_TR("Fetch failed:", "\xC3\x89" "chec du chargement :"));
         _display->setColor(DisplayDriver::LIGHT);
         _display->setCursor(0, 30);
         // Word-wrap error message
@@ -2328,7 +2329,7 @@ private:
         _display->print(_urlBuffer);
         _display->setCursor(0, 90);
         _display->setColor(DisplayDriver::GREEN);
-        _display->print("Returning to URL entry...");
+        _display->print(MECK_TR("Returning to URL entry...", "Retour \xC3\xA0 la saisie d'URL..."));
         _display->endFrame();
       }
       delay(2500);
@@ -2444,11 +2445,11 @@ private:
           _display->setColor(DisplayDriver::GREEN);
           _display->setTextSize(2);
           _display->setCursor(10, 20);
-          _display->print("Logging in...");
+          _display->print(MECK_TR("Logging in...", "Connexion..."));
           _display->setTextSize(_prefs->smallTextSize());
           _display->setColor(DisplayDriver::LIGHT);
           _display->setCursor(10, 45);
-          _display->print("Refreshing session...");
+          _display->print(MECK_TR("Refreshing session...", "Actualisation de la session..."));
           _display->endFrame();
         }
 
@@ -2655,7 +2656,7 @@ private:
     display.setColor(DisplayDriver::GREEN);
     display.setTextSize(1);
     display.setCursor(0, 0);
-    display.print("WiFi Setup");
+    display.print(MECK_TR("WiFi Setup", "Configuration WiFi"));
     display.drawRect(0, 11, display.width(), 1);
 
     display.setColor(DisplayDriver::LIGHT);
@@ -2663,7 +2664,7 @@ private:
 
     if (_wifiState == WIFI_SCANNING) {
       display.setCursor(0, 18);
-      display.print("Scanning for networks...");
+      display.print(MECK_TR("Scanning for networks...", "Recherche des r\xC3\xA9seaux..."));
     } else if (_wifiState == WIFI_SCAN_DONE) {
       int y = 14;
       int listLineH = _prefs ? _prefs->smallLineH() : 9;
@@ -2693,7 +2694,7 @@ private:
       display.print(tmp);
       y += 12;
       display.setCursor(0, y);
-      display.print("Password:");
+      display.print(MECK_TR("Password:", "Mot de passe :"));
       y += _prefs->smallLineH() + 1;
       display.setCursor(0, y);
       // Show masked password with brief reveal of last char
@@ -2711,7 +2712,7 @@ private:
       display.print(passBuf);
     } else if (_wifiState == WIFI_CONNECTING) {
       display.setCursor(0, 18);
-      display.print("Connecting...");
+      display.print(MECK_TR("Connecting...", "Connexion..."));
       display.setCursor(0, 30);
       char tmp[48];
       snprintf(tmp, sizeof(tmp), "SSID: %s", _connectedSSID.c_str());
@@ -2719,7 +2720,7 @@ private:
     } else if (_wifiState == WIFI_FAILED) {
       display.setColor(DisplayDriver::YELLOW);
       display.setCursor(0, 18);
-      display.print("WiFi Error:");
+      display.print(MECK_TR("WiFi Error:", "Erreur WiFi :"));
       display.setCursor(0, 30);
       display.setColor(DisplayDriver::LIGHT);
       // Word-wrap the error message
@@ -2739,7 +2740,7 @@ private:
       }
       display.setCursor(0, 80);
       display.setColor(DisplayDriver::GREEN);
-      display.print("Enter: Retry  Sh+Del: Back");
+      display.print(MECK_TR("Enter: Retry  Sh+Del: Back", "Ent:R\xC3\xA9" "essayer  Sh+Del:Ret"));
     }
 
     // Footer
@@ -2748,7 +2749,7 @@ private:
     display.drawRect(0, footerY - 2, display.width(), 1);
     display.setCursor(0, footerY);
     display.setColor(DisplayDriver::YELLOW);
-    display.print("Sh+Del:Back W/S:Nav Ent:Select");
+    display.print(MECK_TR("Sh+Del:Back W/S:Nav Ent:Select", "Sh+Del:Ret W/S:Nav Ent:Choisir"));
   }
 
   void renderHome(DisplayDriver& display) {
@@ -2758,7 +2759,7 @@ private:
     display.setCursor(0, 0);
 
     if (isNetworkAvailable()) {
-      display.print("Web Reader");
+      display.print(MECK_TR("Web Reader", "Navigateur"));
       display.setTextSize(_prefs->smallTextSize());
       display.setColor(DisplayDriver::GREEN);
       if (isWiFiConnected()) {
@@ -2773,7 +2774,7 @@ private:
         display.print(netStr);
       }
     } else {
-      display.print("Web Reader (Offline)");
+      display.print(MECK_TR("Web Reader (Offline)", "Navigateur (hors ligne)"));
     }
 
     display.setTextSize(1);
@@ -2888,10 +2889,10 @@ private:
         display.setCursor(0, y);
         if (_ircConnected && _ircJoined) {
           char ircLabel[80];
-          snprintf(ircLabel, sizeof(ircLabel), "IRC: %s [connected]", _ircChannel);
+          snprintf(ircLabel, sizeof(ircLabel), MECK_TR("IRC: %s [connected]", "IRC : %s [connect\xC3\xA9]"), _ircChannel);
           display.print(ircLabel);
         } else if (_ircConnected) {
-          display.print("IRC: connecting...");
+          display.print(MECK_TR("IRC: connecting...", "IRC : connexion..."));
         } else {
           char ircLabel[80];
           snprintf(ircLabel, sizeof(ircLabel), "IRC: %s:%d", _ircHost, _ircPort);
@@ -2935,7 +2936,7 @@ private:
                    _urlLen > maxShow ? (_urlBuffer + _urlLen - maxShow) : _urlBuffer);
           display.print(urlDisp);
         } else {
-          display.print("Web: [Enter URL]");
+          display.print(MECK_TR("Web: [Enter URL]", "Web: [saisir l'URL]"));
         }
       }
       y += urlBarH;
@@ -2981,7 +2982,7 @@ private:
       if (HOME_VISIBLE(y, sectionH)) {
         display.setColor(DisplayDriver::GREEN);
         display.setCursor(0, y);
-        display.print("-- Bookmarks --");
+        display.print(MECK_TR("-- Bookmarks --", "-- Favoris --"));
       }
       y += sectionH;
 
@@ -3029,7 +3030,7 @@ private:
       if (HOME_VISIBLE(y, sectionH)) {
         display.setColor(DisplayDriver::GREEN);
         display.setCursor(0, y);
-        display.print("-- History --");
+        display.print(MECK_TR("-- History --", "-- Historique --"));
       }
       y += sectionH;
 
@@ -3106,21 +3107,21 @@ private:
     display.setCursor(0, footerY);
     display.setColor(DisplayDriver::YELLOW);
     if (_urlEditing) {
-      display.print("Type URL  Ent:Go");
+      display.print(MECK_TR("Type URL  Ent:Go", "Saisir l'URL  Ent:OK"));
     } else if (_searchEditing) {
-      display.print("Type query Ent:Search");
+      display.print(MECK_TR("Type query Ent:Search", "Saisir la recherche  Ent:OK"));
     } else {
       char footerBuf[48];
       bool hasData = (_cookieCount > 0 || !_history.empty());
       bool onBookmark = (_homeSelected >= 3 && _homeSelected < 3 + (int)_bookmarks.size());
       if (onBookmark && hasData)
-        snprintf(footerBuf, sizeof(footerBuf), "Ent:Go Del:Del Bkmk X:Clr Ckies");
+        snprintf(footerBuf, sizeof(footerBuf), MECK_TR("Ent:Go Del:Del Bkmk X:Clr Ckies", "Ent:OK Del:Suppr fav X:Cookies"));
       else if (onBookmark)
-        snprintf(footerBuf, sizeof(footerBuf), "Q:Bk Ent:Go Del:Del Bkmk");
+        snprintf(footerBuf, sizeof(footerBuf), MECK_TR("Q:Bk Ent:Go Del:Del Bkmk", "Q:Ret Ent:OK Del:Suppr fav"));
       else if (hasData)
-        snprintf(footerBuf, sizeof(footerBuf), "Q:Bk W/S Ent:Go X:Clr Ckies");
+        snprintf(footerBuf, sizeof(footerBuf), MECK_TR("Q:Bk W/S Ent:Go X:Clr Ckies", "Q:Ret W/S Ent:OK X:Cookies"));
       else
-        snprintf(footerBuf, sizeof(footerBuf), "Q:Bk W/S:Nav Ent:Go");
+        snprintf(footerBuf, sizeof(footerBuf), MECK_TR("Q:Bk W/S:Nav Ent:Go", "Q:Ret W/S:Nav Ent:OK"));
       display.print(footerBuf);
     }
 
@@ -3150,7 +3151,7 @@ private:
     display.setColor(DisplayDriver::GREEN);
     display.setTextSize(2);
     display.setCursor(10, 20);
-    display.print("Loading...");
+    display.print(MECK_TR("Loading...", "Chargement..."));
 
     display.setTextSize(_prefs->smallTextSize());
     display.setColor(DisplayDriver::LIGHT);
@@ -3176,14 +3177,14 @@ private:
     char progBuf[48];
     int elapsed = (int)((millis() - _fetchStartTime) / 1000);
     if (_fetchRetryCount > 0) {
-      snprintf(progBuf, sizeof(progBuf), "Retry %d/4...  %ds", _fetchRetryCount, elapsed);
+      snprintf(progBuf, sizeof(progBuf), MECK_TR("Retry %d/4...  %ds", "Nouvel essai %d/4...  %ds"), _fetchRetryCount, elapsed);
       display.setColor(DisplayDriver::YELLOW);
     } else if (_fetchProgress > 0) {
-      snprintf(progBuf, sizeof(progBuf), "%d bytes  (%ds)", _fetchProgress, elapsed);
+      snprintf(progBuf, sizeof(progBuf), MECK_TR("%d bytes  (%ds)", "%d octets  (%ds)"), _fetchProgress, elapsed);
     } else if (elapsed >= 2) {
-      snprintf(progBuf, sizeof(progBuf), "Connecting... %ds", elapsed);
+      snprintf(progBuf, sizeof(progBuf), MECK_TR("Connecting... %ds", "Connexion... %ds"), elapsed);
     } else {
-      snprintf(progBuf, sizeof(progBuf), "Connecting...");
+      snprintf(progBuf, sizeof(progBuf), MECK_TR("Connecting...", "Connexion..."));
     }
     display.print(progBuf);
   }
@@ -3194,13 +3195,13 @@ private:
 
     if (_downloadOk) {
       display.setColor(DisplayDriver::GREEN);
-      display.print("Download Complete");
+      display.print(MECK_TR("Download Complete", "T\xC3\xA9l\xC3\xA9" "chargement termin\xC3\xA9"));
       display.drawRect(0, 11, display.width(), 1);
 
       display.setTextSize(_prefs->smallTextSize());
       display.setColor(DisplayDriver::LIGHT);
       display.setCursor(0, 16);
-      display.print("Saved to /books/:");
+      display.print(MECK_TR("Saved to /books/:", "Enregistr\xC3\xA9 dans /books/ :"));
       display.setCursor(0, 26);
 
       // Word-wrap filename
@@ -3219,12 +3220,12 @@ private:
 
       display.setCursor(0, y + 6);
       display.setColor(DisplayDriver::GREEN);
-      display.print("Ent: Open in Reader");
+      display.print(MECK_TR("Ent: Open in Reader", "Ent : ouvrir dans le lecteur"));
       display.setCursor(0, y + 16);
-      display.print("Q:   Back to browser");
+      display.print(MECK_TR("Q:   Back to browser", "Q :  retour au navigateur"));
     } else {
       display.setColor(DisplayDriver::YELLOW);
-      display.print("Download Failed");
+      display.print(MECK_TR("Download Failed", "\xC3\x89" "chec du t\xC3\xA9l\xC3\xA9" "chargement"));
       display.drawRect(0, 11, display.width(), 1);
 
       display.setTextSize(_prefs->smallTextSize());
@@ -3236,7 +3237,7 @@ private:
 
       display.setCursor(0, 56);
       display.setColor(DisplayDriver::GREEN);
-      display.print("Q: Back to browser");
+      display.print(MECK_TR("Q: Back to browser", "Q : retour au navigateur"));
     }
 
     // Footer
@@ -3245,14 +3246,14 @@ private:
     display.drawRect(0, footerY - 2, display.width(), 1);
     display.setCursor(0, footerY);
     display.setColor(DisplayDriver::YELLOW);
-    display.print(_downloadOk ? "Ent:Read  Q:Back" : "Q:Back");
+    display.print(_downloadOk ? MECK_TR("Ent:Read  Q:Back", "Ent:Lire  Q:Retour") : MECK_TR("Q:Back", "Q:Retour"));
   }
 
   void renderReading(DisplayDriver& display) {
     if (!_textBuffer || _textLen == 0) {
       display.setCursor(0, 20);
       display.setColor(DisplayDriver::LIGHT);
-      display.print("No content");
+      display.print(MECK_TR("No content", "Aucun contenu"));
       return;
     }
 
@@ -3371,16 +3372,16 @@ private:
     const char* hint;
     char linkBuf[32];
     if (_linkInputActive) {
-      snprintf(linkBuf, sizeof(linkBuf), "#%d_ Ent:Go", _linkInput);
+      snprintf(linkBuf, sizeof(linkBuf), MECK_TR("#%d_ Ent:Go", "#%d_ Ent:OK"), _linkInput);
       hint = linkBuf;
     } else if (_formCount > 0 && _linkCount > 0) {
-      hint = "L:Lnk F:Frm B:Bk Q:X";
+      hint = MECK_TR("L:Lnk F:Frm B:Bk Q:X", "L:Lien F:Form B:Ret Q:X");
     } else if (_formCount > 0) {
-      hint = "F:Frm B:Bk Q:X";
+      hint = MECK_TR("F:Frm B:Bk Q:X", "F:Form B:Ret Q:X");
     } else if (_linkCount > 0) {
-      hint = "L:Lnk B:Bk Q:X";
+      hint = MECK_TR("L:Lnk B:Bk Q:X", "L:Lien B:Ret Q:X");
     } else {
-      hint = "B:Bk Q:X";
+      hint = MECK_TR("B:Bk Q:X", "B:Ret Q:X");
     }
     display.setCursor(display.width() - display.getTextWidth(hint) - 2, footerY);
     display.print(hint);
@@ -3699,7 +3700,7 @@ private:
         if (_homeSelected >= newTotal && _homeSelected > 0) {
           _homeSelected--;
         }
-        strncpy(_toastMsg, "Bookmark deleted", sizeof(_toastMsg));
+        strncpy(_toastMsg, MECK_TR("Bookmark deleted", "Favori supprim\xC3\xA9"), sizeof(_toastMsg));
         _toastTime = millis();
         Serial.printf("WebReader: Deleted bookmark %d\n", bmIdx);
         return true;
@@ -3798,7 +3799,7 @@ private:
     if (c == 'k' || c == 'K') {
       if (_currentUrl[0]) {
         addBookmark(_currentUrl);
-        strncpy(_toastMsg, "Bookmarked!", sizeof(_toastMsg));
+        strncpy(_toastMsg, MECK_TR("Bookmarked!", "Ajout\xC3\xA9 aux favoris !"), sizeof(_toastMsg));
         _toastTime = millis();
         return true;
       }
@@ -3884,10 +3885,10 @@ private:
     // Show form number if multiple forms
     if (_formCount > 1) {
       char hdr[40];
-      snprintf(hdr, sizeof(hdr), "Form %d/%d", _activeForm + 1, _formCount);
+      snprintf(hdr, sizeof(hdr), MECK_TR("Form %d/%d", "Formulaire %d/%d"), _activeForm + 1, _formCount);
       display.print(hdr);
     } else {
-      display.print("Form");
+      display.print(MECK_TR("Form", "Formulaire"));
     }
 
     // Show form action domain on right
@@ -3954,7 +3955,7 @@ private:
         // Submit button
         display.setColor(isActive ? DisplayDriver::DARK : DisplayDriver::GREEN);
         char btn[60];
-        snprintf(btn, sizeof(btn), "[ %s ]", fld.value[0] ? fld.value : "Submit");
+        snprintf(btn, sizeof(btn), "[ %s ]", fld.value[0] ? fld.value : MECK_TR("Submit", "Envoyer"));
         display.print(btn);
       } else if (fld.type == 'c') {
         // Checkbox
@@ -3970,7 +3971,7 @@ private:
           display.print(fld.value);
         } else {
           display.setColor(isActive ? DisplayDriver::DARK : DisplayDriver::YELLOW);
-          display.print("(empty)");
+          display.print(MECK_TR("(empty)", "(vide)"));
         }
       }
 
@@ -3986,13 +3987,13 @@ private:
     display.setCursor(0, footerY);
 
     if (_formFieldEditing) {
-      display.print("Type text  Ent:Next Sh+Del:Undo");
+      display.print(MECK_TR("Type text  Ent:Next Sh+Del:Undo", "Saisir  Ent:Suiv. Sh+Del:Annuler"));
     } else {
       const char* hint;
       if (_formCount > 1)
-        hint = "W/S:Nav Ent:Edit </>:Form Sh+Del:Back";
+        hint = MECK_TR("W/S:Nav Ent:Edit </>:Form Sh+Del:Back", "W/S Ent:\xC3\x89" "diter </>:Form Sh+Del:Ret");
       else
-        hint = "W/S:Nav Ent:Edit/Go Sh+Del:Back";
+        hint = MECK_TR("W/S:Nav Ent:Edit/Go Sh+Del:Back", "W/S Ent:\xC3\x89" "diter/OK Sh+Del:Ret");
       display.print(hint);
     }
   }
@@ -4220,7 +4221,7 @@ private:
   bool connectIRC() {
     if (!allocateIRCBuffers()) return false;
 
-    addIRCMessage("*", "Connecting...", true);
+    addIRCMessage("*", MECK_TR("Connecting...", "Connexion..."), true);
 
     if (_ircClient) {
       _ircClient->stop();
@@ -4244,7 +4245,7 @@ private:
 
     if (!_ircClient->connect(_ircHost, _ircPort, 10000)) {
       Serial.println("IRC: Connection failed");
-      addIRCMessage("*", "Connection failed!", true);
+      addIRCMessage("*", MECK_TR("Connection failed!", "\xC3\x89" "chec de connexion !"), true);
       delete _ircClient;
       _ircClient = nullptr;
       _ircConnected = false;
@@ -4264,7 +4265,7 @@ private:
     snprintf(buf, sizeof(buf), "USER %s 0 * :Meck T-Deck Pro", _ircNick);
     ircSendRaw(buf);
 
-    addIRCMessage("*", "Registering...", true);
+    addIRCMessage("*", MECK_TR("Registering...", "Enregistrement..."), true);
     return true;
   }
 
@@ -4280,7 +4281,7 @@ private:
     _ircConnected = false;
     _ircRegistered = false;
     _ircJoined = false;
-    addIRCMessage("*", "Disconnected", true);
+    addIRCMessage("*", MECK_TR("Disconnected", "D\xC3\xA9" "connect\xC3\xA9"), true);
   }
 
   void parseIRCLine(const char* line) {
@@ -4329,7 +4330,7 @@ private:
 
         // Only join if a channel is configured
         if (_ircChannel[0] == '\0') {
-          addIRCMessage("*", "Registered! Use /join #channel", true);
+          addIRCMessage("*", MECK_TR("Registered! Use /join #channel", "Enregistr\xC3\xA9 ! Utilisez /join #canal"), true);
           return;
         }
         // Auto-prefix with # if missing
@@ -4340,7 +4341,7 @@ private:
         }
 
         char statusBuf[128];
-        snprintf(statusBuf, sizeof(statusBuf), "Registered! Joining %s...", _ircChannel);
+        snprintf(statusBuf, sizeof(statusBuf), MECK_TR("Registered! Joining %s...", "Enregistr\xC3\xA9 ! Connexion \xC3\xA0 %s..."), _ircChannel);
         addIRCMessage("*", statusBuf, true);
 
         char join[128];
@@ -4365,7 +4366,7 @@ private:
           snprintf(buf, sizeof(buf), "NICK %s", _ircNick);
           ircSendRaw(buf);
           char msgBuf[64];
-          snprintf(msgBuf, sizeof(msgBuf), "Nick taken, trying %s", _ircNick);
+          snprintf(msgBuf, sizeof(msgBuf), MECK_TR("Nick taken, trying %s", "Pseudo pris, essai de %s"), _ircNick);
           addIRCMessage("*", msgBuf, true);
         }
         return;
@@ -4395,7 +4396,7 @@ private:
         const char* text = strrchr(cmd, ':');
         if (text) {
           char errBuf[IRC_MAX_MSG_LEN];
-          snprintf(errBuf, sizeof(errBuf), "Error %d: %s", numeric, text + 1);
+          snprintf(errBuf, sizeof(errBuf), MECK_TR("Error %d: %s", "Erreur %d : %s"), numeric, text + 1);
           addIRCMessage("*", errBuf, true);
         }
         return;
@@ -4431,11 +4432,11 @@ private:
       if (strcmp(senderNick, _ircNick) == 0) {
         _ircJoined = true;
         char buf[128];
-        snprintf(buf, sizeof(buf), "Joined %s", _ircChannel);
+        snprintf(buf, sizeof(buf), MECK_TR("Joined %s", "Rejoint : %s"), _ircChannel);
         addIRCMessage("*", buf, true);
       } else {
         char buf[128];
-        snprintf(buf, sizeof(buf), "%s joined", senderNick);
+        snprintf(buf, sizeof(buf), MECK_TR("%s joined", "%s a rejoint"), senderNick);
         addIRCMessage("*", buf, true);
       }
       return;
@@ -4444,7 +4445,7 @@ private:
     // PART
     if (strncmp(cmd, "PART", 4) == 0) {
       char buf[128];
-      snprintf(buf, sizeof(buf), "%s left", senderNick);
+      snprintf(buf, sizeof(buf), MECK_TR("%s left", "%s est parti"), senderNick);
       addIRCMessage("*", buf, true);
       return;
     }
@@ -4454,9 +4455,9 @@ private:
       char buf[128];
       const char* reason = strchr(cmd + 5, ':');
       if (reason) {
-        snprintf(buf, sizeof(buf), "%s quit (%s)", senderNick, reason + 1);
+        snprintf(buf, sizeof(buf), MECK_TR("%s quit (%s)", "%s a quitt\xC3\xA9 (%s)"), senderNick, reason + 1);
       } else {
-        snprintf(buf, sizeof(buf), "%s quit", senderNick);
+        snprintf(buf, sizeof(buf), MECK_TR("%s quit", "%s a quitt\xC3\xA9"), senderNick);
       }
       addIRCMessage("*", buf, true);
       return;
@@ -4468,7 +4469,7 @@ private:
       if (!newNick) newNick = cmd + 5;
       else newNick++;
       char buf[128];
-      snprintf(buf, sizeof(buf), "%s is now %s", senderNick, newNick);
+      snprintf(buf, sizeof(buf), MECK_TR("%s is now %s", "%s s'appelle d\xC3\xA9sormais %s"), senderNick, newNick);
       addIRCMessage("*", buf, true);
 
       // Update our own nick if it was us
@@ -4491,7 +4492,7 @@ private:
 
     if (!_ircClient->connected()) {
       Serial.println("IRC: Connection lost");
-      addIRCMessage("*", "Connection lost. Reconnecting...", true);
+      addIRCMessage("*", MECK_TR("Connection lost. Reconnecting...", "Connexion perdue. Reconnexion..."), true);
       _ircConnected = false;
       _ircRegistered = false;
       _ircJoined = false;
@@ -4504,7 +4505,7 @@ private:
     // Check for ping timeout
     if (millis() - _ircLastDataTime > IRC_PING_TIMEOUT_MS) {
       Serial.println("IRC: Ping timeout");
-      addIRCMessage("*", "Ping timeout. Reconnecting...", true);
+      addIRCMessage("*", MECK_TR("Ping timeout. Reconnecting...", "Ping expir\xC3\xA9. Reconnexion..."), true);
       disconnectIRC();
       _ircReconnectAt = millis() + IRC_RECONNECT_MS;
       return;
@@ -4537,7 +4538,7 @@ private:
     // Check for /commands (allowed even before joining a channel)
     if (_ircCompose[0] == '/') {
       if (strncmp(_ircCompose, "/me ", 4) == 0) {
-        if (!_ircJoined) { addIRCMessage("*", "Not in a channel", true); }
+        if (!_ircJoined) { addIRCMessage("*", MECK_TR("Not in a channel", "Pas dans un salon"), true); }
         else {
           char buf[IRC_LINE_BUF_SIZE];
           snprintf(buf, sizeof(buf), "PRIVMSG %s :\001ACTION %s\001",
@@ -4576,7 +4577,7 @@ private:
     } else {
       // Normal message - requires being in a channel
       if (!_ircJoined) {
-        addIRCMessage("*", "Not in a channel. Use /join #channel", true);
+        addIRCMessage("*", MECK_TR("Not in a channel. Use /join #channel", "Pas dans un salon. Utilisez /join #canal"), true);
       } else {
         char buf[IRC_LINE_BUF_SIZE];
         snprintf(buf, sizeof(buf), "PRIVMSG %s :%s", _ircChannel, _ircCompose);
@@ -4596,15 +4597,15 @@ private:
     display.setColor(DisplayDriver::GREEN);
     display.setTextSize(1);
     display.setCursor(0, 0);
-    display.print("IRC Setup");
+    display.print(MECK_TR("IRC Setup", "Configuration IRC"));
     display.drawRect(0, 11, display.width(), 1);
 
     display.setTextSize(_prefs->smallTextSize());
     int y = 16;
     int lineH = _prefs->smallLineH() + 1;
 
-    const char* labels[] = {"Server:", "Port:", "Nick:", "Channel:", "[ Connect ]"};
-    const char* chanDisp = (_ircChannel[0] != '\0') ? _ircChannel : "(none)";
+    const char* labels[] = {MECK_TR("Server:", "Serveur :"), MECK_TR("Port:", "Port :"), MECK_TR("Nick:", "Pseudo :"), MECK_TR("Channel:", "Salon :"), MECK_TR("[ Connect ]", "[ Connexion ]")};
+    const char* chanDisp = (_ircChannel[0] != '\0') ? _ircChannel : MECK_TR("(none)", "(aucun)");
     const char* values[] = {_ircHost, nullptr, _ircNick, chanDisp, nullptr};
     char portStr[8];
     snprintf(portStr, sizeof(portStr), "%d", _ircPort);
@@ -4623,7 +4624,7 @@ private:
       if (i == 4) {
         // Connect button
         display.setCursor(display.width() / 2 - 30, y);
-        display.print(sel ? "> Connect <" : "[ Connect ]");
+        display.print(sel ? MECK_TR("> Connect <", "> Connexion <") : MECK_TR("[ Connect ]", "[ Connexion ]"));
       } else if (i == 1) {
         // Port
         char buf[64];
@@ -4650,9 +4651,9 @@ private:
     display.setColor(DisplayDriver::YELLOW);
     display.setCursor(2, y);
     if (_ircConnected) {
-      display.print(_ircJoined ? "Connected & joined" : "Connected...");
+      display.print(_ircJoined ? MECK_TR("Connected & joined", "Connect\xC3\xA9, dans le salon") : MECK_TR("Connected...", "Connect\xC3\xA9..."));
     } else {
-      display.print("Not connected");
+      display.print(MECK_TR("Not connected", "Non connect\xC3\xA9"));
     }
 
     // Footer
@@ -4661,7 +4662,7 @@ private:
     display.drawRect(0, footerY - 2, display.width(), 1);
     display.setCursor(0, footerY);
     display.setColor(DisplayDriver::YELLOW);
-    display.print("W/S:Nav Ent:Edit/Go Sh+Del:Back");
+    display.print(MECK_TR("W/S:Nav Ent:Edit/Go Sh+Del:Back", "W/S Ent:\xC3\x89" "diter/OK Sh+Del:Ret"));
   }
 
   bool handleIRCSetupInput(char c) {
@@ -4705,7 +4706,7 @@ private:
         // Connect button
         saveIRCConfig();
         if (!isNetworkAvailable()) {
-          addIRCMessage("*", "No network! Connect WiFi first.", true);
+          addIRCMessage("*", MECK_TR("No network! Connect WiFi first.", "Pas de r\xC3\xA9seau ! Connectez le WiFi."), true);
           _mode = WIFI_SETUP;
           startWifiScan();
           return true;
@@ -4755,11 +4756,11 @@ private:
     if (!_ircConnected) {
       display.setColor(DisplayDriver::YELLOW);
       display.setCursor(display.width() - 42, -3);
-      display.print("DISCONN");
+      display.print(MECK_TR("DISCONN", "D\xC3\x89" "CONN."));
     } else if (!_ircJoined) {
       display.setColor(DisplayDriver::YELLOW);
       display.setCursor(display.width() - 36, -3);
-      display.print("joining");
+      display.print(MECK_TR("joining", "connexion"));
     } else {
       display.setColor(DisplayDriver::GREEN);
       const char* nickDisp = _ircNick;
@@ -4791,11 +4792,11 @@ private:
       display.setTextSize(1);
       display.setColor(DisplayDriver::YELLOW);
       display.setCursor(0, footerY);
-      display.print("Ent:Send Del:Exit");
+      display.print(MECK_TR("Ent:Send Del:Exit", "Ent:Envoyer Del:Quitter"));
     } else {
       display.setColor(DisplayDriver::YELLOW);
       display.setCursor(0, footerY);
-      display.print("Ent:Msg W/S:Scrl Sh+Del:Bk");
+      display.print(MECK_TR("Ent:Msg W/S:Scrl Sh+Del:Bk", "Ent:Msg W/S:D\xC3\xA9" "f. Sh+Del:Ret"));
     }
 
     // Message area
@@ -4810,7 +4811,7 @@ private:
     if (_ircMsgCount == 0) {
       display.setColor(DisplayDriver::LIGHT);
       display.setCursor(4, msgAreaTop + 10);
-      display.print("No messages yet...");
+      display.print(MECK_TR("No messages yet...", "Aucun message..."));
 
       // Draw empty scrollbar track
       int sbX = display.width() - scrollBarW;
@@ -5068,12 +5069,12 @@ public:
       _display->setColor(DisplayDriver::GREEN);
       _display->setTextSize(1);
       _display->setCursor(0, 0);
-      _display->print("Web Reader");
+      _display->print(MECK_TR("Web Reader", "Navigateur"));
       _display->drawRect(0, 11, _display->width(), 1);
       _display->setColor(DisplayDriver::LIGHT);
       _display->setTextSize(_prefs->smallTextSize());
       _display->setCursor(0, 18);
-      _display->print("Connecting to WiFi...");
+      _display->print(MECK_TR("Connecting to WiFi...", "Connexion au WiFi..."));
       _display->endFrame();
     }
     if (loadAndAutoConnect()) {

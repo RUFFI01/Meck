@@ -2938,7 +2938,8 @@ void UITask::gotoRepeaterAdmin(int contactIdx) {
 
   // Get contact name for the screen header
   ContactInfo contact;
-  char name[32] = "Unknown";
+  char name[32];
+  strcpy(name, MECK_TR("Unknown", "Inconnu"));
   if (the_mesh.getContactByIdx(contactIdx, contact)) {
     strncpy(name, contact.name, sizeof(name) - 1);
     name[sizeof(name) - 1] = '\0';

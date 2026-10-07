@@ -5545,13 +5545,13 @@ void drawComposeScreen() {
   // Get the channel name for display
   char headerBuf[40];
   if (composeDM) {
-    snprintf(headerBuf, sizeof(headerBuf), "DM: %s", composeDMName);
+    snprintf(headerBuf, sizeof(headerBuf), MECK_TR("DM: %s", "MP : %s"), composeDMName);
   } else {
     ChannelDetails channel;
     if (the_mesh.getChannel(composeChannelIdx, channel)) {
-      snprintf(headerBuf, sizeof(headerBuf), "To: %s", channel.name);
+      snprintf(headerBuf, sizeof(headerBuf), MECK_TR("To: %s", "\xC3\x80 : %s"), channel.name);
     } else {
-      snprintf(headerBuf, sizeof(headerBuf), "To: Channel %d", composeChannelIdx);
+      snprintf(headerBuf, sizeof(headerBuf), MECK_TR("To: Channel %d", "\xC3\x80 : Canal %d"), composeChannelIdx);
     }
   }
   display.print(headerBuf);
