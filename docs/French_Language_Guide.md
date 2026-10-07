@@ -1,6 +1,7 @@
 # French Language: Guide and Translation Table
 
 Status: draft for Meck v1.15, from the `dev` branch at commit `ccf67fbe`. French is an Experimental Feature, so its wording and behaviour may still change.
+Last updated: 7 Oct 2026
 
 This guide covers how to switch Meck into French, how the fonts behave in French, and a table of every English text that has a French version, for volunteer translators to review.
 
