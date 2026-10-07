@@ -2,6 +2,7 @@
 
 #include <helpers/ui/UIScreen.h>
 #include <helpers/ui/DisplayDriver.h>
+#include "MeckLang.h"
 #include <MeshCore.h>
 #include <Packet.h>
 
@@ -215,7 +216,7 @@ public:
         memset(_pathBuf, 0, sizeof(_pathBuf));
       }
     } else {
-      strcpy(_contactName, "Unknown");
+      strcpy(_contactName, MECK_TR("Unknown", "Inconnu"));
       _pathLen = 0;
       _hopCount = 0;
       _bytesPerHop = 1;
@@ -238,10 +239,10 @@ public:
     display.setTextSize(1);
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, 0);
-    snprintf(tmp, sizeof(tmp), "Path: %s", _contactName);
+    snprintf(tmp, sizeof(tmp), MECK_TR("Path: %s", "Chemin : %s"), _contactName);
     // Truncate if too long
     if (display.getTextWidth(tmp) > display.width() - 4) {
-      snprintf(tmp, sizeof(tmp), "Path: %.12s..", _contactName);
+      snprintf(tmp, sizeof(tmp), MECK_TR("Path: %.12s..", "Chemin : %.12s.."), _contactName);
     }
     display.print(tmp);
 
@@ -297,9 +298,9 @@ public:
       switch (item) {
         case MENU_MODE:
           if (_directLocked) {
-            snprintf(tmp, sizeof(tmp), "%c Mode: DIRECT", prefix);
+            snprintf(tmp, sizeof(tmp), MECK_TR("%c Mode: DIRECT", "%c Mode : DIRECT"), prefix);
           } else {
-            snprintf(tmp, sizeof(tmp), "%c Mode: %dB/hop", prefix, _bytesPerHop);
+            snprintf(tmp, sizeof(tmp), MECK_TR("%c Mode: %dB/hop", "%c Mode : %d o/saut"), prefix, _bytesPerHop);
           }
           display.print(tmp);
           // Show hint on right
@@ -311,31 +312,31 @@ public:
           break;
 
         case MENU_ADD_HOP:
-          snprintf(tmp, sizeof(tmp), "%c + Add hop...", prefix);
+          snprintf(tmp, sizeof(tmp), MECK_TR("%c + Add hop...", "%c + Ajouter un saut..."), prefix);
           display.print(tmp);
           break;
 
         case MENU_SET_DIRECT:
           if (_directLocked) {
-            snprintf(tmp, sizeof(tmp), "%c * Direct (set)", prefix);
+            snprintf(tmp, sizeof(tmp), MECK_TR("%c * Direct (set)", "%c * Direct (d\xC3\xA9" "fini)"), prefix);
           } else {
-            snprintf(tmp, sizeof(tmp), "%c * Set Direct", prefix);
+            snprintf(tmp, sizeof(tmp), MECK_TR("%c * Set Direct", "%c * Passer en direct"), prefix);
           }
           display.print(tmp);
           break;
 
         case MENU_REMOVE_LAST:
-          snprintf(tmp, sizeof(tmp), "%c - Remove last hop", prefix);
+          snprintf(tmp, sizeof(tmp), MECK_TR("%c - Remove last hop", "%c - Retirer dernier saut"), prefix);
           display.print(tmp);
           break;
 
         case MENU_CLEAR_PATH:
-          snprintf(tmp, sizeof(tmp), "%c   Clear custom path", prefix);
+          snprintf(tmp, sizeof(tmp), MECK_TR("%c   Clear custom path", "%c   Effacer le chemin"), prefix);
           display.print(tmp);
           break;
 
         case MENU_SAVE_EXIT:
-          snprintf(tmp, sizeof(tmp), "%c   Save & Exit", prefix);
+          snprintf(tmp, sizeof(tmp), MECK_TR("%c   Save & Exit", "%c   Enregistrer et quitter"), prefix);
           display.print(tmp);
           break;
 
@@ -378,8 +379,8 @@ public:
     display.setColor(DisplayDriver::YELLOW);
 
     display.setCursor(0, footerY);
-    display.print("Q:Bk W/S:Nav");
-    const char* right = "Enter:Sel";
+    display.print(MECK_TR("Q:Bk W/S:Nav", "Q:Ret W/S:Nav"));
+    const char* right = MECK_TR("Enter:Sel", "Entr\xC3\xA9" "e:S\xC3\xA9l");
     display.setCursor(display.width() - display.getTextWidth(right) - 2, footerY);
     display.print(right);
 
@@ -393,7 +394,7 @@ public:
     display.setTextSize(1);
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, 0);
-    snprintf(tmp, sizeof(tmp), "Select Repeater (%d)", _repCount);
+    snprintf(tmp, sizeof(tmp), MECK_TR("Select Repeater (%d)", "Choisir r\xC3\xA9p\xC3\xA9teur (%d)"), _repCount);
     display.print(tmp);
 
     display.drawRect(0, 11, display.width(), 1);
@@ -409,9 +410,9 @@ public:
     if (_repCount == 0) {
       display.setColor(DisplayDriver::LIGHT);
       display.setCursor(0, y);
-      display.print("No repeaters in contacts");
+      display.print(MECK_TR("No repeaters in contacts", "Aucun r\xC3\xA9p\xC3\xA9teur connu"));
       display.setCursor(0, y + lineH);
-      display.print("Add repeaters first");
+      display.print(MECK_TR("Add repeaters first", "Ajoutez des r\xC3\xA9p\xC3\xA9teurs"));
     } else {
       int maxVisible = (maxY - headerH) / lineH;
       if (maxVisible < 3) maxVisible = 3;
@@ -459,8 +460,8 @@ public:
     display.setColor(DisplayDriver::YELLOW);
 
     display.setCursor(0, footerY);
-    display.print("Q:Cancel W/S:Scroll");
-    const char* right = "Enter:Add";
+    display.print(MECK_TR("Q:Cancel W/S:Scroll", "Q:Ret W/S:D\xC3\xA9" "fil"));
+    const char* right = MECK_TR("Enter:Add", "Ent:Ajouter");
     display.setCursor(display.width() - display.getTextWidth(right) - 2, footerY);
     display.print(right);
 

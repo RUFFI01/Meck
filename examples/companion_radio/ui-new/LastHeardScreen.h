@@ -2,6 +2,7 @@
 
 #include <helpers/ui/UIScreen.h>
 #include <helpers/ui/DisplayDriver.h>
+#include "MeckLang.h"
 #include <helpers/AdvertDataHelpers.h>
 #include <MeshCore.h>
 
@@ -42,9 +43,9 @@ class LastHeardScreen : public UIScreen {
     }
     uint32_t age = now - timestamp;
     if (age < 60)         snprintf(buf, bufLen, "%ds", age);
-    else if (age < 3600)  snprintf(buf, bufLen, "%dm", age / 60);
+    else if (age < 3600)  snprintf(buf, bufLen, MECK_TR("%dm", "%dmin"), age / 60);
     else if (age < 86400) snprintf(buf, bufLen, "%dh", age / 3600);
-    else                  snprintf(buf, bufLen, "%dd", age / 86400);
+    else                  snprintf(buf, bufLen, MECK_TR("%dd", "%dj"), age / 86400);
   }
 
 public:
@@ -112,7 +113,7 @@ public:
     display.setCursor(0, 0);
 
     char hdr[32];
-    snprintf(hdr, sizeof(hdr), "Last Heard: %d nodes", _count);
+    snprintf(hdr, sizeof(hdr), MECK_TR("Last Heard: %d nodes", "Entendus : %d n\xC5\x93uds"), _count);
     display.print(hdr);
 
     display.drawRect(0, 11, display.width(), 1);
@@ -128,9 +129,9 @@ public:
     if (_count == 0) {
       display.setColor(DisplayDriver::LIGHT);
       display.setCursor(4, 28);
-      display.print("No adverts received yet");
+      display.print(MECK_TR("No adverts received yet", "Aucune annonce re\xC3\xA7ue"));
       display.setCursor(4, 38);
-      display.print("Nodes appear as adverts arrive");
+      display.print(MECK_TR("Nodes appear as adverts arrive", "Les n\xC5\x93uds apparaissent ici"));
     } else {
       int maxVisible = (maxY - headerHeight) / lineHeight;
       if (maxVisible < 3) maxVisible = 3;
@@ -199,8 +200,8 @@ public:
     display.setColor(DisplayDriver::YELLOW);
 
     display.setCursor(0, footerY);
-    display.print("Q:Bk");
-    const char* right = "Tap/Ent:Add/Del";
+    display.print(MECK_TR("Q:Bk", "Q:Ret"));
+    const char* right = MECK_TR("Tap/Ent:Add/Del", "Ent:Ajout/Suppr");
     display.setCursor(display.width() - display.getTextWidth(right) - 2, footerY);
     display.print(right);
 

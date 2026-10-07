@@ -2,6 +2,7 @@
 
 #include <helpers/ui/UIScreen.h>
 #include <helpers/ui/DisplayDriver.h>
+#include "MeckLang.h"
 #include <MeshCore.h>
 
 class UITask;            // forward decl -- used only to navigate back to Settings
@@ -67,7 +68,7 @@ class RxLogScreen : public UIScreen {
     int secs = local % 60;
     if (hrs < 0) hrs += 24;
     char l2[40];
-    snprintf(l2, sizeof(l2), "%02d:%02d:%02d  %u bytes", hrs, mins, secs, (unsigned)e.size);
+    snprintf(l2, sizeof(l2), MECK_TR("%02d:%02d:%02d  %u bytes", "%02d:%02d:%02d  %u octets"), hrs, mins, secs, (unsigned)e.size);
     display.setCursor(0, y);
     display.print(l2);
     y += lineH;
@@ -75,7 +76,7 @@ class RxLogScreen : public UIScreen {
 
     // Line 3: packet hash
     char hashbuf[2 * MAX_HASH_SIZE + 8];
-    int p = snprintf(hashbuf, sizeof(hashbuf), "Hash: ");
+    int p = snprintf(hashbuf, sizeof(hashbuf), MECK_TR("Hash: ", "Hash : "));
     for (int i = 0; i < MAX_HASH_SIZE && p < (int)sizeof(hashbuf) - 3; i++) {
       p += snprintf(hashbuf + p, sizeof(hashbuf) - p, "%02X", e.hash[i]);
     }
@@ -88,7 +89,7 @@ class RxLogScreen : public UIScreen {
     uint8_t hops = e.path_len & 63;
     uint8_t bph = (e.path_len >> 6) + 1;
     char pathbuf[96];
-    int q = snprintf(pathbuf, sizeof(pathbuf), "Path: %d hops", hops);
+    int q = snprintf(pathbuf, sizeof(pathbuf), MECK_TR("Path: %d hops", "Chemin : %d sauts"), hops);
     if (hops > 0) {
       q += snprintf(pathbuf + q, sizeof(pathbuf) - q, " [");
       for (int h = 0; h < hops && q < (int)sizeof(pathbuf) - 8; h++) {
@@ -112,7 +113,7 @@ class RxLogScreen : public UIScreen {
       haveL5 = true;
     } else if (ptype == PAYLOAD_TYPE_REQ || ptype == PAYLOAD_TYPE_RESPONSE
                || ptype == PAYLOAD_TYPE_TXT_MSG || ptype == PAYLOAD_TYPE_PATH) {
-      snprintf(l5, sizeof(l5), "From %02x  To %02x", e.payload1, e.payload0);
+      snprintf(l5, sizeof(l5), MECK_TR("From %02x  To %02x", "De %02x  \xC3\x80 %02x"), e.payload1, e.payload0);
       haveL5 = true;
     }
     if (haveL5) {
@@ -148,7 +149,7 @@ public:
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, 0);
     char hdr[32];
-    snprintf(hdr, sizeof(hdr), "Rx Log: %d pkts", count);
+    snprintf(hdr, sizeof(hdr), MECK_TR("Rx Log: %d pkts", "Journal RX : %d paq."), count);
     display.print(hdr);
     display.drawRect(0, 11, display.width(), 1);
 
@@ -160,9 +161,9 @@ public:
     if (count == 0) {
       display.setColor(DisplayDriver::LIGHT);
       display.setCursor(4, 28);
-      display.print("No packets received yet");
+      display.print(MECK_TR("No packets received yet", "Aucun paquet re\xC3\xA7u"));
       display.setCursor(4, 38);
-      display.print("Packets appear as they arrive");
+      display.print(MECK_TR("Packets appear as they arrive", "Les paquets apparaissent ici"));
     } else {
       display.setTextSize(the_mesh.getNodePrefs()->smallTextSize());
       int lineH = the_mesh.getNodePrefs()->smallLineH();
@@ -184,7 +185,7 @@ public:
     display.drawRect(0, footerY - 2, display.width(), 1);
     display.setColor(DisplayDriver::YELLOW);
     display.setCursor(0, footerY);
-    display.print("Q:Bk  W/S:Scroll");
+    display.print(MECK_TR("Q:Bk  W/S:Scroll", "Q:Ret  W/S:D\xC3\xA9" "filer"));
 
     return 5000;  // refresh every 5s to pick up newly received packets
   }

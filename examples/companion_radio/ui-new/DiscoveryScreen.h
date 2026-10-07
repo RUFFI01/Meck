@@ -2,6 +2,7 @@
 
 #include <helpers/ui/UIScreen.h>
 #include <helpers/ui/DisplayDriver.h>
+#include "MeckLang.h"
 #include <helpers/AdvertDataHelpers.h>
 #include <MeshCore.h>
 
@@ -29,9 +30,9 @@ class DiscoveryScreen : public UIScreen {
   static const char* typeLabel(uint8_t adv_type) {
     switch (adv_type) {
       case ADV_TYPE_CHAT:     return "Chat";
-      case ADV_TYPE_REPEATER: return "Rptr";
-      case ADV_TYPE_ROOM:     return "Room";
-      case ADV_TYPE_SENSOR:   return "Sens";
+      case ADV_TYPE_REPEATER: return MECK_TR("Rptr", "R\xC3\xA9p.");
+      case ADV_TYPE_ROOM:     return MECK_TR("Room", "Salon");
+      case ADV_TYPE_SENSOR:   return MECK_TR("Sens", "Capt.");
       default:                return "?";
     }
   }
@@ -77,9 +78,9 @@ public:
 
     char hdr[32];
     if (active) {
-      snprintf(hdr, sizeof(hdr), "Scanning... %d found", count);
+      snprintf(hdr, sizeof(hdr), MECK_TR("Scanning... %d found", "Recherche... %d trouv\xC3\xA9(s)"), count);
     } else {
-      snprintf(hdr, sizeof(hdr), "Scan done: %d found", count);
+      snprintf(hdr, sizeof(hdr), MECK_TR("Scan done: %d found", "Termin\xC3\xA9 : %d trouv\xC3\xA9(s)"), count);
     }
     display.print(hdr);
 
@@ -98,10 +99,10 @@ public:
     if (count == 0) {
       display.setColor(DisplayDriver::LIGHT);
       display.setCursor(4, 28);
-      display.print(active ? "Listening for adverts..." : "No nodes found");
+      display.print(active ? MECK_TR("Listening for adverts...", "\xC3\x89" "coute des annonces...") : MECK_TR("No nodes found", "Aucun n\xC5\x93ud trouv\xC3\xA9"));
       if (!active) {
         display.setCursor(4, 38);
-        display.print("F: Scan again  Q: Back");
+        display.print(MECK_TR("F: Scan again  Q: Back", "F : relancer  Q : retour"));
       }
     } else {
       // Center visible window around selected item
@@ -180,9 +181,9 @@ public:
     display.setColor(DisplayDriver::YELLOW);
 
     display.setCursor(0, footerY);
-    display.print("Q:X F:Scan");
+    display.print(MECK_TR("Q:X F:Scan", "Q:X F:Relance"));
 
-    const char* right = "Tap/Ent:Add";
+    const char* right = MECK_TR("Tap/Ent:Add", "Ent:Ajouter");
     display.setCursor(display.width() - display.getTextWidth(right) - 2, footerY);
     display.print(right);
 

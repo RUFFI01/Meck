@@ -2,6 +2,7 @@
 
 #include <helpers/ui/UIScreen.h>
 #include <helpers/ui/DisplayDriver.h>
+#include "MeckLang.h"
 #include <MeshCore.h>
 #include <Packet.h>
 
@@ -369,7 +370,7 @@ public:
     display.setCursor(0, 0);
     display.setTextSize(1);
     display.setColor(DisplayDriver::GREEN);
-    display.print("Trace Path");
+    display.print(MECK_TR("Trace Path", "Tracer un chemin"));
     display.drawRect(0, 11, display.width(), 1);
 
     if (_state == STATE_BUILD) {
@@ -407,7 +408,7 @@ private:
 
       switch (item) {
         case MENU_PATH_SIZE:
-          snprintf(tmp, sizeof(tmp), "%c Mode: %d-byte", prefix, _bytesPerHop);
+          snprintf(tmp, sizeof(tmp), MECK_TR("%c Mode: %d-byte", "%c Mode : %d o"), prefix, _bytesPerHop);
           display.print(tmp);
           if (idx == _menuSel) {
             const char* hint = "(A/D)";
@@ -420,7 +421,7 @@ private:
           if (_editing) {
             // Active text editor with cursor
             display.setColor(DisplayDriver::GREEN);
-            snprintf(tmp, sizeof(tmp), "  Path: %s_", _editBuf);
+            snprintf(tmp, sizeof(tmp), MECK_TR("  Path: %s_", "  Chemin : %s_"), _editBuf);
             display.print(tmp);
           } else if (_hopCount > 0) {
             // Show current path as decimal values
@@ -436,33 +437,33 @@ private:
                 pos += snprintf(&pathStr[pos], sizeof(pathStr) - pos, "%04X", val);
               }
             }
-            snprintf(tmp, sizeof(tmp), "%c Path: %s", prefix, pathStr);
+            snprintf(tmp, sizeof(tmp), MECK_TR("%c Path: %s", "%c Chemin : %s"), prefix, pathStr);
             display.print(tmp);
           } else {
-            snprintf(tmp, sizeof(tmp), "%c Type Path: [Press Enter]", prefix);
+            snprintf(tmp, sizeof(tmp), MECK_TR("%c Type Path: [Press Enter]", "%c Saisir chemin : [Entr\xC3\xA9" "e]"), prefix);
             display.print(tmp);
           }
           break;
 
         case MENU_ADD_HOP:
           display.setColor(DisplayDriver::GREEN);
-          snprintf(tmp, sizeof(tmp), "%c + Add repeater...", prefix);
+          snprintf(tmp, sizeof(tmp), MECK_TR("%c + Add repeater...", "%c + Ajouter un r\xC3\xA9p\xC3\xA9teur..."), prefix);
           display.print(tmp);
           break;
 
         case MENU_REMOVE_LAST:
-          snprintf(tmp, sizeof(tmp), "%c - Remove last", prefix);
+          snprintf(tmp, sizeof(tmp), MECK_TR("%c - Remove last", "%c - Retirer le dernier"), prefix);
           display.print(tmp);
           break;
 
         case MENU_RUN_TRACE:
           display.setColor(DisplayDriver::YELLOW);
-          snprintf(tmp, sizeof(tmp), "%c   Run Trace", prefix);
+          snprintf(tmp, sizeof(tmp), MECK_TR("%c   Run Trace", "%c   Lancer le tra\xC3\xA7" "age"), prefix);
           display.print(tmp);
           break;
 
         case MENU_EXIT:
-          snprintf(tmp, sizeof(tmp), "%c   Exit", prefix);
+          snprintf(tmp, sizeof(tmp), MECK_TR("%c   Exit", "%c   Quitter"), prefix);
           display.print(tmp);
           break;
 
@@ -500,9 +501,9 @@ private:
     display.setColor(DisplayDriver::LIGHT);
     display.setCursor(0, footerY);
     if (_editing) {
-      display.print("Q:Cancel Enter:Apply");
+      display.print(MECK_TR("Q:Cancel Enter:Apply", "Q:Annuler Entr\xC3\xA9" "e:Appliquer"));
     } else {
-      display.print("Q:Exit W/S:Nav Ent:Sel");
+      display.print(MECK_TR("Q:Exit W/S:Nav Ent:Sel", "Q:Quitter W/S:Nav Ent:S\xC3\xA9l"));
     }
 
     return 5000;
@@ -518,10 +519,10 @@ private:
     if (_repCount == 0) {
       display.setCursor(0, y);
       display.setColor(DisplayDriver::RED);
-      display.print("No repeaters in contacts");
+      display.print(MECK_TR("No repeaters in contacts", "Aucun r\xC3\xA9p\xC3\xA9teur connu"));
       y += lineH;
       display.setColor(DisplayDriver::LIGHT);
-      display.print("Press Q to go back");
+      display.print(MECK_TR("Press Q to go back", "Q pour revenir"));
     } else {
       // Clamp scroll
       if (_repSel >= _repCount) _repSel = _repCount - 1;
@@ -561,7 +562,7 @@ private:
     display.drawRect(0, footerY - 2, display.width(), 1);
     display.setColor(DisplayDriver::LIGHT);
     display.setCursor(0, footerY);
-    display.print("Q:Back W/S:Scroll Ent:Add");
+    display.print(MECK_TR("Q:Back W/S:Scroll Ent:Add", "Q:Ret W/S:D\xC3\xA9" "fil Ent:Ajout"));
 
     return 5000;
   }
@@ -570,20 +571,20 @@ private:
     int y = 14;
     display.setColor(DisplayDriver::YELLOW);
     display.setCursor(0, y);
-    display.print("Tracing...");
+    display.print(MECK_TR("Tracing...", "Tra\xC3\xA7" "age..."));
     y += 14;
 
     // Show path summary
     display.setColor(DisplayDriver::LIGHT);
     char tmp[48];
-    snprintf(tmp, sizeof(tmp), "%d hops, %d-byte mode", _hopCount, _bytesPerHop);
+    snprintf(tmp, sizeof(tmp), MECK_TR("%d hops, %d-byte mode", "%d sauts, mode %d o"), _hopCount, _bytesPerHop);
     display.setCursor(0, y);
     display.print(tmp);
     y += 14;
 
     // Elapsed time
     unsigned long elapsed = millis() - _traceSentAt;
-    snprintf(tmp, sizeof(tmp), "Elapsed: %lu ms", elapsed);
+    snprintf(tmp, sizeof(tmp), MECK_TR("Elapsed: %lu ms", "\xC3\x89" "coul\xC3\xA9 : %lu ms"), elapsed);
     display.setCursor(0, y);
     display.print(tmp);
     y += 14;
@@ -613,7 +614,7 @@ private:
     display.drawRect(0, footerY - 2, display.width(), 1);
     display.setColor(DisplayDriver::LIGHT);
     display.setCursor(0, footerY);
-    display.print("Q:Cancel");
+    display.print(MECK_TR("Q:Cancel", "Q:Annuler"));
 
     return 500;  // Fast refresh for elapsed timer
   }
@@ -626,16 +627,16 @@ private:
     if (!_result.valid) {
       display.setColor(DisplayDriver::RED);
       display.setCursor(0, y);
-      display.print("Trace timed out");
+      display.print(MECK_TR("Trace timed out", "D\xC3\xA9lai de tra\xC3\xA7" "age d\xC3\xA9pass\xC3\xA9"));
       y += lineH;
       display.setColor(DisplayDriver::LIGHT);
-      snprintf(tmp, sizeof(tmp), "No response after %ds", TRACE_TIMEOUT_MS / 1000);
+      snprintf(tmp, sizeof(tmp), MECK_TR("No response after %ds", "Pas de r\xC3\xA9ponse apr\xC3\xA8s %ds"), TRACE_TIMEOUT_MS / 1000);
       display.setCursor(0, y);
       display.print(tmp);
     } else {
       // Duration header
       display.setColor(DisplayDriver::GREEN);
-      snprintf(tmp, sizeof(tmp), "Complete: %dms", (int)_result.duration_ms);
+      snprintf(tmp, sizeof(tmp), MECK_TR("Complete: %dms", "Termin\xC3\xA9 : %dms"), (int)_result.duration_ms);
       display.setCursor(0, y);
       display.print(tmp);
       y += lineH + 2;
@@ -691,7 +692,7 @@ private:
           // Final SNR (response arriving back at this node)
           float snr = _result.final_snr / 4.0f;
           display.setColor(DisplayDriver::YELLOW);
-          snprintf(tmp, sizeof(tmp), "Return SNR: %.1fdB", snr);
+          snprintf(tmp, sizeof(tmp), MECK_TR("Return SNR: %.1fdB", "SNR retour : %.1fdB"), snr);
           display.print(tmp);
           drawSignalBars(display, display.width() - 15, y, _result.final_snr);
         }
@@ -705,7 +706,7 @@ private:
     display.drawRect(0, footerY - 2, display.width(), 1);
     display.setColor(DisplayDriver::LIGHT);
     display.setCursor(0, footerY);
-    display.print("Q:Back  Ent:New Trace");
+    display.print(MECK_TR("Q:Back  Ent:New Trace", "Q:Ret  Ent:Nouveau tra\xC3\xA7" "age"));
 
     return 5000;
   }

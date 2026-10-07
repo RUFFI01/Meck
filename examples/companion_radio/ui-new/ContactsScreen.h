@@ -2,6 +2,7 @@
 
 #include <helpers/ui/UIScreen.h>
 #include <helpers/ui/DisplayDriver.h>
+#include "MeckLang.h"
 #include <MeshCore.h>
 
 
@@ -59,11 +60,11 @@ private:
 
   static const char* filterLabel(FilterMode f) {
     switch (f) {
-      case FILTER_ALL:       return "All";
+      case FILTER_ALL:       return MECK_TR("All", "Tous");
       case FILTER_CHAT:      return "Chat";
-      case FILTER_REPEATER:  return "Rptr";
-      case FILTER_ROOM:      return "Room";
-      case FILTER_SENSOR:    return "Sens";
+      case FILTER_REPEATER:  return MECK_TR("Rptr", "R\xC3\xA9p.");
+      case FILTER_ROOM:      return MECK_TR("Room", "Salon");
+      case FILTER_SENSOR:    return MECK_TR("Sens", "Capt.");
       case FILTER_FAVOURITE: return "Fav";
       default:               return "?";
     }
@@ -139,11 +140,11 @@ private:
     if (secs < 60) {
       snprintf(buf, bufLen, "%ds", (int)secs);
     } else if (secs < 3600) {
-      snprintf(buf, bufLen, "%dm", (int)(secs / 60));
+      snprintf(buf, bufLen, MECK_TR("%dm", "%dmin"), (int)(secs / 60));
     } else if (secs < 86400) {
       snprintf(buf, bufLen, "%dh", (int)(secs / 3600));
     } else {
-      snprintf(buf, bufLen, "%dd", (int)(secs / 86400));
+      snprintf(buf, bufLen, MECK_TR("%dd", "%dj"), (int)(secs / 86400));
     }
   }
 
@@ -298,7 +299,7 @@ public:
     display.setCursor(0, 0);
     if (_selectMode) {
       int selCount = getSelectedCount();
-      snprintf(tmp, sizeof(tmp), "%d Selected [%s]", selCount, filterLabel(_filter));
+      snprintf(tmp, sizeof(tmp), MECK_TR("%d Selected [%s]", "S\xC3\xA9lection : %d [%s]"), selCount, filterLabel(_filter));
     } else {
       snprintf(tmp, sizeof(tmp), "Contacts [%s]", filterLabel(_filter));
     }
@@ -330,9 +331,9 @@ public:
     if (_filteredCount == 0) {
       display.setColor(DisplayDriver::LIGHT);
       display.setCursor(0, y);
-      display.print("No contacts");
+      display.print(MECK_TR("No contacts", "Aucun contact"));
       display.setCursor(0, y + lineHeight);
-      display.print("A/D: Change filter");
+      display.print(MECK_TR("A/D: Change filter", "A/D : changer de filtre"));
     } else {
       // Center visible window around selected item (TextReaderScreen pattern)
       int maxVisible = (maxY - headerHeight) / lineHeight;
@@ -446,13 +447,13 @@ public:
 
     display.setCursor(0, footerY);
     if (_selectMode) {
-      display.print("A:All D:Clr");
-      const char* right = "X:Exp F:Fav Q:Done";
+      display.print(MECK_TR("A:All D:Clr", "A:Tous D:Rien"));
+      const char* right = MECK_TR("X:Exp F:Fav Q:Done", "X:Exp F:Fav Q:OK");
       display.setCursor(display.width() - display.getTextWidth(right) - 2, footerY);
       display.print(right);
     } else {
-      display.print("A/D:Filter");
-      const char* right = "P:Path Ent:Sel";
+      display.print(MECK_TR("A/D:Filter", "A/D:Filtre"));
+      const char* right = MECK_TR("P:Path Ent:Sel", "P:Chemin Ent:S\xC3\xA9l");
       display.setCursor(display.width() - display.getTextWidth(right) - 2, footerY);
       display.print(right);
     }

@@ -2,6 +2,7 @@
 
 #include <helpers/ui/UIScreen.h>
 #include <helpers/ui/DisplayDriver.h>
+#include "MeckLang.h"
 #include <helpers/ChannelDetails.h>
 #include <MeshCore.h>
 #include <Packet.h>
@@ -728,16 +729,16 @@ public:
     ChannelDetails channel;
     if (_viewChannelIdx == 0xFF) {
       if (_dmInboxMode) {
-        display.print("Direct Messages");
+        display.print(MECK_TR("Direct Messages", "Messages priv\xC3\xA9s"));
       } else {
         char hdr[40];
-        snprintf(hdr, sizeof(hdr), "DM: %s", _dmFilterName);
+        snprintf(hdr, sizeof(hdr), MECK_TR("DM: %s", "MP : %s"), _dmFilterName);
         display.print(hdr);
       }
     } else if (the_mesh.getChannel(_viewChannelIdx, channel)) {
       display.print(channel.name);
     } else {
-      sprintf(tmp, "Channel %d", _viewChannelIdx);
+      sprintf(tmp, MECK_TR("Channel %d", "Canal %d"), _viewChannelIdx);
       display.print(tmp);
     }
     
@@ -870,9 +871,9 @@ public:
       if (inboxCount == 0) {
         display.setColor(DisplayDriver::LIGHT);
         display.setCursor(0, y);
-        display.print("No direct messages");
+        display.print(MECK_TR("No direct messages", "Aucun message priv\xC3\xA9"));
         display.setCursor(0, y + lineH);
-        display.print("A/D: Switch channel");
+        display.print(MECK_TR("A/D: Switch channel", "A/D : changer de canal"));
       } else {
         int startIdx = max(0, min(_dmInboxScroll - maxVisible / 2,
                                   inboxCount - maxVisible));
@@ -908,9 +909,9 @@ public:
           char ageStr[8];
           uint32_t age = _rtc->getCurrentTime() - inbox[i].newestTs;
           if (age < 60) snprintf(ageStr, sizeof(ageStr), "%ds", age);
-          else if (age < 3600) snprintf(ageStr, sizeof(ageStr), "%dm", age / 60);
+          else if (age < 3600) snprintf(ageStr, sizeof(ageStr), MECK_TR("%dm", "%dmin"), age / 60);
           else if (age < 86400) snprintf(ageStr, sizeof(ageStr), "%dh", age / 3600);
-          else snprintf(ageStr, sizeof(ageStr), "%dd", age / 86400);
+          else snprintf(ageStr, sizeof(ageStr), MECK_TR("%dd", "%dj"), age / 86400);
 
           char rightStr[16];
           snprintf(rightStr, sizeof(rightStr), "(%d) %s", inbox[i].msgCount, ageStr);
@@ -933,8 +934,8 @@ public:
       display.drawRect(0, footerY - 2, display.width(), 1);
       display.setColor(DisplayDriver::YELLOW);
       display.setCursor(0, footerY);
-      display.print("Q:Bck");
-      const char* rtInbox = "Ent:Open";
+      display.print(MECK_TR("Q:Bck", "Q:Ret"));
+      const char* rtInbox = MECK_TR("Ent:Open", "Ent:Ouvrir");
       display.setCursor(display.width() - display.getTextWidth(rtInbox) - 6, footerY);
       display.print(rtInbox);
 
@@ -955,7 +956,7 @@ public:
       if (!msg) {
         display.setCursor(0, y);
         display.setColor(DisplayDriver::LIGHT);
-        display.print("No received messages");
+        display.print(MECK_TR("No received messages", "Aucun message re\xC3\xA7u"));
       } else {
         // Message preview (first ~30 chars)
         display.setCursor(0, y);
@@ -970,10 +971,10 @@ public:
         uint32_t age = _rtc->getCurrentTime() - msg->timestamp;
         display.setCursor(0, y);
         display.setColor(DisplayDriver::YELLOW);
-        if (age < 60) sprintf(tmp, "Age: %ds", age);
-        else if (age < 3600) sprintf(tmp, "Age: %dm", age / 60);
-        else if (age < 86400) sprintf(tmp, "Age: %dh", age / 3600);
-        else sprintf(tmp, "Age: %dd", age / 86400);
+        if (age < 60) sprintf(tmp, MECK_TR("Age: %ds", "\xC3\x82ge : %ds"), age);
+        else if (age < 3600) sprintf(tmp, MECK_TR("Age: %dm", "\xC3\x82ge : %dmin"), age / 60);
+        else if (age < 86400) sprintf(tmp, MECK_TR("Age: %dh", "\xC3\x82ge : %dh"), age / 3600);
+        else sprintf(tmp, MECK_TR("Age: %dd", "\xC3\x82ge : %dj"), age / 86400);
         display.print(tmp);
         y += lineH;
         
@@ -984,13 +985,13 @@ public:
         uint8_t bytesPerHop = (plen >> 6) + 1;  // 1, 2, or 3 bytes per hop
         if (plen == 0xFF) {
           display.setColor(DisplayDriver::LIGHT);
-          display.print("Route: Direct");
+          display.print(MECK_TR("Route: Direct", "Route : directe"));
         } else if (plen == 0) {
           display.setColor(DisplayDriver::LIGHT);
-          display.print("Route: Local/Sent");
+          display.print(MECK_TR("Route: Local/Sent", "Route : locale/envoy\xC3\xA9"));
         } else {
           display.setColor(DisplayDriver::GREEN);
-          sprintf(tmp, "Route: %d hop%s (%d-byte)", hopCount, hopCount == 1 ? "" : "s", bytesPerHop);
+          sprintf(tmp, MECK_TR("Route: %d hop%s (%d-byte)", "Route : %d saut%s (%d o)"), hopCount, hopCount == 1 ? "" : "s", bytesPerHop);
           display.print(tmp);
         }
         y += lineH;
@@ -1000,7 +1001,7 @@ public:
         if (rgn) {
           display.setCursor(0, y);
           display.setColor(DisplayDriver::YELLOW);
-          sprintf(tmp, "Region: %s", rgn);
+          sprintf(tmp, MECK_TR("Region: %s", "R\xC3\xA9gion : %s"), rgn);
           display.print(tmp);
           y += lineH;
         }
@@ -1129,15 +1130,15 @@ public:
       display.drawRect(0, footerY - 2, display.width(), 1);
       display.setCursor(0, footerY);
       display.setColor(DisplayDriver::YELLOW);
-      display.print("Q:Back");
+      display.print(MECK_TR("Q:Back", "Q:Ret"));
       // Show scroll hint if path is scrollable
       if (msg && (msg->path_len & 63) > _pathHopsVisible && msg->path_len != 0xFF) {
-        const char* scrollHint = "W/S:Scrl";
+        const char* scrollHint = MECK_TR("W/S:Scrl", "W/S:D\xC3\xA9" "f.");
         int scrollW = display.getTextWidth(scrollHint);
         display.setCursor((display.width() - scrollW) / 2, footerY);
         display.print(scrollHint);
       }
-      const char* copyHint = "Ent:Copy";
+      const char* copyHint = MECK_TR("Ent:Copy", "Ent:Copie");
       display.setCursor(display.width() - display.getTextWidth(copyHint) - 2, footerY);
       display.print(copyHint);
 
@@ -1154,18 +1155,18 @@ public:
       display.setColor(DisplayDriver::LIGHT);
       if (_viewChannelIdx == 0xFF) {
         char noMsg[48];
-        snprintf(noMsg, sizeof(noMsg), "No messages from %s", _dmFilterName);
+        snprintf(noMsg, sizeof(noMsg), MECK_TR("No messages from %s", "Aucun message de %s"), _dmFilterName);
         display.print(noMsg);
         display.setCursor(0, 30);
-        display.print("Q: Back to inbox");
+        display.print(MECK_TR("Q: Back to inbox", "Q : retour \xC3\xA0 la liste"));
         display.setCursor(0, 40);
-        display.print("Ent: Compose reply");
+        display.print(MECK_TR("Ent: Compose reply", "Ent : r\xC3\xA9pondre"));
       } else {
-        display.print("No messages yet");
+        display.print(MECK_TR("No messages yet", "Aucun message"));
         display.setCursor(0, 30);
-        display.print("A/D: Switch channel");
+        display.print(MECK_TR("A/D: Switch channel", "A/D : changer de canal"));
         display.setCursor(0, 40);
-        display.print("C: Compose message");
+        display.print(MECK_TR("C: Compose message", "C : \xC3\xA9" "crire un message"));
       }
       display.setTextSize(1);  // Restore for footer
     } else if (_viewChannelIdx == 0xFF && _dmInboxMode) {
@@ -1232,7 +1233,7 @@ public:
       if (inboxCount == 0) {
         display.setColor(DisplayDriver::LIGHT);
         display.setCursor(0, y);
-        display.print("No conversations");
+        display.print(MECK_TR("No conversations", "Aucune conversation"));
       } else {
         // Clamp scroll
         if (_dmInboxScroll >= inboxCount) _dmInboxScroll = inboxCount - 1;
@@ -1267,9 +1268,9 @@ public:
           char ageStr[8];
           uint32_t age = now - inbox[i].newest_ts;
           if (age < 60) snprintf(ageStr, sizeof(ageStr), "%ds", age);
-          else if (age < 3600) snprintf(ageStr, sizeof(ageStr), "%dm", age / 60);
+          else if (age < 3600) snprintf(ageStr, sizeof(ageStr), MECK_TR("%dm", "%dmin"), age / 60);
           else if (age < 86400) snprintf(ageStr, sizeof(ageStr), "%dh", age / 3600);
-          else snprintf(ageStr, sizeof(ageStr), "%dd", age / 86400);
+          else snprintf(ageStr, sizeof(ageStr), MECK_TR("%dd", "%dj"), age / 86400);
 
           char rightStr[16];
           snprintf(rightStr, sizeof(rightStr), "[%d] %s", inbox[i].count, ageStr);
@@ -1366,21 +1367,21 @@ public:
           if (age < 60) {
             sprintf(tmp, ">%ds ", age);
           } else if (age < 3600) {
-            sprintf(tmp, ">%dm ", age / 60);
+            sprintf(tmp, MECK_TR(">%dm ", ">%dmin "), age / 60);
           } else if (age < 86400) {
             sprintf(tmp, ">%dh ", age / 3600);
           } else {
-            sprintf(tmp, ">%dd ", age / 86400);
+            sprintf(tmp, MECK_TR(">%dd ", ">%dj "), age / 86400);
           }
         } else if (msg->dm_status == DM_SEND_SENDING) {
           // Tracked sent DM still in flight -- show the attempt counter
-          sprintf(tmp, "Sending %d/%d ", msg->dm_attempt, msg->dm_total);
+          sprintf(tmp, MECK_TR("Sending %d/%d ", "Envoi %d/%d "), msg->dm_attempt, msg->dm_total);
         } else if (msg->dm_status == DM_SEND_DELIVERED) {
           // Recipient's ack received
-          sprintf(tmp, "Delivered ");
+          sprintf(tmp, MECK_TR("Delivered ", "Distribu\xC3\xA9 "));
         } else if (msg->dm_status == DM_SEND_FAILED) {
           // All attempts exhausted without an ack from the recipient
-          sprintf(tmp, "Failed ");
+          sprintf(tmp, MECK_TR("Failed ", "\xC3\x89" "chec "));
         } else {
           int hopsDisp = (msg->path_len == 0xFF) ? 0 : (msg->path_len & 63);
           // Byte mode: flood packets encode it in the upper bits of path_len.
@@ -1390,13 +1391,13 @@ public:
                           ? (the_mesh.getNodePrefs()->path_hash_mode + 1)
                           : ((msg->path_len >> 6) + 1);
           if (age < 60) {
-            sprintf(tmp, "(%dh)(%db) %ds ", hopsDisp, bphDisp, age);
+            sprintf(tmp, MECK_TR("(%dh)(%db) %ds ", "(%dh)(%do) %ds "), hopsDisp, bphDisp, age);
           } else if (age < 3600) {
-            sprintf(tmp, "(%dh)(%db) %dm ", hopsDisp, bphDisp, age / 60);
+            sprintf(tmp, MECK_TR("(%dh)(%db) %dm ", "(%dh)(%do) %dmin "), hopsDisp, bphDisp, age / 60);
           } else if (age < 86400) {
-            sprintf(tmp, "(%dh)(%db) %dh ", hopsDisp, bphDisp, age / 3600);
+            sprintf(tmp, MECK_TR("(%dh)(%db) %dh ", "(%dh)(%do) %dh "), hopsDisp, bphDisp, age / 3600);
           } else {
-            sprintf(tmp, "(%dh)(%db) %dd ", hopsDisp, bphDisp, age / 86400);
+            sprintf(tmp, MECK_TR("(%dh)(%db) %dd ", "(%dh)(%do) %dj "), hopsDisp, bphDisp, age / 86400);
           }
         }
         display.print(tmp);
@@ -1624,22 +1625,22 @@ public:
     
     // Left side: abbreviated controls
     if (_replySelectMode) {
-      display.print("W/S:Sel V:Pth Q:X");
-      const char* rightText = "Ent:Reply";
+      display.print(MECK_TR("W/S:Sel V:Pth Q:X", "W/S:S\xC3\xA9l V:Chem Q:X"));
+      const char* rightText = MECK_TR("Ent:Reply", "Ent:R\xC3\xA9p");
       display.setCursor(display.width() - display.getTextWidth(rightText) - 2, footerY);
       display.print(rightText);
     } else if (_viewChannelIdx == 0xFF) {
       if (_dmContactPerms > 0) {
-        display.print("Q:Exit L:Admin");
+        display.print(MECK_TR("Q:Exit L:Admin", "Q:Quitter L:Admin"));
       } else {
-        display.print("Q:Exit");
+        display.print(MECK_TR("Q:Exit", "Q:Quitter"));
       }
-      const char* rightText = "Ent:Reply";
+      const char* rightText = MECK_TR("Ent:Reply", "Ent:R\xC3\xA9p");
       display.setCursor(display.width() - display.getTextWidth(rightText) - 2, footerY);
       display.print(rightText);
     } else {
-      display.print("Q:Bck R:Rply");
-      const char* rightText = "Ent:New";
+      display.print(MECK_TR("Q:Bck R:Rply", "Q:Ret R:R\xC3\xA9p"));
+      const char* rightText = MECK_TR("Ent:New", "Ent:Nouveau");
       display.setCursor(display.width() - display.getTextWidth(rightText) - 2, footerY);
       display.print(rightText);
     }

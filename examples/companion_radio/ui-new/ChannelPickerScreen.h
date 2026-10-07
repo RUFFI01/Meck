@@ -2,6 +2,7 @@
 
 #include <helpers/ui/UIScreen.h>
 #include <helpers/ui/DisplayDriver.h>
+#include "MeckLang.h"
 #include <helpers/ChannelDetails.h>
 #include <MeshCore.h>
 #include "ChannelScreen.h"
@@ -77,7 +78,7 @@ class ChannelPickerScreen : public UIScreen {
     if (idx < 0 || idx >= _itemCount || bufLen == 0) { if (bufLen) buf[0] = '\0'; return; }
     uint8_t c = _items[idx];
     if (c == 0xFF) {
-      strncpy(buf, "Direct Messages", bufLen - 1);
+      strncpy(buf, MECK_TR("Direct Messages", "Messages priv\xC3\xA9s"), bufLen - 1);
       buf[bufLen - 1] = '\0';
       return;
     }
@@ -86,7 +87,7 @@ class ChannelPickerScreen : public UIScreen {
       strncpy(buf, ch.name, bufLen - 1);
       buf[bufLen - 1] = '\0';
     } else {
-      snprintf(buf, bufLen, "Ch %d", (int)c);
+      snprintf(buf, bufLen, MECK_TR("Ch %d", "Canal %d"), (int)c);
     }
   }
 
@@ -137,7 +138,7 @@ public:
     display.setCursor(0, 0);
     display.setTextSize(1);
     display.setColor(DisplayDriver::GREEN);
-    display.print("Channels");
+    display.print(MECK_TR("Channels", "Canaux"));
 
     int totalUnread = 0;
     for (int i = 0; i < _itemCount; i++) totalUnread += getItemUnread(i);
@@ -253,13 +254,13 @@ public:
 
       // "Delete history?" prompt
       display.setColor(DisplayDriver::LIGHT);
-      const char* prompt = "Delete message history?";
+      const char* prompt = MECK_TR("Delete message history?", "Supprimer l'historique ?");
       display.setCursor(boxX + 4, boxY + 17);
       display.print(prompt);
 
       // Key hints
       display.setColor(DisplayDriver::YELLOW);
-      const char* hints = "Enter:Yes  Q:Cancel";
+      const char* hints = MECK_TR("Enter:Yes  Q:Cancel", "Entr\xC3\xA9" "e:Oui  Q:Annuler");
       display.setCursor(boxX + 4, boxY + 29);
       display.print(hints);
     }
@@ -272,10 +273,10 @@ public:
     display.setCursor(0, footerY);
 
     if (_confirmDelete) {
-      display.print("Enter:Yes Q:Cancel");
+      display.print(MECK_TR("Enter:Yes Q:Cancel", "Entr\xC3\xA9" "e:Oui Q:Annuler"));
     } else {
       display.print("W/S:Nav Q:X");
-      const char* rt = "Ent:Open";
+      const char* rt = MECK_TR("Ent:Open", "Ent:Ouvrir");
       display.setCursor(display.width() - display.getTextWidth(rt) - 6, footerY);
       display.print(rt);
     }

@@ -1244,7 +1244,7 @@ static void lastHeardToggleContact() {
         // First press on favourite — warn and wait
         lastRemoveAttempt = millis();
         memcpy(lastRemovePrefix, entry->pubkey_prefix, 8);
-        ui_task.showAlert("Favourite! Press again", 2500);
+        ui_task.showAlert(MECK_TR("Favourite! Press again", "Favori ! Appuyez encore"), 2500);
         return;
       }
     }
@@ -1252,7 +1252,7 @@ static void lastHeardToggleContact() {
     the_mesh.removeContact(*existing);
     the_mesh.scheduleLazyContactSave();
     char alertBuf[40];
-    snprintf(alertBuf, sizeof(alertBuf), "Removed: %s", entry->name);
+    snprintf(alertBuf, sizeof(alertBuf), MECK_TR("Removed: %s", "Retir\xC3\xA9 : %s"), entry->name);
     ui_task.showAlert(alertBuf, 1500);
     Serial.printf("[LastHeard] Removed: %s\n", entry->name);
   } else {
@@ -1262,14 +1262,14 @@ static void lastHeardToggleContact() {
       the_mesh.forceImportContact(blob, blobLen);
       the_mesh.scheduleLazyContactSave();
       char alertBuf[40];
-      snprintf(alertBuf, sizeof(alertBuf), "Added: %s", entry->name);
+      snprintf(alertBuf, sizeof(alertBuf), MECK_TR("Added: %s", "Ajout\xC3\xA9 : %s"), entry->name);
       ui_task.showAlert(alertBuf, 1500);
       Serial.printf("[LastHeard] Added: %s\n", entry->name);
     } else {
       // Blob store is limited to 100 entries — with many contacts, blobs
       // from non-contact nodes get evicted quickly. User needs to wait
       // for the node to re-broadcast its advert.
-      ui_task.showAlert("Advert expired, try later", 2000);
+      ui_task.showAlert(MECK_TR("Advert expired, try later", "Annonce expir\xC3\xA9" "e"), 2000);
       Serial.printf("[LastHeard] Blob evicted for %s (store full)\n", entry->name);
     }
   }
@@ -1343,7 +1343,7 @@ static void openMapScreen() {
             if (chScr->isCannedOpen()) {
               chScr->closeCannedList();
             } else if (!chScr->openCannedList()) {
-              ui_task.showAlert("No canned messages", 1200);
+              ui_task.showAlert(MECK_TR("No canned messages", "Aucun message pr\xC3\xA9" "d\xC3\xA9" "fini"), 1200);
             }
             ui_task.forceRefresh();
             break;
@@ -3147,7 +3147,7 @@ void loop() {
         char envelope[64];
         voiceScr->formatEnvelope(envelope, sizeof(envelope), sessionId);
 
-        ui_task.showAlert("Sending voice...", 10000);
+        ui_task.showAlert(MECK_TR("Sending voice...", "Envoi du vocal..."), 10000);
         bool dmOk = the_mesh.uiSendDirectMessage(sendIdx, envelope);
         Serial.printf("Voice: VE3 DM '%s' to idx %d: %s\n",
                       envelope, sendIdx, dmOk ? "OK" : "FAIL");
@@ -3183,10 +3183,10 @@ void loop() {
           Serial.printf("Voice: Queued %d/%d voice packets to %s\n",
                         sentPkts, totalPkts, recipient ? recipient->name : "?");
           voiceScr->onSendComplete(sentPkts == totalPkts);
-          ui_task.showAlert(sentPkts == totalPkts ? "Voice sent!" : "Send partial", 2000);
+          ui_task.showAlert(sentPkts == totalPkts ? MECK_TR("Voice sent!", "Vocal envoy\xC3\xA9 !") : MECK_TR("Send partial", "Envoi partiel"), 2000);
         } else {
           voiceScr->onSendComplete(false);
-          ui_task.showAlert("Send failed!", 1500);
+          ui_task.showAlert(MECK_TR("Send failed!", "\xC3\x89" "chec de l'envoi !"), 1500);
         }
         ui_task.forceRefresh();
       }
@@ -3197,10 +3197,10 @@ void loop() {
         Serial.println("Voice: Incoming session complete — auto-playing");
         cpuPower.setBoost();
         if (voiceScr->playIncoming()) {
-          ui_task.showAlert("Voice msg received!", 2000);
+          ui_task.showAlert(MECK_TR("Voice msg received!", "Vocal re\xC3\xA7u !"), 2000);
           ui_task.gotoVoiceScreen();
         } else {
-          ui_task.showAlert("Voice decode failed", 1500);
+          ui_task.showAlert(MECK_TR("Voice decode failed", "\xC3\x89" "chec d\xC3\xA9" "codage vocal"), 1500);
         }
         ui_task.forceRefresh();
       }
@@ -3278,7 +3278,7 @@ void loop() {
 
       // Alert + buzzer
       char alertBuf[48];
-      snprintf(alertBuf, sizeof(alertBuf), "SMS: %s", incoming.phone);
+      snprintf(alertBuf, sizeof(alertBuf), MECK_TR("SMS: %s", "SMS : %s"), incoming.phone);
       ui_task.showAlert(alertBuf, 2000);
       ui_task.notify(UIEventType::contactMessage);
 
@@ -3298,7 +3298,7 @@ void loop() {
         char alertBuf[48];
         char dispName[SMS_CONTACT_NAME_LEN];
         smsContacts.displayName(callEvt.phone, dispName, sizeof(dispName));
-        snprintf(alertBuf, sizeof(alertBuf), "Call: %s", dispName);
+        snprintf(alertBuf, sizeof(alertBuf), MECK_TR("Call: %s", "Appel : %s"), dispName);
         ui_task.showAlert(alertBuf, 3000);
         ui_task.notify(UIEventType::contactMessage);
 
@@ -3325,11 +3325,11 @@ void loop() {
         {
           char alertBuf[48];
           if (callEvt.duration > 0) {
-            snprintf(alertBuf, sizeof(alertBuf), "Call Ended  %lu:%02lu",
+            snprintf(alertBuf, sizeof(alertBuf), MECK_TR("Call Ended  %lu:%02lu", "Appel termin\xC3\xA9  %lu:%02lu"),
                      (unsigned long)(callEvt.duration / 60),
                      (unsigned long)(callEvt.duration % 60));
           } else {
-            snprintf(alertBuf, sizeof(alertBuf), "Call Ended");
+            snprintf(alertBuf, sizeof(alertBuf), MECK_TR("Call Ended", "Appel termin\xC3\xA9"));
           }
           ui_task.showAlert(alertBuf, 2000);
         }
@@ -3338,20 +3338,20 @@ void loop() {
         char alertBuf[48];
         char dispName[SMS_CONTACT_NAME_LEN];
         smsContacts.displayName(callEvt.phone, dispName, sizeof(dispName));
-        snprintf(alertBuf, sizeof(alertBuf), "Missed: %s", dispName);
+        snprintf(alertBuf, sizeof(alertBuf), MECK_TR("Missed: %s", "Manqu\xC3\xA9 : %s"), dispName);
         ui_task.showAlert(alertBuf, 3000);
         Serial.printf("[Call] Missed from %s\n", callEvt.phone);
         ui_task.forceRefresh();
       } else if (callEvt.type == CallEventType::BUSY) {
-        ui_task.showAlert("Line busy", 2000);
+        ui_task.showAlert(MECK_TR("Line busy", "Ligne occup\xC3\xA9" "e"), 2000);
         Serial.printf("[Call] Busy: %s\n", callEvt.phone);
         ui_task.forceRefresh();
       } else if (callEvt.type == CallEventType::NO_ANSWER) {
-        ui_task.showAlert("No answer", 2000);
+        ui_task.showAlert(MECK_TR("No answer", "Pas de r\xC3\xA9ponse"), 2000);
         Serial.printf("[Call] No answer: %s\n", callEvt.phone);
         ui_task.forceRefresh();
       } else if (callEvt.type == CallEventType::DIAL_FAILED) {
-        ui_task.showAlert("Call failed", 2000);
+        ui_task.showAlert(MECK_TR("Call failed", "\xC3\x89" "chec de l'appel"), 2000);
         Serial.printf("[Call] Dial failed: %s\n", callEvt.phone);
         ui_task.forceRefresh();
       }
@@ -3981,7 +3981,7 @@ void handleKeyboardInput() {
         uint8_t savedPerms = (chScr && chScr->isDMConversation()) ? chScr->getDMContactPerms() : 0;
         ui_task.gotoDMConversation(savedDMName, savedDMIdx, savedPerms);
         // Re-show alert after navigation (setCurrScreen clears prior alerts)
-        if (composeWasSent) ui_task.showAlert("DM sent!", 1500);
+        if (composeWasSent) ui_task.showAlert(MECK_TR("DM sent!", "MP envoy\xC3\xA9 !"), 1500);
       } else if (wasDM) {
         ui_task.gotoContactsScreen();
       } else {
@@ -4374,7 +4374,7 @@ void handleKeyboardInput() {
       settings->clearExportRequest();
       uint8_t flags = settings->getExportFlags();
       if (flags == 0) {
-        ui_task.showAlert("No sections selected", 1500);
+        ui_task.showAlert(MECK_TR("No sections selected", "Aucune section choisie"), 1500);
       } else {
         char exportedPath[64];
         int result = meckExportConfig(the_mesh, flags,
@@ -4383,10 +4383,10 @@ void handleKeyboardInput() {
                                       exportedPath, sizeof(exportedPath));
         if (result >= 0) {
           char buf[96];
-          snprintf(buf, sizeof(buf), "Exported to %s", exportedPath);
+          snprintf(buf, sizeof(buf), MECK_TR("Exported to %s", "Export\xC3\xA9 vers %s"), exportedPath);
           ui_task.showAlert(buf, 3500);
         } else {
-          ui_task.showAlert("Export failed (SD?)", 2000);
+          ui_task.showAlert(MECK_TR("Export failed (SD?)", "\xC3\x89" "chec export (SD ?)"), 2000);
         }
       }
     }
@@ -4396,11 +4396,11 @@ void handleKeyboardInput() {
                                    sensors.node_lat, sensors.node_lon,
                                    sdCardReady);
       if (added > 0) {
-        ui_task.showAlert("Config imported!", 2500);
+        ui_task.showAlert(MECK_TR("Config imported!", "Config import\xC3\xA9" "e !"), 2500);
       } else if (added == 0) {
-        ui_task.showAlert("No import.json found", 2000);
+        ui_task.showAlert(MECK_TR("No import.json found", "import.json introuvable"), 2000);
       } else {
-        ui_task.showAlert("Import failed", 2000);
+        ui_task.showAlert(MECK_TR("Import failed", "\xC3\x89" "chec de l'import"), 2000);
       }
     }
     #endif
@@ -4431,15 +4431,15 @@ void handleKeyboardInput() {
         if (the_mesh.uiSendDirectMessage((uint32_t)contactIdx, shareMsg, &sendRef, &sendTotal)) {
           // Add sanitised version to DM conversation view
           char displayMsg[64];
-          snprintf(displayMsg, sizeof(displayMsg), "Shared channel: %s", ch.name);
+          snprintf(displayMsg, sizeof(displayMsg), MECK_TR("Shared channel: %s", "Canal partag\xC3\xA9 : %s"), ch.name);
           ui_task.addSentDM(contact.name, the_mesh.getNodePrefs()->node_name, displayMsg,
                             sendRef, sendTotal);
 
           char alertBuf[48];
-          snprintf(alertBuf, sizeof(alertBuf), "Shared with %s", contact.name);
+          snprintf(alertBuf, sizeof(alertBuf), MECK_TR("Shared with %s", "Partag\xC3\xA9 avec %s"), contact.name);
           ui_task.showAlert(alertBuf, 2000);
         } else {
-          ui_task.showAlert("Share failed", 1500);
+          ui_task.showAlert(MECK_TR("Share failed", "\xC3\x89" "chec du partage"), 1500);
         }
       }
     }
@@ -4521,7 +4521,7 @@ void handleKeyboardInput() {
         smsScr->handleInput(key);
         if (!smsScr->isInCallView()) {
           // Hangup just happened — show "Call Ended" alert immediately
-          ui_task.showAlert("Call Ended", 2000);
+          ui_task.showAlert(MECK_TR("Call Ended", "Appel termin\xC3\xA9"), 2000);
         }
         // Force immediate render (call screen updates or return-to-dialer)
         ui_task.forceRefresh();
@@ -4667,17 +4667,17 @@ void handleKeyboardInput() {
             static unsigned long lastDeleteAttempt = 0;
             int selCount = cs->getSelectedCount();
             if (selCount == 0) {
-              ui_task.showAlert("None selected", 1500);
+              ui_task.showAlert(MECK_TR("None selected", "Aucune s\xC3\xA9lection"), 1500);
               return;
             }
             if (millis() - lastDeleteAttempt < 3000) {
               uint16_t* selBuf = (uint16_t*)malloc(selCount * sizeof(uint16_t));
-              if (!selBuf) { ui_task.showAlert("Memory error", 1500); return; }
+              if (!selBuf) { ui_task.showAlert(MECK_TR("Memory error", "Erreur m\xC3\xA9moire"), 1500); return; }
               int n = cs->getSelectedRawIndices(selBuf, selCount);
               int deleted = deleteSelectedContacts(selBuf, n);
               free(selBuf);
               char msg[48];
-              snprintf(msg, sizeof(msg), "Deleted %d contacts", deleted);
+              snprintf(msg, sizeof(msg), MECK_TR("Deleted %d contacts", "%d contacts supprim\xC3\xA9s"), deleted);
               ui_task.showAlert(msg, 2000);
               cs->exitSelectMode();
               cs->invalidateCache();
@@ -4686,7 +4686,7 @@ void handleKeyboardInput() {
             } else {
               lastDeleteAttempt = millis();
               char msg[48];
-              snprintf(msg, sizeof(msg), "Delete %d? Shift+Del again", selCount);
+              snprintf(msg, sizeof(msg), MECK_TR("Delete %d? Shift+Del again", "Supprimer %d ? Shift+Del"), selCount);
               ui_task.showAlert(msg, 2500);
             }
           }
@@ -4697,21 +4697,21 @@ void handleKeyboardInput() {
           // Export selected contacts as JSON
           int selCount = cs->getSelectedCount();
           if (selCount == 0) {
-            ui_task.showAlert("None selected", 1500);
+            ui_task.showAlert(MECK_TR("None selected", "Aucune s\xC3\xA9lection"), 1500);
             return;
           }
           uint16_t* selBuf = (uint16_t*)malloc(selCount * sizeof(uint16_t));
-          if (!selBuf) { ui_task.showAlert("Memory error", 1500); return; }
+          if (!selBuf) { ui_task.showAlert(MECK_TR("Memory error", "Erreur m\xC3\xA9moire"), 1500); return; }
           int n = cs->getSelectedRawIndices(selBuf, selCount);
           int exported = exportContactsJSON(selBuf, n);
           free(selBuf);
           if (exported >= 0) {
             char msg[48];
-            snprintf(msg, sizeof(msg), "Exported %d to SD (JSON)", exported);
+            snprintf(msg, sizeof(msg), MECK_TR("Exported %d to SD (JSON)", "%d export\xC3\xA9s sur SD (JSON)"), exported);
             ui_task.showAlert(msg, 2500);
             cs->exitSelectMode();
           } else {
-            ui_task.showAlert("Export failed", 2000);
+            ui_task.showAlert(MECK_TR("Export failed", "\xC3\x89" "chec de l'export"), 2000);
           }
           ui_task.forceRefresh();
           return;
@@ -4725,12 +4725,12 @@ void handleKeyboardInput() {
             cs->invalidateCache();
             cs->exitSelectMode();
             char msg[48];
-            snprintf(msg, sizeof(msg), "+%d imported (JSON)", added);
+            snprintf(msg, sizeof(msg), MECK_TR("+%d imported (JSON)", "+%d import\xC3\xA9s (JSON)"), added);
             ui_task.showAlert(msg, 2500);
           } else if (added == 0) {
-            ui_task.showAlert("No new contacts", 2000);
+            ui_task.showAlert(MECK_TR("No new contacts", "Aucun nouveau contact"), 2000);
           } else {
-            ui_task.showAlert("Import failed (no file?)", 2000);
+            ui_task.showAlert(MECK_TR("Import failed (no file?)", "\xC3\x89" "chec import (fichier ?)"), 2000);
           }
           ui_task.forceRefresh();
           return;
@@ -4740,16 +4740,16 @@ void handleKeyboardInput() {
           // Toggle favourite on selected contacts
           int selCount = cs->getSelectedCount();
           if (selCount == 0) {
-            ui_task.showAlert("None selected", 1500);
+            ui_task.showAlert(MECK_TR("None selected", "Aucune s\xC3\xA9lection"), 1500);
             return;
           }
           uint16_t* selBuf = (uint16_t*)malloc(selCount * sizeof(uint16_t));
-          if (!selBuf) { ui_task.showAlert("Memory error", 1500); return; }
+          if (!selBuf) { ui_task.showAlert(MECK_TR("Memory error", "Erreur m\xC3\xA9moire"), 1500); return; }
           int n = cs->getSelectedRawIndices(selBuf, selCount);
           int toggled = toggleFavouriteSelected(selBuf, n);
           free(selBuf);
           char msg[48];
-          snprintf(msg, sizeof(msg), "Toggled fav on %d", toggled);
+          snprintf(msg, sizeof(msg), MECK_TR("Toggled fav on %d", "Favoris modifi\xC3\xA9s : %d"), toggled);
           ui_task.showAlert(msg, 1500);
           cs->invalidateCache();
           ui_task.forceRefresh();
@@ -5186,7 +5186,7 @@ void handleKeyboardInput() {
               }
             }
           } else {
-            ui_task.showAlert("No contact selected", 1000);
+            ui_task.showAlert(MECK_TR("No contact selected", "Aucun contact choisi"), 1000);
           }
           break;
         }
@@ -5221,14 +5221,14 @@ void handleKeyboardInput() {
         if (didx >= 0 && didx < the_mesh.getDiscoveredCount()) {
           const DiscoveredNode& node = the_mesh.getDiscovered(didx);
           if (node.already_in_contacts) {
-            ui_task.showAlert("Already in contacts", 800);
+            ui_task.showAlert(MECK_TR("Already in contacts", "D\xC3\xA9j\xC3\xA0 dans les contacts"), 800);
           } else if (the_mesh.addDiscoveredToContacts(didx)) {
             char alertBuf[48];
-            snprintf(alertBuf, sizeof(alertBuf), "Added: %s", node.contact.name);
+            snprintf(alertBuf, sizeof(alertBuf), MECK_TR("Added: %s", "Ajout\xC3\xA9 : %s"), node.contact.name);
             ui_task.showAlert(alertBuf, 1500);
             ui_task.notify(UIEventType::ack);
           } else {
-            ui_task.showAlert("Add failed", 1000);
+            ui_task.showAlert(MECK_TR("Add failed", "\xC3\x89" "chec de l'ajout"), 1000);
           }
         }
       } else if (ui_task.isOnLastHeardScreen()) {
@@ -5257,10 +5257,10 @@ void handleKeyboardInput() {
         int exported = exportContactsJSON(NULL, 0);  // JSON (interchangeable)
         if (exported >= 0) {
           char alertBuf[48];
-          snprintf(alertBuf, sizeof(alertBuf), "Exported %d to SD", exported);
+          snprintf(alertBuf, sizeof(alertBuf), MECK_TR("Exported %d to SD", "%d export\xC3\xA9s sur SD"), exported);
           ui_task.showAlert(alertBuf, 2000);
         } else {
-          ui_task.showAlert("Export failed (check serial)", 2000);
+          ui_task.showAlert(MECK_TR("Export failed (check serial)", "\xC3\x89" "chec export (voir s\xC3\xA9rie)"), 2000);
         }
       }
       break;
@@ -5283,13 +5283,13 @@ void handleKeyboardInput() {
           ContactsScreen* cs2 = (ContactsScreen*)ui_task.getContactsScreen();
           if (cs2) cs2->invalidateCache();
           char alertBuf[48];
-          snprintf(alertBuf, sizeof(alertBuf), "+%d imported (%d total)",
+          snprintf(alertBuf, sizeof(alertBuf), MECK_TR("+%d imported (%d total)", "+%d import\xC3\xA9s (total %d)"),
                    added, (int)the_mesh.getNumContacts());
           ui_task.showAlert(alertBuf, 2500);
         } else if (added == 0) {
-          ui_task.showAlert("No new contacts to add", 2000);
+          ui_task.showAlert(MECK_TR("No new contacts to add", "Aucun nouveau contact"), 2000);
         } else {
-          ui_task.showAlert("Import failed (no file?)", 2000);
+          ui_task.showAlert(MECK_TR("Import failed (no file?)", "\xC3\x89" "chec import (fichier ?)"), 2000);
         }
       } else if (ui_task.isOnHomeScreen()) {
         Serial.println("Opening trace path");
@@ -5696,12 +5696,12 @@ void sendComposedMessage() {
         // Add to channel screen so sent DM appears in conversation view
         ui_task.addSentDM(composeDMName, the_mesh.getNodePrefs()->node_name, utf8Buf,
                           sendRef, sendTotal);
-        ui_task.showAlert("DM sent!", 1500);
+        ui_task.showAlert(MECK_TR("DM sent!", "MP envoy\xC3\xA9 !"), 1500);
       } else {
-        ui_task.showAlert("DM failed!", 1500);
+        ui_task.showAlert(MECK_TR("DM failed!", "\xC3\x89" "chec du MP !"), 1500);
       }
     } else {
-      ui_task.showAlert("No contact!", 1500);
+      ui_task.showAlert(MECK_TR("No contact!", "Aucun contact !"), 1500);
     }
     return;
   }
@@ -5723,12 +5723,12 @@ void sendComposedMessage() {
                                         the_mesh.getNodePrefs()->node_name,
                                         utf8Buf);
       
-      ui_task.showAlert("Sent!", 1500);
+      ui_task.showAlert(MECK_TR("Sent!", "Envoy\xC3\xA9 !"), 1500);
     } else {
-      ui_task.showAlert("Send failed!", 1500);
+      ui_task.showAlert(MECK_TR("Send failed!", "\xC3\x89" "chec de l'envoi !"), 1500);
     }
   } else {
-    ui_task.showAlert("No channel!", 1500);
+    ui_task.showAlert(MECK_TR("No channel!", "Aucun canal !"), 1500);
   }
 }
 
