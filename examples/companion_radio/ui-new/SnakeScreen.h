@@ -14,6 +14,7 @@
 
 #include <helpers/ui/UIScreen.h>
 #include <helpers/ui/DisplayDriver.h>
+#include "MeckLang.h"
 #include <SD.h>
 
 // Forward declarations
@@ -275,6 +276,8 @@ private:
     static const int dim[] = {31,28,31,30,31,30,31,31,30,31,30,31};
     static const char* mn[] = {"Jan","Feb","Mar","Apr","May","Jun",
                                "Jul","Aug","Sep","Oct","Nov","Dec"};
+    static const char* mn_fr[] = {"janv.","f\xC3\xA9vr.","mars","avr.","mai","juin",
+                                  "juil.","ao\xC3\xBBt","sept.","oct.","nov.","d\xC3\xA9" "c."};
     bool leap = ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0);
     int month = 0;
     for (month = 0; month < 12; month++) {
@@ -284,7 +287,7 @@ private:
       days -= d;
     }
     if (month > 11) month = 11;
-    snprintf(buf, bufLen, "%d %s %d", (int)(days + 1), mn[month], year);
+    snprintf(buf, bufLen, "%d %s %d", (int)(days + 1), MECK_TR(mn[month], mn_fr[month]), year);
   }
 
 public:
@@ -374,7 +377,7 @@ public:
     display.setCursor(2, 2);
     display.print("Snake");
     char scoreBuf[16];
-    snprintf(scoreBuf, sizeof(scoreBuf), "Score: %d", _score);
+    snprintf(scoreBuf, sizeof(scoreBuf), MECK_TR("Score: %d", "Score : %d"), _score);
     int sw = display.getTextWidth(scoreBuf);
     display.setCursor(display.width() - sw - 2, 2);
     display.print(scoreBuf);
@@ -385,19 +388,19 @@ public:
       int cx = display.width() / 2;
       int y = SNAKE_HDR + 6;
       display.setColor(DisplayDriver::LIGHT);
-      display.drawTextCentered(cx, y, "Classic Snake");
+      display.drawTextCentered(cx, y, MECK_TR("Classic Snake", "Snake classique"));
       y += 14;
       display.setColor(DisplayDriver::GREEN);
-      display.drawTextCentered(cx, y, "W/S/A/D to steer");
+      display.drawTextCentered(cx, y, MECK_TR("W/S/A/D to steer", "W/S/A/D pour diriger"));
       y += 11;
-      display.drawTextCentered(cx, y, "Eat food to grow");
+      display.drawTextCentered(cx, y, MECK_TR("Eat food to grow", "Mangez pour grandir"));
       y += 11;
-      display.drawTextCentered(cx, y, "Steer clear of walls");
+      display.drawTextCentered(cx, y, MECK_TR("Steer clear of walls", "\xC3\x89vitez les murs"));
       y += 16;
 
       if (_hiCount > 0) {
         display.setColor(DisplayDriver::LIGHT);
-        display.drawTextCentered(cx, y, "-- High Scores --");
+        display.drawTextCentered(cx, y, MECK_TR("-- High Scores --", "-- Meilleurs scores --"));
         y += 12;
         display.setColor(DisplayDriver::GREEN);
         int showCount = (_hiCount < 10) ? _hiCount : 10;
@@ -415,7 +418,7 @@ public:
       }
 
       display.setColor(DisplayDriver::LIGHT);
-      display.drawTextCentered(cx, y, "Press Enter to start");
+      display.drawTextCentered(cx, y, MECK_TR("Press Enter to start", "Entr\xC3\xA9" "e pour commencer"));
     } else {
       if (_state == PLAYING) {
         unsigned long now = millis();
@@ -450,21 +453,21 @@ public:
         display.drawRect(boxX, boxY, boxW, boxH);
 
         int ty = boxY + 8;
-        display.drawTextCentered(cx, ty, "Game Over");
+        display.drawTextCentered(cx, ty, MECK_TR("Game Over", "Partie termin\xC3\xA9" "e"));
         ty += 14;
         char finalScore[24];
-        snprintf(finalScore, sizeof(finalScore), "Score: %d", _score);
+        snprintf(finalScore, sizeof(finalScore), MECK_TR("Score: %d", "Score : %d"), _score);
         display.drawTextCentered(cx, ty, finalScore);
         ty += 12;
         if (_newHiScore) {
           display.setColor(DisplayDriver::YELLOW);
           char rankBuf[32];
-          snprintf(rankBuf, sizeof(rankBuf), "New #%d High Score!", _newHiRank + 1);
+          snprintf(rankBuf, sizeof(rankBuf), MECK_TR("New #%d High Score!", "Nouveau record n\xC2\xB0%d !"), _newHiRank + 1);
           display.drawTextCentered(cx, ty, rankBuf);
           ty += 12;
         }
         display.setColor(DisplayDriver::GREEN);
-        display.drawTextCentered(cx, ty, "Enter:Retry  Sh+Del:Back");
+        display.drawTextCentered(cx, ty, MECK_TR("Enter:Retry  Sh+Del:Back", "Ent:Rejouer  Sh+Del:Retour"));
       }
     }
 
@@ -474,10 +477,10 @@ public:
     display.drawRect(0, fy - 2, display.width(), 1);
     if (_state == PLAYING) {
       display.setCursor(2, fy);
-      display.print("Sh+Del:Back");
+      display.print(MECK_TR("Sh+Del:Back", "Sh+Del:Retour"));
     } else if (_state == READY) {
       display.setCursor(2, fy);
-      display.print("Enter:Start  Sh+Del:Back");
+      display.print(MECK_TR("Enter:Start  Sh+Del:Back", "Ent:Jouer  Sh+Del:Retour"));
     }
 
     if (_state == PLAYING) return 100;

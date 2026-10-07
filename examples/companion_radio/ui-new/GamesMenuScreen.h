@@ -10,6 +10,7 @@
 
 #include <helpers/ui/UIScreen.h>
 #include <helpers/ui/DisplayDriver.h>
+#include "MeckLang.h"
 
 // Forward declarations
 class UITask;
@@ -39,6 +40,7 @@ private:
     GameID id;
     const char* name;
     const char* description;
+    const char* name_fr;  // French name (Experimental Features > Language)
   };
 
 // The Game Boy emulator entry is present on the T-Deck Pro and Max, except on
@@ -51,10 +53,10 @@ private:
 
   static const GameEntry* getGames() {
     static const GameEntry games[NUM_GAMES] = {
-      { GAME_SNAKE,       "Snake",       "Classic Nokia-style" },
-      { GAME_MINESWEEPER, "Minesweeper", "Find the mines" },
+      { GAME_SNAKE,       "Snake",       "Classic Nokia-style", "Snake" },
+      { GAME_MINESWEEPER, "Minesweeper", "Find the mines", "D\xC3\xA9mineur" },
 #if defined(LilyGo_TDeck_Pro) && !defined(MECK_40MHZ_TEST)
-      { GAME_GBC,         "Game Boy",    "GB / GBC emulator" },
+      { GAME_GBC,         "Game Boy",    "GB / GBC emulator", "Game Boy" },
 #endif
       // { GAME_2048,        "2048",        "Slide and merge" },
     };
@@ -112,7 +114,7 @@ public:
     // --- Header ---
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(2, 2);
-    display.print("Games");
+    display.print(MECK_TR("Games", "Jeux"));
     display.setColor(DisplayDriver::LIGHT);
     display.drawRect(0, 12, display.width(), 1);
 
@@ -136,7 +138,7 @@ public:
         display.setColor(DisplayDriver::LIGHT);
       }
 
-      display.drawTextEllipsized(6, y, display.width() - 12, getGames()[i].name);
+      display.drawTextEllipsized(6, y, display.width() - 12, MECK_TR(getGames()[i].name, getGames()[i].name_fr));
 
       y += lineH;
     }
@@ -147,7 +149,7 @@ public:
     int fy = display.height() - 12;
     display.drawRect(0, fy - 2, display.width(), 1);
     display.setCursor(2, fy);
-    display.print("Enter:Play  Q:Back");
+    display.print(MECK_TR("Enter:Play  Q:Back", "Ent:Jouer  Q:Retour"));
 
     return 5000;  // Static menu -- slow refresh
   }

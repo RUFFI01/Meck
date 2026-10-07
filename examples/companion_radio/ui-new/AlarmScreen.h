@@ -27,6 +27,7 @@
 
 #include <helpers/ui/UIScreen.h>
 #include <helpers/ui/DisplayDriver.h>
+#include "MeckLang.h"
 #include <SD.h>
 #include <vector>
 
@@ -199,7 +200,8 @@ private:
 
   static const char* dowShort(int dow) {
     static const char* names[] = {"Su","Mo","Tu","We","Th","Fr","Sa"};
-    return (dow >= 0 && dow < 7) ? names[dow] : "??";
+    static const char* names_fr[] = {"Di","Lu","Ma","Me","Je","Ve","Sa"};
+    return (dow >= 0 && dow < 7) ? MECK_TR(names[dow], names_fr[dow]) : "??";
   }
 
   // Day of week from epoch (0=Sunday)
@@ -210,10 +212,10 @@ private:
 
   // Format days bitmask as human string
   static void formatDays(uint8_t days, char* buf, int bufLen) {
-    if (days == DOW_ALL) { strncpy(buf, "Every day", bufLen); return; }
-    if (days == DOW_WEEKDAYS) { strncpy(buf, "Weekdays", bufLen); return; }
-    if (days == DOW_WEEKEND) { strncpy(buf, "Weekend", bufLen); return; }
-    if (days == 0) { strncpy(buf, "Never", bufLen); return; }
+    if (days == DOW_ALL) { strncpy(buf, MECK_TR("Every day", "Tous les jours"), bufLen); return; }
+    if (days == DOW_WEEKDAYS) { strncpy(buf, MECK_TR("Weekdays", "En semaine"), bufLen); return; }
+    if (days == DOW_WEEKEND) { strncpy(buf, MECK_TR("Weekend", "Week-end"), bufLen); return; }
+    if (days == 0) { strncpy(buf, MECK_TR("Never", "Jamais"), bufLen); return; }
     buf[0] = '\0';
     for (int i = 0; i < 7; i++) {
       if (days & (1 << i)) {
@@ -451,14 +453,14 @@ private:
     display.setTextSize(1);
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, 0);
-    display.print("Alarm Clock");
+    display.print(MECK_TR("Alarm Clock", "R\xC3\xA9veil"));
 
     if (_soundFiles.empty() && _sdReady) {
       // Show hint if no sounds yet
       display.setColor(DisplayDriver::LIGHT);
       display.setTextSize(0);
       display.setCursor(0, 13);
-      display.print("Place 44kHz .mp3 in /alarms/");
+      display.print(MECK_TR("Place 44kHz .mp3 in /alarms/", ".mp3 (44 kHz) dans /alarms/"));
     }
 
     display.setColor(DisplayDriver::LIGHT);
@@ -495,7 +497,7 @@ private:
       // Line 1: Alarm number + time + enabled
       char line1[40];
       snprintf(line1, sizeof(line1), "%d. %s %02d:%02d",
-               idx + 1, slot.enabled ? "ON " : "OFF", slot.hour, slot.minute);
+               idx + 1, slot.enabled ? MECK_TR("ON ", "OUI") : MECK_TR("OFF", "NON"), slot.hour, slot.minute);
       display.setCursor(0, y);
       display.print(line1);
 
@@ -524,7 +526,7 @@ private:
       display.print(line2);
     }
 
-    drawFooter(display, "O:On/Off Enter:Edit", "Q:X");
+    drawFooter(display, MECK_TR("O:On/Off Enter:Edit", "O:Oui/Non Ent:\xC3\x89" "diter"), "Q:X");
   }
 
   // ---- Render: Edit alarm ----
@@ -534,7 +536,7 @@ private:
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, 0);
     char hdr[24];
-    snprintf(hdr, sizeof(hdr), "Edit Alarm %d", _editSlot + 1);
+    snprintf(hdr, sizeof(hdr), MECK_TR("Edit Alarm %d", "Modifier le r\xC3\xA9veil %d"), _editSlot + 1);
     display.print(hdr);
 
     display.setColor(DisplayDriver::LIGHT);
@@ -550,11 +552,11 @@ private:
       char value[32];
     } fields[FIELD_COUNT];
 
-    snprintf(fields[FIELD_ENABLED].value, 32, "%s", _editCopy.enabled ? "ON" : "OFF");
-    fields[FIELD_ENABLED].label = "Enabled";
+    snprintf(fields[FIELD_ENABLED].value, 32, "%s", _editCopy.enabled ? MECK_TR("ON", "OUI") : MECK_TR("OFF", "NON"));
+    fields[FIELD_ENABLED].label = MECK_TR("Enabled", "Activ\xC3\xA9");
 
     snprintf(fields[FIELD_HOUR].value, 32, "%02d", _editCopy.hour);
-    fields[FIELD_HOUR].label = "Hour";
+    fields[FIELD_HOUR].label = MECK_TR("Hour", "Heure");
 
     snprintf(fields[FIELD_MINUTE].value, 32, "%02d", _editCopy.minute);
     fields[FIELD_MINUTE].label = "Minute";
@@ -563,14 +565,14 @@ private:
     formatDays(_editCopy.days, daysBuf, sizeof(daysBuf));
     strncpy(fields[FIELD_DAYS].value, daysBuf, 31);
     fields[FIELD_DAYS].value[31] = '\0';
-    fields[FIELD_DAYS].label = "Days";
+    fields[FIELD_DAYS].label = MECK_TR("Days", "Jours");
 
     snprintf(fields[FIELD_VOLUME].value, 32, "%d", _editCopy.volume);
     fields[FIELD_VOLUME].label = "Volume";
 
 #if defined(LilyGo_TDeck_Pro_Max)
     if (slotIsVibrate(_editCopy)) {
-      strncpy(fields[FIELD_SOUND].value, "Buzzer (vibrate)", 31);
+      strncpy(fields[FIELD_SOUND].value, MECK_TR("Buzzer (vibrate)", "Buzzer (vibreur)"), 31);
       fields[FIELD_SOUND].value[31] = '\0';
     } else
 #endif
@@ -582,9 +584,9 @@ private:
       if (dot) *dot = '\0';
       strncpy(fields[FIELD_SOUND].value, sndDisplay, 31);
     } else {
-      strcpy(fields[FIELD_SOUND].value, "(default)");
+      strcpy(fields[FIELD_SOUND].value, MECK_TR("(default)", "(d\xC3\xA9" "faut)"));
     }
-    fields[FIELD_SOUND].label = "Sound";
+    fields[FIELD_SOUND].label = MECK_TR("Sound", "Son");
 
     for (int f = 0; f < FIELD_COUNT; f++) {
       int fy = y + f * lineH;
@@ -622,7 +624,7 @@ private:
       int detailY = y + FIELD_COUNT * lineH + 4;
       display.setColor(DisplayDriver::GREEN);
       display.setCursor(0, detailY);
-      display.print("A/D: toggle day  ");
+      display.print(MECK_TR("A/D: toggle day  ", "A/D : jour oui/non  "));
       // Show individual day toggles
       display.setCursor(0, detailY + 9);
       for (int d = 0; d < 7; d++) {
@@ -644,7 +646,7 @@ private:
 
       display.setTextSize(1);
       display.setColor(DisplayDriver::GREEN);
-      const char* prompt = (_editField == FIELD_HOUR) ? "Hour (0-23):" : "Min (0-59):";
+      const char* prompt = (_editField == FIELD_HOUR) ? MECK_TR("Hour (0-23):", "Heure (0-23) :") : MECK_TR("Min (0-59):", "Min (0-59) :");
       display.setCursor(bx + 4, by + 4);
       display.print(prompt);
 
@@ -655,9 +657,9 @@ private:
       display.setCursor(bx + 4, by + 16);
       display.print(inputDisplay);
 
-      drawFooter(display, "Type digits", "Enter:OK Sh+Del:Cancel");
+      drawFooter(display, MECK_TR("Type digits", "Chiffres"), MECK_TR("Enter:OK Sh+Del:Cancel", "Ent:OK Sh+Del:Annuler"));
     } else {
-      drawFooter(display, "A/D:Adjust Enter:Type", "Q:Save");
+      drawFooter(display, MECK_TR("A/D:Adjust Enter:Type", "A/D:R\xC3\xA9gler Ent:Saisie"), MECK_TR("Q:Save", "Q:OK"));
     }
   }
 
@@ -667,19 +669,19 @@ private:
     display.setTextSize(1);
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, 0);
-    display.print("Pick Alarm Sound");
+    display.print(MECK_TR("Pick Alarm Sound", "Choisir le son du r\xC3\xA9veil"));
 
     display.setColor(DisplayDriver::LIGHT);
 
     if (_soundFiles.empty() && kVibrateRows == 0) {
       display.setTextSize(0);
       display.setCursor(0, 20);
-      display.print("No .mp3 files found.");
+      display.print(MECK_TR("No .mp3 files found.", "Aucun fichier .mp3 trouv\xC3\xA9."));
       display.setCursor(0, 30);
-      display.print("Place 44kHz .mp3 in");
+      display.print(MECK_TR("Place 44kHz .mp3 in", "Placez des .mp3 44 kHz dans"));
       display.setCursor(0, 38);
-      display.print("/alarms/ on SD card");
-      drawFooter(display, "0 files", "Q:Back");
+      display.print(MECK_TR("/alarms/ on SD card", "/alarms/ sur la carte SD"));
+      drawFooter(display, MECK_TR("0 files", "0 fichier"), MECK_TR("Q:Back", "Q:Retour"));
       return;
     }
 
@@ -711,7 +713,7 @@ private:
 
       String displayName;
       if (kVibrateRows && idx == 0) {
-        displayName = "Buzzer (vibrate)";
+        displayName = MECK_TR("Buzzer (vibrate)", "Buzzer (vibreur)");
       } else {
         // Display filename without extension
         displayName = _soundFiles[idx - kVibrateRows];
@@ -726,8 +728,8 @@ private:
     }
 
     char countBuf[12];
-    snprintf(countBuf, sizeof(countBuf), "%d files", (int)_soundFiles.size());
-    drawFooter(display, countBuf, "Enter:Pick Q:X");
+    snprintf(countBuf, sizeof(countBuf), MECK_TR("%d files", "%d fichiers"), (int)_soundFiles.size());
+    drawFooter(display, countBuf, MECK_TR("Enter:Pick Q:X", "Ent:Choisir Q:X"));
   }
 
   // ---- Render: Ringing ----
@@ -746,14 +748,14 @@ private:
     display.setTextSize(1);
     display.setColor(DisplayDriver::LIGHT);
     char label[24];
-    snprintf(label, sizeof(label), "Alarm %d", _ringingSlot + 1);
+    snprintf(label, sizeof(label), MECK_TR("Alarm %d", "R\xC3\xA9veil %d"), _ringingSlot + 1);
     display.drawTextCentered(display.width() / 2, 34, label);
 
     // Sound name
 #if defined(LilyGo_TDeck_Pro_Max)
     if (slotIsVibrate(slot)) {
       display.setTextSize(0);
-      display.drawTextCentered(display.width() / 2, 48, "Buzzer (vibrate)");
+      display.drawTextCentered(display.width() / 2, 48, MECK_TR("Buzzer (vibrate)", "Buzzer (vibreur)"));
     } else
 #endif
     if (slot.sound[0] != '\0') {
@@ -771,13 +773,13 @@ private:
     display.setTextSize(1);
     if (meck_alarm_is_locked()) {
       // Keys are ignored while locked; the user unlocks with the button first.
-      display.drawTextCentered(display.width() / 2, 64, "Unlock to dismiss");
+      display.drawTextCentered(display.width() / 2, 64, MECK_TR("Unlock to dismiss", "D\xC3\xA9verrouillez pour arr\xC3\xAAter"));
     } else {
-      display.drawTextCentered(display.width() / 2, 64, "ANY KEY: Dismiss");
+      display.drawTextCentered(display.width() / 2, 64, MECK_TR("ANY KEY: Dismiss", "UNE TOUCHE : arr\xC3\xAAter"));
 
       display.setTextSize(0);
       display.setColor(DisplayDriver::LIGHT);
-      display.drawTextCentered(display.width() / 2, 80, "Z: Snooze 5 min");
+      display.drawTextCentered(display.width() / 2, 80, MECK_TR("Z: Snooze 5 min", "Z : rappel dans 5 min"));
     }
 
     // No footer in ringing mode — keep it clean and urgent
@@ -1224,11 +1226,11 @@ public:
       display.setTextSize(1);
       display.setColor(DisplayDriver::RED);
       display.setCursor(0, 20);
-      display.print("No SD card");
+      display.print(MECK_TR("No SD card", "Pas de carte SD"));
       display.setCursor(0, 35);
-      display.print("Insert SD card and");
+      display.print(MECK_TR("Insert SD card and", "Ins\xC3\xA9rez une carte SD et"));
       display.setCursor(0, 43);
-      display.print("create /alarms/");
+      display.print(MECK_TR("create /alarms/", "cr\xC3\xA9" "ez /alarms/"));
       return 5000;
     }
 

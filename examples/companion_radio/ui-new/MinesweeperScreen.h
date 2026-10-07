@@ -12,6 +12,7 @@
 
 #include <helpers/ui/UIScreen.h>
 #include <helpers/ui/DisplayDriver.h>
+#include "MeckLang.h"
 
 // Forward declarations
 class UITask;
@@ -373,35 +374,35 @@ public:
       // --- READY: header + instructions + footer ---
       display.setColor(DisplayDriver::GREEN);
       display.setCursor(2, 2);
-      display.print("Minesweeper");
+      display.print(MECK_TR("Minesweeper", "D\xC3\xA9mineur"));
       display.setColor(DisplayDriver::LIGHT);
       display.drawRect(0, MINE_HDR - 2, display.width(), 1);
 
       int cx = display.width() / 2;
       int y = MINE_HDR + 10;
       display.setColor(DisplayDriver::LIGHT);
-      display.drawTextCentered(cx, y, "Minesweeper");
+      display.drawTextCentered(cx, y, MECK_TR("Minesweeper", "D\xC3\xA9mineur"));
       y += 16;
       display.setColor(DisplayDriver::GREEN);
-      display.drawTextCentered(cx, y, "W/S/A/D to move cursor");
+      display.drawTextCentered(cx, y, MECK_TR("W/S/A/D to move cursor", "W/S/A/D pour se d\xC3\xA9placer"));
       y += 11;
-      display.drawTextCentered(cx, y, "Enter to reveal a cell");
+      display.drawTextCentered(cx, y, MECK_TR("Enter to reveal a cell", "Entr\xC3\xA9" "e : r\xC3\xA9v\xC3\xA9ler une case"));
       y += 11;
-      display.drawTextCentered(cx, y, "F to flag a mine");
+      display.drawTextCentered(cx, y, MECK_TR("F to flag a mine", "F : marquer une mine"));
       y += 16;
       display.setColor(DisplayDriver::LIGHT);
       char info[32];
-      snprintf(info, sizeof(info), "%dx%d grid, %d mines", MINE_GRID_W, MINE_GRID_H, MINE_COUNT);
+      snprintf(info, sizeof(info), MECK_TR("%dx%d grid, %d mines", "Grille %dx%d, %d mines"), MINE_GRID_W, MINE_GRID_H, MINE_COUNT);
       display.drawTextCentered(cx, y, info);
       y += 16;
-      display.drawTextCentered(cx, y, "Press Enter to start");
+      display.drawTextCentered(cx, y, MECK_TR("Press Enter to start", "Entr\xC3\xA9" "e pour commencer"));
 
       // Footer
       display.setColor(DisplayDriver::LIGHT);
       int fy = display.height() - 12;
       display.drawRect(0, fy - 2, display.width(), 1);
       display.setCursor(2, fy);
-      display.print("Enter:Start  Sh+Del:Back");
+      display.print(MECK_TR("Enter:Start  Sh+Del:Back", "Ent:Jouer  Sh+Del:Retour"));
       return 5000;
 
     } else if (_state == PLAYING) {
@@ -450,13 +451,13 @@ public:
       int ty = boxY + 10;
       if (_state == WON) {
         display.setColor(DisplayDriver::YELLOW);
-        display.drawTextCentered(cx, ty, "Cleared!");
+        display.drawTextCentered(cx, ty, MECK_TR("Cleared!", "Gagn\xC3\xA9 !"));
       } else {
-        display.drawTextCentered(cx, ty, "Boom!");
+        display.drawTextCentered(cx, ty, MECK_TR("Boom!", "Boum !"));
       }
       ty += 16;
       display.setColor(DisplayDriver::GREEN);
-      display.drawTextCentered(cx, ty, "Enter:Retry  Sh+Del:Back");
+      display.drawTextCentered(cx, ty, MECK_TR("Enter:Retry  Sh+Del:Back", "Ent:Rejouer  Sh+Del:Retour"));
 
       return 5000;
     }

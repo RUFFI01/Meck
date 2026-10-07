@@ -2,6 +2,7 @@
 
 #include <helpers/ui/UIScreen.h>
 #include <helpers/ui/DisplayDriver.h>
+#include "MeckLang.h"
 #include <SD.h>
 #include <vector>
 #include "Utf8CP437.h"
@@ -483,9 +484,9 @@ private:
     _display->setTextSize(2);
     _display->setColor(DisplayDriver::GREEN);
     _display->setCursor(10, 11);
-    _display->print("Indexing");
+    _display->print(MECK_TR("Indexing", "Indexation"));
     _display->setCursor(10, 21);
-    _display->print("Pages...");
+    _display->print(MECK_TR("Pages...", "des pages..."));
 
     // Word-wrapped filename in normal text
     _display->setTextSize(1);
@@ -526,9 +527,9 @@ private:
     // Virtual: y=87 and y=93
     _display->setColor(DisplayDriver::LIGHT);
     _display->setCursor(10, 87);
-    _display->print("Please wait.");
+    _display->print(MECK_TR("Please wait.", "Patientez."));
     _display->setCursor(10, 93);
-    _display->print("Loading shortly...");
+    _display->print(MECK_TR("Loading shortly...", "Chargement imminent..."));
 
     _display->endFrame();
   }
@@ -544,9 +545,9 @@ private:
     _display->setTextSize(2);
     _display->setColor(DisplayDriver::GREEN);
     _display->setCursor(10, 11);
-    _display->print("Indexing");
+    _display->print(MECK_TR("Indexing", "Indexation"));
     _display->setCursor(10, 21);
-    _display->print("Pages...");
+    _display->print(MECK_TR("Pages...", "des pages..."));
 
     _display->setTextSize(1);
     _display->setColor(DisplayDriver::LIGHT);
@@ -594,7 +595,7 @@ private:
 
     // "Please wait."
     _display->setCursor(10, 87);
-    _display->print("Please wait.");
+    _display->print(MECK_TR("Please wait.", "Patientez."));
 
     _display->endFrame();
   }
@@ -850,7 +851,7 @@ private:
           strncpy(shortName, filename.c_str(), sizeof(shortName) - 1);
           shortName[sizeof(shortName) - 1] = '\0';
         }
-        drawSplash("Converting EPUB...", "Please wait", shortName);
+        drawSplash(MECK_TR("Converting EPUB...", "Conversion EPUB..."), MECK_TR("Please wait", "Patientez"), shortName);
 
         Serial.printf("TextReader: Converting EPUB '%s'\n", filename.c_str());
         unsigned long t0 = millis();
@@ -861,7 +862,7 @@ private:
 
         if (!ok) {
           Serial.println("TextReader: EPUB conversion failed!");
-          drawSplash("Convert failed!", "", shortName);
+          drawSplash(MECK_TR("Convert failed!", "\xC3\x89" "chec de conversion !"), "", shortName);
           delay(2000);
           return;  // Stay in file list
         }
@@ -939,7 +940,7 @@ private:
         strncpy(shortName, actualFilename.c_str(), sizeof(shortName) - 1);
         shortName[sizeof(shortName) - 1] = '\0';
       }
-      drawSplash("Indexing...", "Please wait", shortName);
+      drawSplash(MECK_TR("Indexing...", "Indexation..."), MECK_TR("Please wait", "Patientez"), shortName);
 
       DisplayDriver* pxd = (_prefs->large_font || _display->getFontStyle() > 0) ? _display : nullptr;
       if (pxd) pxd->setTextSize(_prefs->smallTextSize());
@@ -968,7 +969,7 @@ private:
         strncpy(shortName, actualFilename.c_str(), sizeof(shortName) - 1);
         shortName[sizeof(shortName) - 1] = '\0';
       }
-      drawSplash("Indexing...", "Please wait", shortName);
+      drawSplash(MECK_TR("Indexing...", "Indexation..."), MECK_TR("Please wait", "Patientez"), shortName);
 
       _pagePositions.push_back(0);
       DisplayDriver* pxd = (_prefs->large_font || _display->getFontStyle() > 0) ? _display : nullptr;
@@ -1071,7 +1072,7 @@ private:
     display.setTextSize(1);
     display.setColor(DisplayDriver::GREEN);
     if (isAtBooksRoot()) {
-      display.print("Text Reader");
+      display.print(MECK_TR("Text Reader", "Lecteur de texte"));
     } else {
       // Show current subfolder name
       int lastSlash = _currentPath.lastIndexOf('/');
@@ -1092,11 +1093,11 @@ private:
     if (totalItems == 0) {
       display.setCursor(0, 18);
       display.setColor(DisplayDriver::LIGHT);
-      display.print("No files found");
+      display.print(MECK_TR("No files found", "Aucun fichier trouv\xC3\xA9"));
       display.setCursor(0, 30);
-      display.print("Add .txt or .epub to");
+      display.print(MECK_TR("Add .txt or .epub to", "Ajoutez des .txt ou .epub"));
       display.setCursor(0, 42);
-      display.print("/books/ on SD card");
+      display.print(MECK_TR("/books/ on SD card", "dans /books/ sur la SD"));
     } else {
       display.setTextSize(_prefs->smallTextSize());  // Tiny font for file list
       int listLineH = _prefs->smallLineH();
@@ -1130,7 +1131,7 @@ private:
 
         if (type == 0) {
           // ".." parent directory
-          line += ".. (up)";
+          line += MECK_TR(".. (up)", ".. (parent)");
         } else if (type == 1) {
           // Subdirectory
           line += "/" + dirNameAt(i);
@@ -1163,9 +1164,9 @@ private:
     display.setColor(DisplayDriver::YELLOW);
 
     display.setCursor(0, footerY);
-    display.print("Q:Bk");
+    display.print(MECK_TR("Q:Bk", "Q:Ret"));
 
-    const char* right = "Tap/Ent:Open";
+    const char* right = MECK_TR("Tap/Ent:Open", "Ent:Ouvrir");
     display.setCursor(display.width() - display.getTextWidth(right) - 2, footerY);
     display.print(right);
   }
@@ -1269,7 +1270,7 @@ private:
 
     if (_gotoMode) {
       // Go-to-page input mode — show typed digits in footer
-      snprintf(status, sizeof(status), "Go to: %.*s_", _gotoBufLen, _gotoBuf);
+      snprintf(status, sizeof(status), MECK_TR("Go to: %.*s_", "Aller \xC3\xA0 %.*s_"), _gotoBufLen, _gotoBuf);
     } else {
       sprintf(status, "%d/%d %d%%", _currentPage + 1, _totalPages, pct);
     }
@@ -1277,7 +1278,7 @@ private:
     display.setCursor(0, footerY);
     display.print(status);
 
-    const char* right = _gotoMode ? "Ent:Go Sh+Del:Cancel" : "Entr:Pg# Q:Bk";
+    const char* right = _gotoMode ? MECK_TR("Ent:Go Sh+Del:Cancel", "Ent:OK Sh+Del:Annul.") : MECK_TR("Entr:Pg# Q:Bk", "Ent:Pg# Q:Ret");
     display.setCursor(display.width() - display.getTextWidth(right) - 2, footerY);
     display.print(right);
   }
@@ -1499,7 +1500,7 @@ public:
     initLayout(display);
 
     // Show initial splash
-    drawBootSplash(0, 0, "Scanning...");
+    drawBootSplash(0, 0, MECK_TR("Scanning...", "Analyse..."));
     Serial.println("TextReader: Boot indexing started");
 
     // Scan for files (includes .txt and .epub)
@@ -1731,9 +1732,9 @@ public:
       display.setCursor(0, 20);
       display.setTextSize(1);
       display.setColor(DisplayDriver::LIGHT);
-      display.print("SD card not found");
+      display.print(MECK_TR("SD card not found", "Carte SD introuvable"));
       display.setCursor(0, 35);
-      display.print("Insert SD with /books/");
+      display.print(MECK_TR("Insert SD with /books/", "Ins\xC3\xA9rez une SD avec /books/"));
       return 5000;
     }
 

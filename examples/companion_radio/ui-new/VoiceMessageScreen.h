@@ -27,6 +27,7 @@
 
 #include <helpers/ui/UIScreen.h>
 #include <helpers/ui/DisplayDriver.h>
+#include "MeckLang.h"
 #include <SD.h>
 #include <driver/i2s.h>
 #include "Audio.h"
@@ -997,14 +998,14 @@ private:
     display.setTextSize(1);
 
     display.setCursor(0, 0);
-    display.print("Send Voice To:");
+    display.print(MECK_TR("Send Voice To:", "Envoyer le vocal \xC3\xA0 :"));
     display.fillRect(0, 11, display.width(), 1);
 
     if (_pickList.empty()) {
       display.setCursor(10, 50);
-      display.print("No contacts with");
+      display.print(MECK_TR("No contacts with", "Aucun contact avec"));
       display.setCursor(10, 65);
-      display.print("direct path.");
+      display.print(MECK_TR("direct path.", "chemin direct."));
     } else {
       int y = 14;
       int lineH = 12;
@@ -1043,7 +1044,7 @@ private:
     int footerY = display.height() - 12;
     display.setTextSize(1);
     display.setCursor(0, footerY);
-    display.print("Ent:Send Q:Cancel");
+    display.print(MECK_TR("Ent:Send Q:Cancel", "Ent:Envoyer Q:Annuler"));
 
     // No-direct-path popup. RAW_CUSTOM voice packets are direct-route only,
     // so a contact with no path set cannot receive one. Drawn last so it
@@ -1060,13 +1061,13 @@ private:
       display.setColor(DisplayDriver::DARK);
       display.setTextSize(1);
       display.setCursor(bx + 6, by + 8);
-      display.print("No direct path");
+      display.print(MECK_TR("No direct path", "Pas de chemin direct"));
       display.setCursor(bx + 6, by + 20);
-      display.print("to contact.");
+      display.print(MECK_TR("to contact.", "vers ce contact."));
       display.setCursor(bx + 6, by + 34);
-      display.print("Set a path in");
+      display.print(MECK_TR("Set a path in", "D\xC3\xA9" "finissez un chemin"));
       display.setCursor(bx + 6, by + 46);
-      display.print("Contacts (P key)");
+      display.print(MECK_TR("Contacts (P key)", "dans Contacts (touche P)"));
       display.setColor(DisplayDriver::GREEN);
     }
   }
@@ -1112,23 +1113,23 @@ private:
 
     // Title bar
     display.setCursor(0, 0);
-    display.print("Voice Messages");
+    display.print(MECK_TR("Voice Messages", "Messages vocaux"));
     
     char countStr[16];
-    snprintf(countStr, sizeof(countStr), "%d files", (int)_fileList.size());
+    snprintf(countStr, sizeof(countStr), MECK_TR("%d files", "%d fichiers"), (int)_fileList.size());
     // Place the count just after the title rather than right-aligned to the
     // screen edge. The right-aligned position pushed the trailing 's' of
     // "files" off the right edge, where it wrapped onto the next line.
-    display.setCursor(display.getTextWidth("Voice Messages") + 6, 0);
+    display.setCursor(display.getTextWidth(MECK_TR("Voice Messages", "Messages vocaux")) + 6, 0);
     display.print(countStr);
 
     display.fillRect(0, 11, display.width(), 1);  // horizontal rule
 
     if (_fileList.empty()) {
       display.setCursor(10, 60);
-      display.print("No voice messages.");
+      display.print(MECK_TR("No voice messages.", "Aucun message vocal."));
       display.setCursor(10, 80);
-      display.print("Hold Mic key to record.");
+      display.print(MECK_TR("Hold Mic key to record.", "Mic maintenu : enregistrer"));
     } else {
       // File list
       int y = 14;
@@ -1172,11 +1173,11 @@ private:
     display.setTextSize(1);
     display.setCursor(0, footerY);
     if (_listPlaying) {
-      display.print("Playing... Q:Stop");
+      display.print(MECK_TR("Playing... Q:Stop", "Lecture... Q:Arr\xC3\xAAt"));
     } else if (!_fileList.empty()) {
-      display.print("Mic:Rec Ent:Ply F:Snd D:Del");
+      display.print(MECK_TR("Mic:Rec Ent:Ply F:Snd D:Del", "Mic:Enr Ent:Lire F:Env D:Sup"));
     } else {
-      display.print("Mic:Record Q:Exit");
+      display.print(MECK_TR("Mic:Record Q:Exit", "Mic:Enregistrer Q:Quitter"));
     }
 
     // "Loading" popup while a forward-send file is read off SD and encoded.
@@ -1194,9 +1195,9 @@ private:
       display.setColor(DisplayDriver::DARK);
       display.setTextSize(1);
       display.setCursor(bx + 6, by + 8);
-      display.print("Loading...");
+      display.print(MECK_TR("Loading...", "Chargement..."));
       display.setCursor(bx + 6, by + 20);
-      display.print("Encoding voice");
+      display.print(MECK_TR("Encoding voice", "Encodage du vocal"));
       display.setColor(DisplayDriver::GREEN);
       _loadingDrawn = true;
     }
@@ -1207,7 +1208,7 @@ private:
     display.setTextSize(1);
 
     display.setCursor(0, 0);
-    display.print("RECORDING");
+    display.print(MECK_TR("RECORDING", "ENREGISTREMENT"));
 
     // Elapsed time
     float elapsed = _recSamples / (float)VOICE_SAMPLE_RATE;
@@ -1262,7 +1263,7 @@ private:
     int footerY = display.height() - 12;
     display.setTextSize(1);
     display.setCursor(0, footerY);
-    display.print("Release Mic to stop");
+    display.print(MECK_TR("Release Mic to stop", "Rel\xC3\xA2" "chez Mic pour arr\xC3\xAAter"));
   }
 
   void renderReview(DisplayDriver& display) {
@@ -1270,7 +1271,7 @@ private:
     display.setTextSize(1);
 
     display.setCursor(0, 0);
-    display.print("Review Recording");
+    display.print(MECK_TR("Review Recording", "\xC3\x89" "couter l'enregistrement"));
     display.fillRect(0, 11, display.width(), 1);  // horizontal rule
 
     // Filename
@@ -1280,7 +1281,7 @@ private:
     // Duration
     float secs = _recSamples / (float)VOICE_SAMPLE_RATE;
     char durStr[32];
-    snprintf(durStr, sizeof(durStr), "Duration: %.1f seconds", secs);
+    snprintf(durStr, sizeof(durStr), MECK_TR("Duration: %.1f seconds", "Dur\xC3\xA9" "e : %.1f secondes"), secs);
     display.setCursor(10, 50);
     display.print(durStr);
 
@@ -1288,9 +1289,9 @@ private:
     uint32_t sizeBytes = 44 + _recSamples * sizeof(int16_t);
     char sizeStr[32];
     if (sizeBytes > 1024) {
-      snprintf(sizeStr, sizeof(sizeStr), "Size: %.1f KB", sizeBytes / 1024.0f);
+      snprintf(sizeStr, sizeof(sizeStr), MECK_TR("Size: %.1f KB", "Taille : %.1f Ko"), sizeBytes / 1024.0f);
     } else {
-      snprintf(sizeStr, sizeof(sizeStr), "Size: %d bytes", sizeBytes);
+      snprintf(sizeStr, sizeof(sizeStr), MECK_TR("Size: %d bytes", "Taille : %d octets"), sizeBytes);
     }
     display.setCursor(10, 70);
     display.print(sizeStr);
@@ -1299,21 +1300,21 @@ private:
     if (_c2Valid) {
       int packets = (_c2Bytes + VOICE_MESH_PAYLOAD - 1) / VOICE_MESH_PAYLOAD;
       char c2Str[48];
-      snprintf(c2Str, sizeof(c2Str), "Codec2: %d bytes (%d pkt%s)",
+      snprintf(c2Str, sizeof(c2Str), MECK_TR("Codec2: %d bytes (%d pkt%s)", "Codec2 : %d o (%d paquet%s)"),
                _c2Bytes, packets, packets == 1 ? "" : "s");
       display.setCursor(10, 90);
       display.print(c2Str);
     } else {
       display.setCursor(10, 90);
-      display.print("Codec2: encode failed");
+      display.print(MECK_TR("Codec2: encode failed", "Codec2 : \xC3\xA9" "chec d'encodage"));
     }
 
     // Status
     display.setCursor(10, 110);
     if (_reviewPlaying) {
-      display.print("Playing...");
+      display.print(MECK_TR("Playing...", "Lecture..."));
     } else {
-      display.print("Ready");
+      display.print(MECK_TR("Ready", "Pr\xC3\xAAt"));
     }
 
     // Footer
@@ -1321,11 +1322,11 @@ private:
     display.setTextSize(1);
     display.setCursor(0, footerY);
     if (_reviewPlaying) {
-      display.print("Q:Stop");
+      display.print(MECK_TR("Q:Stop", "Q:Arr\xC3\xAAt"));
     } else if (_c2Valid) {
-      display.print("S:Send Ent:Play Mic:Redo Q:List");
+      display.print(MECK_TR("S:Send Ent:Play Mic:Redo Q:List", "S:Env Ent:Lire Mic:Enr Q:Liste"));
     } else {
-      display.print("Ent:Play Mic:Redo D:Del Q:List");
+      display.print(MECK_TR("Ent:Play Mic:Redo D:Del Q:List", "Ent:Lire Mic:Enr D:Sup Q:Liste"));
     }
   }
 

@@ -22,6 +22,7 @@
 
 #include <helpers/ui/UIScreen.h>
 #include <helpers/ui/DisplayDriver.h>
+#include "MeckLang.h"
 
 class UITask;
 class GxEPDDisplay;

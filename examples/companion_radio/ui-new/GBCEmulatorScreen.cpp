@@ -609,7 +609,7 @@ bool GBCEmulatorScreen::launch(int idx) {
 
   if (!gbc_alloc_buffers()) {
     gbc_release_core();
-    setStatus("Out of memory");
+    setStatus(MECK_TR("Out of memory", "M\xC3\xA9moire insuffisante"));
     return false;
   }
 
@@ -618,7 +618,7 @@ bool GBCEmulatorScreen::launch(int idx) {
   if (!f) {
     Serial.printf("[GBC] cannot open %s\n", path);
     gbc_release_core();
-    setStatus("Cannot open ROM");
+    setStatus(MECK_TR("Cannot open ROM", "ROM illisible"));
     return false;
   }
   const size_t sz = (size_t)f.size();
@@ -626,7 +626,7 @@ bool GBCEmulatorScreen::launch(int idx) {
     f.close();
     Serial.println("[GBC] file too small to be a ROM");
     gbc_release_core();
-    setStatus("Not a ROM");
+    setStatus(MECK_TR("Not a ROM", "Pas une ROM"));
     return false;
   }
   if (s_rom && s_rom_cap < sz) {
@@ -646,7 +646,7 @@ bool GBCEmulatorScreen::launch(int idx) {
       Serial.printf("[GBC] ROM alloc failed (%u bytes; largest free PSRAM block %u)\n",
                     (unsigned)sz, (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
       gbc_release_core();
-      setStatus("Out of PSRAM");
+      setStatus(MECK_TR("Out of PSRAM", "PSRAM insuffisante"));
       return false;
     }
     s_rom_cap = want;
@@ -657,7 +657,7 @@ bool GBCEmulatorScreen::launch(int idx) {
   if (got != sz) {
     Serial.printf("[GBC] short read (%u/%u)\n", (unsigned)got, (unsigned)sz);
     gbc_release_core();
-    setStatus("ROM read failed");
+    setStatus(MECK_TR("ROM read failed", "\xC3\x89" "chec de lecture ROM"));
     return false;
   }
   s_rom_size = sz;
@@ -681,7 +681,7 @@ bool GBCEmulatorScreen::launch(int idx) {
     Serial.printf("[GBC] gb_init failed: %d\n", (int)e);
     s_rom_size = 0;
     gbc_release_core();
-    setStatus("Unsupported ROM");
+    setStatus(MECK_TR("Unsupported ROM", "ROM non prise en charge"));
     return false;
   }
   if (s_gb->mbc == 2 && s_save_size == 0) s_save_size = 512;
@@ -782,7 +782,7 @@ bool GBCEmulatorScreen::launch(int idx) {
     otaResumeRadio();
 #endif
     gbc_release_core();
-    setStatus("Task create failed");
+    setStatus(MECK_TR("Task create failed", "\xC3\x89" "chec de d\xC3\xA9marrage"));
     return false;
   }
   _playing = idx;
@@ -822,8 +822,8 @@ void GBCEmulatorScreen::finishStop() {
   gbc_release_core();
   _playing = -1;
   _mode = BROWSER;
-  if (s_core_error)  setStatus("Game crashed");
-  else if (saved)    setStatus("Saved");
+  if (s_core_error)  setStatus(MECK_TR("Game crashed", "Le jeu a plant\xC3\xA9"));
+  else if (saved)    setStatus(MECK_TR("Saved", "Sauvegard\xC3\xA9"));
   print_heaps("after stop");
   if (_eink) {
     _eink->setFastWaveform(true);
@@ -913,14 +913,14 @@ bool GBCEmulatorScreen::handleInput(char c) {
       if (_cursor < _romCount - 1) _cursor++;
       return true;
     case '\r':
-      if (_romCount == 0) { setStatus("No ROMs in /roms"); return true; }
+      if (_romCount == 0) { setStatus(MECK_TR("No ROMs in /roms", "Aucune ROM dans /roms")); return true; }
       // Reading a 2 MB ROM off the SD card takes several seconds. Show the
       // standard alert box first and launch from poll() once it has been
       // drawn, so the panel is not left showing the ROM list meanwhile.
       _pendingLaunch = _cursor;
       _loadingDrawn = false;
       _mode = LOADING;
-      _task->showAlert("Loading...", 30000);
+      _task->showAlert(MECK_TR("Loading...", "Chargement..."), 30000);
       return true;
     case KEY_CANCEL:
       _wantsExit = true;
@@ -942,7 +942,7 @@ static void draw_game_header(DisplayDriver& display, UITask* task) {
   NodePrefs* prefs = task->getNodePrefs();
   const int hdrY = -3;
   char label[16];
-  snprintf(label, sizeof(label), "%d Unread", task->getUnreadMsgCount());
+  snprintf(label, sizeof(label), MECK_TR("%d Unread", "%d non lus"), task->getUnreadMsgCount());
 
   display.setTextSize(prefs->smallTextSize());
   display.setColor(DisplayDriver::GREEN);
@@ -1022,8 +1022,8 @@ int GBCEmulatorScreen::renderBrowser(DisplayDriver& display) {
   display.setTextSize(prefs->smallTextSize());
   if (_romCount == 0) {
     display.setColor(DisplayDriver::LIGHT);
-    display.drawTextEllipsized(6, headerH, display.width() - 12, "No .gb/.gbc files");
-    display.drawTextEllipsized(6, headerH + lineH, display.width() - 12, "in /roms on SD");
+    display.drawTextEllipsized(6, headerH, display.width() - 12, MECK_TR("No .gb/.gbc files", "Aucun fichier .gb/.gbc"));
+    display.drawTextEllipsized(6, headerH + lineH, display.width() - 12, MECK_TR("in /roms on SD", "dans /roms sur la SD"));
   } else {
     int y = headerH;
     for (int i = _scroll; i < _romCount && i < _scroll + rows; i++) {
@@ -1051,7 +1051,7 @@ int GBCEmulatorScreen::renderBrowser(DisplayDriver& display) {
     display.print(_status);
     return 500;
   }
-  display.print("Enter:Play  Q:Back");
+  display.print(MECK_TR("Enter:Play  Q:Back", "Ent:Jouer  Q:Retour"));
   return 5000;
 }
 
@@ -1075,11 +1075,11 @@ int GBCEmulatorScreen::renderGame(DisplayDriver& display) {
   const uint16_t fg = d.rawFgColor();
   d.drawXbmRaw(GBC_IMG_X, GBC_IMG_Y, s_mono_ui, OUT_W, OUT_H, fg);
 #if GBC_SOUND
-  d.drawTextRaw(2, 308, (_mode == STOPPING) ? "Saving..."
-                       : (!s_audio_on ? "Q: Quit"
-                       : (s_muted ? "Q: Quit   Press Mic key to unmute" : "Q: Quit   Mic: Mute")), fg);
+  d.drawTextRaw(2, 308, (_mode == STOPPING) ? MECK_TR("Saving...", "Sauvegarde...")
+                       : (!s_audio_on ? MECK_TR("Q: Quit", "Q: Quitter")
+                       : (s_muted ? MECK_TR("Q: Quit   Press Mic key to unmute", "Q: Quitter   Mic: remettre le son") : MECK_TR("Q: Quit   Mic: Mute", "Q: Quitter   Mic: Muet"))), fg);
 #else
-  d.drawTextRaw(2, 308, (_mode == STOPPING) ? "Saving..." : "Q: Quit", fg);
+  d.drawTextRaw(2, 308, (_mode == STOPPING) ? MECK_TR("Saving...", "Sauvegarde...") : MECK_TR("Q: Quit", "Q: Quitter"), fg);
 #endif
   // No windowed refresh: it was measured to save nothing (the panel's
   // waveform time is the same for any window), and it left the footer row

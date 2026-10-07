@@ -84,6 +84,7 @@
 #undef local  // PNGdec's zutil.h defines 'local' as 'static' — breaks any variable named 'local'
 #include <helpers/ui/UIScreen.h>
 #include <helpers/ui/DisplayDriver.h>
+#include "MeckLang.h"
 #include <helpers/ui/GxEPDDisplay.h>
 
 // ---------------------------------------------------------------------------
@@ -259,9 +260,9 @@ public:
       display.setTextSize(1);
       display.setColor(DisplayDriver::LIGHT);
       display.setCursor(10, 20);
-      display.print("SD card not found");
+      display.print(MECK_TR("SD card not found", "Carte SD introuvable"));
       display.setCursor(10, 35);
-      display.print("Insert SD with");
+      display.print(MECK_TR("Insert SD with", "Ins\xC3\xA9rez une SD avec"));
       display.setCursor(10, 48);
       display.print("/tiles/{z}/{x}/{y}.png");
       return 5000;
@@ -909,7 +910,7 @@ private:
     display.print(left);
 
     // Right: navigation hint
-    const char* right = "WASD:pan Z/X:zoom";
+    const char* right = MECK_TR("WASD:pan Z/X:zoom", "WASD:bouger Z/X:zoom");
     display.setCursor(display.width() - display.getTextWidth(right) - 2, footerY);
     display.print(right);
   }

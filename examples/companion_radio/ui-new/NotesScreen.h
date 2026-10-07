@@ -2,6 +2,7 @@
 
 #include <helpers/ui/UIScreen.h>
 #include <helpers/ui/DisplayDriver.h>
+#include "MeckLang.h"
 #include <SD.h>
 #include <vector>
 #include "Utf8CP437.h"
@@ -503,7 +504,7 @@ private:
     int rightX = display.width() - display.getTextWidth(tmp) - 2;
 
     if (_selectedFile >= 1 && _selectedFile <= (int)_fileList.size()) {
-      const char* hint = "[R:Rename]";
+      const char* hint = MECK_TR("[R:Rename]", "[R:Renommer]");
       int hintX = rightX - display.getTextWidth(hint) - 4;
       display.setCursor(hintX, 0);
       display.setColor(DisplayDriver::YELLOW);
@@ -544,7 +545,7 @@ private:
       if (i == 0) {
         display.setColor(selected ? DisplayDriver::DARK : DisplayDriver::GREEN);
         display.drawTextEllipsized(0, y, display.width() - 4,
-                                   selected ? "> + New Note" : "  + New Note");
+                                   selected ? MECK_TR("> + New Note", "> + Nouvelle note") : MECK_TR("  + New Note", "  + Nouvelle note"));
       } else {
         String line = selected ? "> " : "  ";
         line += _fileList[i - 1];
@@ -559,8 +560,8 @@ private:
     display.drawRect(0, footerY - 2, display.width(), 1);
     display.setCursor(0, footerY);
     display.setColor(DisplayDriver::YELLOW);
-    display.print("Q:Bk");
-    const char* right = "Tap/Ent:Open";
+    display.print(MECK_TR("Q:Bk", "Q:Ret"));
+    const char* right = MECK_TR("Tap/Ent:Open", "Ent:Ouvrir");
     display.setCursor(display.width() - display.getTextWidth(right) - 2, footerY);
     display.print(right);
   }
@@ -570,14 +571,14 @@ private:
       display.setCursor(0, 14);
       display.setTextSize(1);
       display.setColor(DisplayDriver::LIGHT);
-      display.print("(empty note)");
+      display.print(MECK_TR("(empty note)", "(note vide)"));
 
       int footerY = display.height() - 12;
       display.drawRect(0, footerY - 2, display.width(), 1);
       display.setColor(DisplayDriver::YELLOW);
       display.setCursor(0, footerY);
-      display.print("Q:Bk Ent:Edit");
-      const char* right = "X:Delete";
+      display.print(MECK_TR("Q:Bk Ent:Edit", "Q:Ret Ent:\xC3\x89" "diter"));
+      const char* right = MECK_TR("X:Delete", "X:Suppr");
       display.setCursor(display.width() - display.getTextWidth(right) - 2, footerY);
       display.print(right);
       return;
@@ -662,9 +663,9 @@ private:
     display.setColor(DisplayDriver::YELLOW);
 
     display.setCursor(0, footerY);
-    display.print("Q:Bk Ent:Edit");
+    display.print(MECK_TR("Q:Bk Ent:Edit", "Q:Ret Ent:\xC3\x89" "diter"));
 
-    const char* right = "X:Delete";
+    const char* right = MECK_TR("X:Delete", "X:Suppr");
     display.setCursor(display.width() - display.getTextWidth(right) - 2, footerY);
     display.print(right);
   }
@@ -684,7 +685,7 @@ private:
     if (shortName.length() > 18) {
       shortName = shortName.substring(0, 15) + "...";
     }
-    snprintf(header, sizeof(header), "Edit: %s%s",
+    snprintf(header, sizeof(header), MECK_TR("Edit: %s%s", "\xC3\x89" "dition : %s%s"),
              shortName.c_str(), _dirty ? "*" : "");
     display.print(header);
 
@@ -762,14 +763,14 @@ private:
     char status[20];
     int curPage = (_editMaxLines > 0) ? (cursorLine / _editMaxLines) + 1 : 1;
     int totalPg = (_editMaxLines > 0) ? max(1, (_numEditorLines + _editMaxLines - 1) / _editMaxLines) : 1;
-    snprintf(status, sizeof(status), "Pg %d/%d", curPage, totalPg);
+    snprintf(status, sizeof(status), MECK_TR("Pg %d/%d", "p. %d/%d"), curPage, totalPg);
     display.print(status);
 
     const char* right;
     if (_bufLen == 0 || !_dirty) {
-      right = "Q:Back";
+      right = MECK_TR("Q:Back", "Q:Retour");
     } else {
-      right = "Sh+Del:Save";
+      right = MECK_TR("Sh+Del:Save", "Sh+Del:Enreg.");
     }
     display.setCursor(display.width() - display.getTextWidth(right) - 2, footerY);
     display.print(right);
@@ -779,7 +780,7 @@ private:
     display.setTextSize(1);
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, 0);
-    display.print("Rename Note");
+    display.print(MECK_TR("Rename Note", "Renommer la note"));
 
     display.setColor(DisplayDriver::LIGHT);
     display.drawRect(0, 11, display.width(), 1);
@@ -787,7 +788,7 @@ private:
     // Show original name
     display.setCursor(0, 20);
     display.setColor(DisplayDriver::LIGHT);
-    display.print("From: ");
+    display.print(MECK_TR("From: ", "De : "));
     display.setTextSize(_prefs->smallTextSize());
     String origDisplay = _renameOriginal;
     if (origDisplay.length() > 30) origDisplay = origDisplay.substring(0, 27) + "...";
@@ -797,7 +798,7 @@ private:
     display.setTextSize(1);
     display.setCursor(0, 38);
     display.setColor(DisplayDriver::LIGHT);
-    display.print("To:   ");
+    display.print(MECK_TR("To:   ", "Vers : "));
 
     display.setTextSize(_prefs->smallTextSize());
     display.setColor(DisplayDriver::GREEN);
@@ -809,15 +810,15 @@ private:
     display.setTextSize(1);
     display.setColor(DisplayDriver::LIGHT);
     display.setCursor(0, 56);
-    display.print("(.txt added automatically)");
+    display.print(MECK_TR("(.txt added automatically)", "(.txt ajout\xC3\xA9 auto.)"));
 
     // Footer
     int footerY = display.height() - 12;
     display.drawRect(0, footerY - 2, display.width(), 1);
     display.setColor(DisplayDriver::YELLOW);
     display.setCursor(0, footerY);
-    display.print("Q:Cancel");
-    const char* right = "Ent:Confirm";
+    display.print(MECK_TR("Q:Cancel", "Q:Annuler"));
+    const char* right = MECK_TR("Ent:Confirm", "Ent:Valider");
     display.setCursor(display.width() - display.getTextWidth(right) - 2, footerY);
     display.print(right);
   }
@@ -826,13 +827,13 @@ private:
     display.setTextSize(1);
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, 0);
-    display.print("Delete Note?");
+    display.print(MECK_TR("Delete Note?", "Supprimer la note ?"));
 
     display.setColor(DisplayDriver::LIGHT);
     display.drawRect(0, 11, display.width(), 1);
 
     display.setCursor(0, 25);
-    display.print("File:");
+    display.print(MECK_TR("File:", "Fichier :"));
 
     display.setTextSize(_prefs->smallTextSize());
     display.setCursor(0, 38);
@@ -843,15 +844,15 @@ private:
     display.setTextSize(1);
     display.setCursor(0, 58);
     display.setColor(DisplayDriver::GREEN);
-    display.print("This cannot be undone.");
+    display.print(MECK_TR("This cannot be undone.", "Action irr\xC3\xA9versible."));
 
     // Footer
     int footerY = display.height() - 12;
     display.drawRect(0, footerY - 2, display.width(), 1);
     display.setColor(DisplayDriver::YELLOW);
     display.setCursor(0, footerY);
-    display.print("Q:Cancel");
-    const char* right = "Ent:Delete";
+    display.print(MECK_TR("Q:Cancel", "Q:Annuler"));
+    const char* right = MECK_TR("Ent:Delete", "Ent:Supprimer");
     display.setCursor(display.width() - display.getTextWidth(right) - 2, footerY);
     display.print(right);
   }
@@ -982,7 +983,7 @@ private:
       if (_renameLen > 0) {
         String newName = String(_renameBuf) + ".txt";
         if (newName != _renameOriginal) {
-          drawBriefSplash("Renaming...");
+          drawBriefSplash(MECK_TR("Renaming...", "Renommage..."));
           if (renameNote(_renameOriginal, newName)) {
             if (_currentFile == _renameOriginal) {
               _currentFile = newName;
@@ -1022,7 +1023,7 @@ private:
   bool handleDeleteConfirmInput(char c) {
     // Enter - confirm delete
     if (c == '\r' || c == 13) {
-      drawBriefSplash("Deleting...");
+      drawBriefSplash(MECK_TR("Deleting...", "Suppression..."));
       deleteNote(_deleteTarget);
       _deleteTarget = "";
       _selectedFile = 0;
@@ -1285,7 +1286,7 @@ public:
   void saveAndExit() {
     if (_dirty && _currentFile.length() > 0) {
       if (_bufLen > 0) {
-        drawBriefSplash("Saving...");
+        drawBriefSplash(MECK_TR("Saving...", "Enregistrement..."));
         saveNote();
       } else if (_dirty) {
         Serial.printf("Notes: Skipping empty note %s\n", _currentFile.c_str());
@@ -1304,7 +1305,7 @@ public:
 
   void deleteCurrentNote() {
     if (_currentFile.length() > 0) {
-      drawBriefSplash("Deleting...");
+      drawBriefSplash(MECK_TR("Deleting...", "Suppression..."));
       deleteNote(_currentFile);
     }
     _dirty = false;
@@ -1332,9 +1333,9 @@ public:
       display.setCursor(0, 20);
       display.setTextSize(1);
       display.setColor(DisplayDriver::LIGHT);
-      display.print("SD card not found");
+      display.print(MECK_TR("SD card not found", "Carte SD introuvable"));
       display.setCursor(0, 35);
-      display.print("Insert SD card");
+      display.print(MECK_TR("Insert SD card", "Ins\xC3\xA9rez une carte SD"));
       return 5000;
     }
 

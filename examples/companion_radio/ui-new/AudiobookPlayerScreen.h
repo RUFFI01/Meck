@@ -29,6 +29,7 @@
 
 #include <helpers/ui/UIScreen.h>
 #include <helpers/ui/DisplayDriver.h>
+#include "MeckLang.h"
 #include <SD.h>
 #include <vector>
 #include <algorithm>
@@ -501,13 +502,13 @@ private:
     _displayRef->setTextSize(2);
     _displayRef->setColor(DisplayDriver::GREEN);
     _displayRef->setCursor(10, 15);
-    _displayRef->print("Loading");
+    _displayRef->print(MECK_TR("Loading", "Chargement"));
     _displayRef->setCursor(10, 30);
-    _displayRef->print("Audiobooks");
+    _displayRef->print(MECK_TR("Audiobooks", "Livres audio"));
     _displayRef->setTextSize(1);
     _displayRef->setColor(DisplayDriver::LIGHT);
     _displayRef->setCursor(10, 55);
-    _displayRef->print("Please wait...");
+    _displayRef->print(MECK_TR("Please wait...", "Veuillez patienter..."));
     _displayRef->endFrame();
   }
 
@@ -981,7 +982,7 @@ private:
       display->setTextSize(1);
       display->setColor(DisplayDriver::GREEN);
       display->setCursor(10, 11);
-      display->print("Loading...");
+      display->print(MECK_TR("Loading...", "Chargement..."));
       display->setTextSize(1);
       display->setColor(DisplayDriver::LIGHT);
       display->setCursor(10, 30);
@@ -1267,19 +1268,19 @@ private:
     display.setTextSize(1);
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, 0);
-    display.print("Audiobooks");
+    display.print(MECK_TR("Audiobooks", "Livres audio"));
 
     display.setColor(DisplayDriver::LIGHT);
 
     if (_fileList.size() == 0) {
       display.setCursor(0, 20);
-      display.print("No audiobooks found.");
+      display.print(MECK_TR("No audiobooks found.", "Aucun livre audio trouv\xC3\xA9."));
       display.setCursor(0, 30);
-      display.print("Place .m4b/.mp3 in");
+      display.print(MECK_TR("Place .m4b/.mp3 in", "Placez des .m4b/.mp3 dans"));
       display.setCursor(0, 38);
-      display.print("/audiobooks/ on SD");
+      display.print(MECK_TR("/audiobooks/ on SD", "/audiobooks/ sur la SD"));
 
-      drawFooter(display, "0 files", "Q:Back");
+      drawFooter(display, MECK_TR("0 files", "0 fichier"), MECK_TR("Q:Back", "Q:Retour"));
       return;
     }
 
@@ -1321,7 +1322,7 @@ private:
 
       if (fe.isDir) {
         if (fe.name == "..") {
-          snprintf(fullLine, sizeof(fullLine), ".. (up)");
+          snprintf(fullLine, sizeof(fullLine), MECK_TR(".. (up)", ".. (parent)"));
         } else {
           snprintf(fullLine, sizeof(fullLine), "/%s", fe.name.c_str());
         }
@@ -1366,8 +1367,8 @@ private:
     // Left label is always the file count — the folder path was overflowing and
     // colliding with the right-hand nav text, so it is no longer shown here.
     char leftBuf[32];
-    snprintf(leftBuf, sizeof(leftBuf), "%d files", (int)_fileList.size());
-    drawFooter(display, leftBuf, "W/S:Nav Enter:Open");
+    snprintf(leftBuf, sizeof(leftBuf), MECK_TR("%d files", "%d fichiers"), (int)_fileList.size());
+    drawFooter(display, leftBuf, MECK_TR("W/S:Nav Enter:Open", "W/S Ent:Ouvrir"));
   }
 
   // ---- Render: Player ----
@@ -1413,7 +1414,7 @@ private:
       display.setTextSize(1);
       display.setColor(DisplayDriver::LIGHT);
       char chBuf[24];
-      snprintf(chBuf, sizeof(chBuf), "Ch %d/%d",
+      snprintf(chBuf, sizeof(chBuf), MECK_TR("Ch %d/%d", "Chap. %d/%d"),
                _currentChapter + 1, _metadata.chapterCount);
       display.drawTextCentered(display.width() / 2, y, chBuf);
       y += 10;
@@ -1423,7 +1424,7 @@ private:
     {
       display.setTextSize(1);
       display.setColor(DisplayDriver::LIGHT);
-      const char* stateStr = _isPlaying ? (_isPaused ? "Paused" : "Playing") : "Stopped";
+      const char* stateStr = _isPlaying ? (_isPaused ? MECK_TR("Paused", "En pause") : MECK_TR("Playing", "Lecture")) : MECK_TR("Stopped", "Arr\xC3\xAAt\xC3\xA9");
       char stateBuf[24];
       snprintf(stateBuf, sizeof(stateBuf), "%s  Vol:%d", stateStr, _volume);
       display.drawTextCentered(display.width() / 2, y, stateBuf);
@@ -1468,13 +1469,13 @@ private:
       // Show track position in playlist (if multiple tracks)
       if (_playlist.size() > 1 && _playlistIdx >= 0) {
         char trackBuf[24];
-        snprintf(trackBuf, sizeof(trackBuf), "Track %d/%d",
+        snprintf(trackBuf, sizeof(trackBuf), MECK_TR("Track %d/%d", "Piste %d/%d"),
                  _playlistIdx + 1, (int)_playlist.size());
         display.drawTextCentered(display.width() / 2, y, trackBuf);
         y += 10;
       }
 
-      display.drawTextCentered(display.width() / 2, y, "Enter: Play/Pause");
+      display.drawTextCentered(display.width() / 2, y, MECK_TR("Enter: Play/Pause", "Entr\xC3\xA9" "e : lecture/pause"));
       y += 10;
 
       // Sleep timer or additional hints
@@ -1487,17 +1488,17 @@ private:
           int mins = remaining / 60;
           int secs = remaining % 60;
           char sleepBuf[32];
-          snprintf(sleepBuf, sizeof(sleepBuf), "Sleep: %d:%02d (Z:Off)", mins, secs);
+          snprintf(sleepBuf, sizeof(sleepBuf), MECK_TR("Sleep: %d:%02d (Z:Off)", "Veille : %d:%02d (Z:arr\xC3\xAAt)"), mins, secs);
           display.drawTextCentered(display.width() / 2, y, sleepBuf);
         } else if (_isPlaying && !_isPaused) {
           display.drawTextCentered(display.width() / 2, y,
-                                   "Z: Start 45m sleep timer");
+                                   MECK_TR("Z: Start 45m sleep timer", "Z : minuterie 45 min"));
         } else if (_metadata.chapterCount > 0) {
           display.drawTextCentered(display.width() / 2, y,
-                                   "[/]: Prev/Next Chapter");
+                                   MECK_TR("[/]: Prev/Next Chapter", "[/] : chapitre pr\xC3\xA9" "c./suiv."));
         } else if (_playlist.size() > 1) {
           display.drawTextCentered(display.width() / 2, y,
-                                   "N: Next Track");
+                                   MECK_TR("N: Next Track", "N : piste suivante"));
         }
       }
     }
@@ -1505,11 +1506,11 @@ private:
 
     // ---- Footer Nav Bar ----
     {
-      const char* rightText = (_isPlaying && !_isPaused) ? "Q:Leave" : "Q:Close";
+      const char* rightText = (_isPlaying && !_isPaused) ? MECK_TR("Q:Leave", "Q:Sortir") : MECK_TR("Q:Close", "Q:Fermer");
       if (_playlist.size() > 1) {
-        drawFooter(display, "A/D:Seek N:Next", rightText);
+        drawFooter(display, MECK_TR("A/D:Seek N:Next", "A/D:Saut N:Suiv."), rightText);
       } else {
-        drawFooter(display, "A/D:Seek W/S:Vol", rightText);
+        drawFooter(display, MECK_TR("A/D:Seek W/S:Vol", "A/D:Saut W/S:Vol"), rightText);
       }
     }
   }
@@ -1677,11 +1678,11 @@ public:
       display.setCursor(0, 20);
       display.setTextSize(1);
       display.setColor(DisplayDriver::LIGHT);
-      display.print("SD card not found");
+      display.print(MECK_TR("SD card not found", "Carte SD introuvable"));
       display.setCursor(0, 35);
-      display.print("Insert SD with");
+      display.print(MECK_TR("Insert SD with", "Ins\xC3\xA9rez une SD avec"));
       display.setCursor(0, 43);
-      display.print("/audiobooks/ folder");
+      display.print(MECK_TR("/audiobooks/ folder", "le dossier /audiobooks/"));
       return 5000;
     }
 
