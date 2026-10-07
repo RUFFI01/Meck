@@ -92,7 +92,7 @@ static const uint32_t GPS_BAUD_OPTIONS[] = { 0, 4800, 9600, 19200, 38400, 57600,
 #define GPS_BAUD_OPTION_COUNT 7
 
 static inline const char* gpsBaudLabel(uint32_t baud, char* buf, int bufLen) {
-  if (baud == 0) return "Default (38400)";
+  if (baud == 0) return MECK_TR("Default (38400)", "D\xC3\xA9" "faut 38400");
   snprintf(buf, bufLen, "%lu", (unsigned long)baud);
   return buf;
 }
@@ -109,7 +109,7 @@ static const uint8_t AUTO_LOCK_OPTIONS[] = { 0, 2, 5, 10, 15, 30 };
 #define AUTO_LOCK_OPTION_COUNT 6
 
 static inline const char* autoLockLabel(uint8_t minutes) {
-  if (minutes == 0) return "None";
+  if (minutes == 0) return MECK_TR("None", "Aucun");
   static char buf[8];
   snprintf(buf, sizeof(buf), "%d min", minutes);
   return buf;
@@ -422,9 +422,9 @@ private:
   // Get display label for a contact mode
   static const char* contactModeLabel(int mode) {
     switch (mode) {
-      case CONTACT_MODE_AUTO_ALL: return "Auto All";
-      case CONTACT_MODE_CUSTOM:   return "Custom";
-      case CONTACT_MODE_MANUAL:   return "Manual Only";
+      case CONTACT_MODE_AUTO_ALL: return MECK_TR("Auto All", "Auto (tous)");
+      case CONTACT_MODE_CUSTOM:   return MECK_TR("Custom", "Personnalis\xC3\xA9");
+      case CONTACT_MODE_MANUAL:   return MECK_TR("Manual Only", "Manuel seul");
       default:                    return "?";
     }
   }
@@ -1106,12 +1106,12 @@ public:
 
   bool verifyFirmwareFile() {
     File f = SD.open("/firmware/update.bin", FILE_READ);
-    if (!f) { _otaError = "File not found on SD"; return false; }
+    if (!f) { _otaError = MECK_TR("File not found on SD", "Fichier absent de la SD"); return false; }
 
     size_t fileSize = f.size();
     if (fileSize < 500000 || fileSize > 6500000) {
       f.close(); digitalWrite(SDCARD_CS, HIGH);
-      _otaError = "Bad file size (need 0.5-6MB)";
+      _otaError = MECK_TR("Bad file size (need 0.5-6MB)", "Taille invalide (0,5 \xC3\xA0 6 Mo)");
       Serial.printf("OTA: Bad file size: %d\n", fileSize);
       return false;
     }
@@ -1123,7 +1123,7 @@ public:
     digitalWrite(SDCARD_CS, HIGH);
 
     if (magic != 0xE9) {
-      _otaError = "Not a firmware file (bad magic)";
+      _otaError = MECK_TR("Not a firmware file (bad magic)", "Pas un firmware (signature)");
       Serial.printf("OTA: Bad magic: 0x%02X\n", magic);
       return false;
     }
@@ -1132,7 +1132,7 @@ public:
 
   bool flashFirmwareFromSD(DisplayDriver& display) {
     File firmware = SD.open("/firmware/update.bin", FILE_READ);
-    if (!firmware) { _otaError = "Cannot open firmware file"; return false; }
+    if (!firmware) { _otaError = MECK_TR("Cannot open firmware file", "Firmware illisible"); return false; }
 
     size_t fileSize = firmware.size();
     if (!Update.begin(fileSize, U_FLASH)) {
@@ -1145,7 +1145,7 @@ public:
     const int BUF_SIZE = 4096;
     uint8_t* buf = (uint8_t*)ps_malloc(BUF_SIZE);
     if (!buf) buf = (uint8_t*)malloc(BUF_SIZE);
-    if (!buf) { firmware.close(); Update.abort(); _otaError = "Out of memory"; return false; }
+    if (!buf) { firmware.close(); Update.abort(); _otaError = MECK_TR("Out of memory", "M\xC3\xA9moire insuffisante"); return false; }
 
     size_t totalWritten = 0;
     char tmp[48];
@@ -1156,7 +1156,7 @@ public:
 
       size_t written = Update.write(buf, bytesRead);
       if (written != (size_t)bytesRead) {
-        _otaError = "Flash write error";
+        _otaError = MECK_TR("Flash write error", "Erreur d'\xC3\xA9" "criture flash");
         Serial.printf("OTA: Write error at %d bytes\n", totalWritten);
         break;
       }
@@ -1170,11 +1170,11 @@ public:
         display.setColor(DisplayDriver::LIGHT);
         display.drawRect(2, 14, display.width() - 4, display.height() - 28);
         display.setTextSize(_prefs->smallTextSize());
-        display.drawTextCentered(display.width() / 2, 22, "Flashing Firmware");
-        snprintf(tmp, sizeof(tmp), "%d / %d KB", (int)(totalWritten / 1024), (int)(fileSize / 1024));
+        display.drawTextCentered(display.width() / 2, 22, MECK_TR("Flashing Firmware", "\xC3\x89" "criture du firmware"));
+        snprintf(tmp, sizeof(tmp), MECK_TR("%d / %d KB", "%d / %d Ko"), (int)(totalWritten / 1024), (int)(fileSize / 1024));
         display.drawTextCentered(display.width() / 2, 42, tmp);
         display.setColor(DisplayDriver::YELLOW);
-        display.drawTextCentered(display.width() / 2, 62, "DO NOT POWER OFF");
+        display.drawTextCentered(display.width() / 2, 62, MECK_TR("DO NOT POWER OFF", "NE PAS \xC3\x89TEINDRE"));
         display.endFrame();
       }
     }
@@ -1253,18 +1253,18 @@ public:
     display.drawRect(2, 14, display.width() - 4, display.height() - 28);
     display.setTextSize(_prefs->smallTextSize());
     display.setColor(DisplayDriver::GREEN);
-    display.drawTextCentered(display.width() / 2, 30, "Update Complete!");
+    display.drawTextCentered(display.width() / 2, 30, MECK_TR("Update Complete!", "Mise \xC3\xA0 jour termin\xC3\xA9" "e !"));
     display.setColor(DisplayDriver::LIGHT);
     File fw = SD.open("/firmware/update.bin", FILE_READ);
     char tmp[48];
     if (fw) {
-      snprintf(tmp, sizeof(tmp), "Firmware: %d KB", (int)(fw.size() / 1024));
+      snprintf(tmp, sizeof(tmp), MECK_TR("Firmware: %d KB", "Firmware : %d Ko"), (int)(fw.size() / 1024));
       fw.close(); digitalWrite(SDCARD_CS, HIGH);
     } else {
-      strcpy(tmp, "Firmware written");
+      strcpy(tmp, MECK_TR("Firmware written", "Firmware \xC3\xA9" "crit"));
     }
     display.drawTextCentered(display.width() / 2, 48, tmp);
-    display.drawTextCentered(display.width() / 2, 66, "Rebooting in 3 seconds...");
+    display.drawTextCentered(display.width() / 2, 66, MECK_TR("Rebooting in 3 seconds...", "Red\xC3\xA9marrage dans 3 s..."));
     display.endFrame();
 
     delay(3000);
@@ -1767,19 +1767,19 @@ public:
     display.setColor(DisplayDriver::GREEN);
     display.setCursor(0, 0);
     if (_onboarding) {
-      display.print("Welcome! Setup");
+      display.print(MECK_TR("Welcome! Setup", "Bienvenue ! Configuration"));
     } else if (_subScreen == SUB_CONTACTS) {
-      display.print("Settings > Contacts");
+      display.print(MECK_TR("Settings > Contacts", "Param\xC3\xA8tres > Contacts"));
     } else if (_subScreen == SUB_CHANNELS) {
-      display.print("Settings > Channels");
+      display.print(MECK_TR("Settings > Channels", "Param\xC3\xA8tres > Canaux"));
     #ifdef MECK_OTA_UPDATE
     } else if (_subScreen == SUB_OTA_TOOLS) {
-      display.print("Settings > OTA Tools");
+      display.print(MECK_TR("Settings > OTA Tools", "Param\xC3\xA8tres > Outils OTA"));
     #endif
     } else if (_subScreen == SUB_EXPERIMENTAL) {
-      display.print("Settings > Experimental");
+      display.print(MECK_TR("Settings > Experimental", "Param\xC3\xA8tres > Exp\xC3\xA9rimental"));
     } else {
-      display.print("Settings");
+      display.print(MECK_TR("Settings", "Param\xC3\xA8tres"));
     }
 
     // (Row indicator is now a scrollbar on the right of the list body.)
@@ -1826,9 +1826,9 @@ public:
       switch (_rows[i].type) {
         case ROW_NAME:
           if (editing && _editMode == EDIT_TEXT) {
-            snprintf(tmp, sizeof(tmp), "Name: %s_", _editBuf);
+            snprintf(tmp, sizeof(tmp), MECK_TR("Name: %s_", "Nom : %s_"), _editBuf);
           } else {
-            snprintf(tmp, sizeof(tmp), "Name: %s", _prefs->node_name);
+            snprintf(tmp, sizeof(tmp), MECK_TR("Name: %s", "Nom : %s"), _prefs->node_name);
           }
           display.print(tmp);
           break;
@@ -1839,13 +1839,13 @@ public:
             if (_editPickerIdx >= 0 && _editPickerIdx < (int)NUM_RADIO_PRESETS) {
               snprintf(tmp, sizeof(tmp), "< %s >", RADIO_PRESETS[_editPickerIdx].name);
             } else {
-              strcpy(tmp, "< Custom >");
+              strcpy(tmp, MECK_TR("< Custom >", "< Personnalis\xC3\xA9 >"));
             }
           } else {
             if (preset >= 0) {
-              snprintf(tmp, sizeof(tmp), "Preset: %s", RADIO_PRESETS[preset].name);
+              snprintf(tmp, sizeof(tmp), MECK_TR("Preset: %s", "Profil : %s"), RADIO_PRESETS[preset].name);
             } else {
-              strcpy(tmp, "Preset: Custom");
+              strcpy(tmp, MECK_TR("Preset: Custom", "Profil : Personnalis\xC3\xA9"));
             }
           }
           display.print(tmp);
@@ -1854,9 +1854,9 @@ public:
 
         case ROW_FREQ:
           if (editing && _editMode == EDIT_TEXT) {
-            snprintf(tmp, sizeof(tmp), "Freq: %s_ MHz", _editBuf);
+            snprintf(tmp, sizeof(tmp), MECK_TR("Freq: %s_ MHz", "Fr\xC3\xA9q : %s_ MHz"), _editBuf);
           } else {
-            snprintf(tmp, sizeof(tmp), "Freq: %.3f MHz", _prefs->freq);
+            snprintf(tmp, sizeof(tmp), MECK_TR("Freq: %.3f MHz", "Fr\xC3\xA9q : %.3f MHz"), _prefs->freq);
           }
           display.print(tmp);
           break;
@@ -1901,51 +1901,51 @@ public:
           if (editing && _editMode == EDIT_NUMBER) {
             snprintf(tmp, sizeof(tmp), "UTC: %+d " EDIT_ADJ_HINT, _editInt);
           } else {
-            snprintf(tmp, sizeof(tmp), "UTC Offset: %+d", _prefs->utc_offset_hours);
+            snprintf(tmp, sizeof(tmp), MECK_TR("UTC Offset: %+d", "D\xC3\xA9" "calage UTC : %+d"), _prefs->utc_offset_hours);
           }
           display.print(tmp);
           break;
 
         case ROW_BACKLIGHT_BRIGHTNESS:
           if (editing && _editMode == EDIT_NUMBER) {
-            snprintf(tmp, sizeof(tmp), "Brightness: %d%% " EDIT_ADJ_HINT, _editInt);
+            snprintf(tmp, sizeof(tmp), MECK_TR("Brightness: %d%% " EDIT_ADJ_HINT, "Luminosit\xC3\xA9 : %d%% " EDIT_ADJ_HINT), _editInt);
           } else {
-            snprintf(tmp, sizeof(tmp), "Backlight Brightness: %d%%", _prefs->backlight_brightness_pct);
+            snprintf(tmp, sizeof(tmp), MECK_TR("Backlight Brightness: %d%%", "R\xC3\xA9tro\xC3\xA9" "clairage : %d%%"), _prefs->backlight_brightness_pct);
           }
           display.print(tmp);
           break;
 
         case ROW_KB_BACKLIGHT:
           if (editing && _editMode == EDIT_NUMBER) {
-            snprintf(tmp, sizeof(tmp), "Keyboard LED: %d%% " EDIT_ADJ_HINT, _editInt);
+            snprintf(tmp, sizeof(tmp), MECK_TR("Keyboard LED: %d%% " EDIT_ADJ_HINT, "LED clavier : %d%% " EDIT_ADJ_HINT), _editInt);
           } else {
-            snprintf(tmp, sizeof(tmp), "Keyboard LED: %d%%", _prefs->kb_backlight_pct);
+            snprintf(tmp, sizeof(tmp), MECK_TR("Keyboard LED: %d%%", "LED clavier : %d%%"), _prefs->kb_backlight_pct);
           }
           display.print(tmp);
           break;
 
         case ROW_MSG_NOTIFY:
-          snprintf(tmp, sizeof(tmp), "Msg LED Flash: %s",
-                   _prefs->kb_flash_notify ? "ON" : "OFF");
+          snprintf(tmp, sizeof(tmp), MECK_TR("Msg LED Flash: %s", "Flash LED message : %s"),
+                   _prefs->kb_flash_notify ? MECK_TR("ON", "OUI") : MECK_TR("OFF", "NON"));
           display.print(tmp);
           break;
 
         case ROW_PATH_HASH_SIZE:
           if (editing && _editMode == EDIT_NUMBER) {
-            snprintf(tmp, sizeof(tmp), "Path Hash Size: %d-byte " EDIT_ADJ_HINT, _editInt);
+            snprintf(tmp, sizeof(tmp), MECK_TR("Path Hash Size: %d-byte " EDIT_ADJ_HINT, "Taille hash chemin : %d o " EDIT_ADJ_HINT), _editInt);
           } else {
-            snprintf(tmp, sizeof(tmp), "Path Hash Size: %d-byte", _prefs->path_hash_mode + 1);
+            snprintf(tmp, sizeof(tmp), MECK_TR("Path Hash Size: %d-byte", "Taille hash chemin : %d o"), _prefs->path_hash_mode + 1);
           }
           display.print(tmp);
           break;
 
         case ROW_DEFAULT_SCOPE:
           if (editing && _editMode == EDIT_TEXT) {
-            snprintf(tmp, sizeof(tmp), "Region: %s_", _editBuf);
+            snprintf(tmp, sizeof(tmp), MECK_TR("Region: %s_", "R\xC3\xA9gion : %s_"), _editBuf);
           } else if (_prefs->default_scope_name[0]) {
-            snprintf(tmp, sizeof(tmp), "Default Region: %s", _prefs->default_scope_name);
+            snprintf(tmp, sizeof(tmp), MECK_TR("Default Region: %s", "R\xC3\xA9gion d\xC3\xA9" "f. : %s"), _prefs->default_scope_name);
           } else {
-            strcpy(tmp, "Default Region: (none)");
+            strcpy(tmp, MECK_TR("Default Region: (none)", "R\xC3\xA9gion d\xC3\xA9" "f. : (aucune)"));
           }
           display.print(tmp);
           break;
@@ -1953,10 +1953,10 @@ public:
         case ROW_GPS_BAUD: {
           char baudStr[16];
           if (editing && _editMode == EDIT_PICKER) {
-            snprintf(tmp, sizeof(tmp), "< GPS Baud: %s > *",
+            snprintf(tmp, sizeof(tmp), MECK_TR("< GPS Baud: %s > *", "< D\xC3\xA9" "bit GPS : %s > *"),
                      gpsBaudLabel(GPS_BAUD_OPTIONS[_editPickerIdx], baudStr, sizeof(baudStr)));
           } else {
-            snprintf(tmp, sizeof(tmp), "GPS Baud: %s *",
+            snprintf(tmp, sizeof(tmp), MECK_TR("GPS Baud: %s *", "D\xC3\xA9" "bit GPS : %s *"),
                      gpsBaudLabel(_prefs->gps_baudrate, baudStr, sizeof(baudStr)));
           }
           display.print(tmp);
@@ -1965,30 +1965,30 @@ public:
 
 #if defined(LilyGo_TDeck_Pro_Max)
         case ROW_LORA_ANTENNA:
-          snprintf(tmp, sizeof(tmp), "LoRa Antenna: %s",
-                   _prefs->lora_antenna ? "External" : "Internal");
+          snprintf(tmp, sizeof(tmp), MECK_TR("LoRa Antenna: %s", "Antenne LoRa : %s"),
+                   _prefs->lora_antenna ? MECK_TR("External", "Externe") : MECK_TR("Internal", "Interne"));
           display.print(tmp);
           break;
 #endif
 
         case ROW_DARK_MODE:
-          snprintf(tmp, sizeof(tmp), "Dark Mode: %s",
-                   _prefs->dark_mode ? "ON" : "OFF");
+          snprintf(tmp, sizeof(tmp), MECK_TR("Dark Mode: %s", "Mode sombre : %s"),
+                   _prefs->dark_mode ? MECK_TR("ON", "OUI") : MECK_TR("OFF", "NON"));
           display.print(tmp);
           break;
 
         case ROW_LARGE_FONT:
-          snprintf(tmp, sizeof(tmp), "Font Size: %s",
-                   _prefs->large_font ? "LARGER" : "TINY");
+          snprintf(tmp, sizeof(tmp), MECK_TR("Font Size: %s", "Taille du texte : %s"),
+                   _prefs->large_font ? MECK_TR("LARGER", "GRAND") : MECK_TR("TINY", "PETIT"));
           display.print(tmp);
           break;
 
         case ROW_FONT_STYLE:
           if (editing && _editMode == EDIT_PICKER) {
-            snprintf(tmp, sizeof(tmp), "< Font: %s >",
+            snprintf(tmp, sizeof(tmp), MECK_TR("< Font: %s >", "< Police : %s >"),
                      meckFontStyleName(_prefs->ui_font_style));
           } else {
-            snprintf(tmp, sizeof(tmp), "Font: %s",
+            snprintf(tmp, sizeof(tmp), MECK_TR("Font: %s", "Police : %s"),
                      meckFontStyleName(_prefs->ui_font_style));
           }
           display.print(tmp);
@@ -1997,10 +1997,10 @@ public:
 #if defined(LilyGo_TDeck_Pro)
         case ROW_AUTO_LOCK:
           if (editing && _editMode == EDIT_PICKER) {
-            snprintf(tmp, sizeof(tmp), "< Auto Lock: %s >",
+            snprintf(tmp, sizeof(tmp), MECK_TR("< Auto Lock: %s >", "< Verrou auto : %s >"),
                      autoLockLabel(AUTO_LOCK_OPTIONS[_editPickerIdx]));
           } else {
-            snprintf(tmp, sizeof(tmp), "Auto Lock: %s",
+            snprintf(tmp, sizeof(tmp), MECK_TR("Auto Lock: %s", "Verrou auto : %s"),
                      autoLockLabel(_prefs->auto_lock_minutes));
           }
           display.print(tmp);
@@ -2012,21 +2012,21 @@ public:
           if (WiFi.status() == WL_CONNECTED) {
             snprintf(tmp, sizeof(tmp), "WiFi: %s", WiFi.SSID().c_str());
           } else {
-            strcpy(tmp, "WiFi: (not connected)");
+            strcpy(tmp, MECK_TR("WiFi: (not connected)", "WiFi : (non connect\xC3\xA9)"));
           }
           display.print(tmp);
           break;
         case ROW_WIFI_TOGGLE:
-          snprintf(tmp, sizeof(tmp), "WiFi Radio: %s",
-                   (WiFi.getMode() != WIFI_OFF) ? "ON" : "OFF");
+          snprintf(tmp, sizeof(tmp), MECK_TR("WiFi Radio: %s", "Radio WiFi : %s"),
+                   (WiFi.getMode() != WIFI_OFF) ? MECK_TR("ON", "OUI") : MECK_TR("OFF", "NON"));
           display.print(tmp);
           break;
         #endif
 
         #ifdef HAS_4G_MODEM
         case ROW_MODEM_TOGGLE:
-          snprintf(tmp, sizeof(tmp), "4G Modem: %s",
-                   _modemEnabled ? "ON" : "OFF");
+          snprintf(tmp, sizeof(tmp), MECK_TR("4G Modem: %s", "Modem 4G : %s"),
+                   _modemEnabled ? MECK_TR("ON", "OUI") : MECK_TR("OFF", "NON"));
           display.print(tmp);
           break;
 
@@ -2045,43 +2045,43 @@ public:
 
         case ROW_CHANNELS_SUBMENU:
           display.setColor(selected ? DisplayDriver::DARK : DisplayDriver::GREEN);
-          display.print("Channels >>");
+          display.print(MECK_TR("Channels >>", "Canaux >>"));
           break;
 
         case ROW_RXLOG:
           display.setColor(selected ? DisplayDriver::DARK : DisplayDriver::GREEN);
-          display.print("Rx Log >>");
+          display.print(MECK_TR("Rx Log >>", "Journal RX >>"));
           break;
 
         #ifdef HAS_SDCARD
         case ROW_EXPORT_IMPORT_SUBMENU:
           display.setColor(selected ? DisplayDriver::DARK : DisplayDriver::GREEN);
-          display.print("Export/Import >>");
+          display.print(MECK_TR("Export/Import >>", "Exporter/Importer >>"));
           break;
 
         case ROW_EXPORT_TO_SD:
           display.setColor(selected ? DisplayDriver::DARK : DisplayDriver::GREEN);
-          display.print("Export to SD >>");
+          display.print(MECK_TR("Export to SD >>", "Exporter vers SD >>"));
           break;
 
         case ROW_IMPORT_FROM_SD:
-          display.print("Import from SD");
+          display.print(MECK_TR("Import from SD", "Importer depuis SD"));
           break;
 
         case ROW_EXPORT_IDENTITY:
-          snprintf(tmp, sizeof(tmp), "  [%c] Identity",
+          snprintf(tmp, sizeof(tmp), MECK_TR("  [%c] Identity", "  [%c] Identit\xC3\xA9"),
                    (_exportFlags & MECK_EXPORT_IDENTITY) ? 'X' : ' ');
           display.print(tmp);
           break;
 
         case ROW_EXPORT_RADIO:
-          snprintf(tmp, sizeof(tmp), "  [%c] Radio Settings",
+          snprintf(tmp, sizeof(tmp), MECK_TR("  [%c] Radio Settings", "  [%c] R\xC3\xA9glages radio"),
                    (_exportFlags & MECK_EXPORT_RADIO) ? 'X' : ' ');
           display.print(tmp);
           break;
 
         case ROW_EXPORT_CHANNELS:
-          snprintf(tmp, sizeof(tmp), "  [%c] Channels",
+          snprintf(tmp, sizeof(tmp), MECK_TR("  [%c] Channels", "  [%c] Canaux"),
                    (_exportFlags & MECK_EXPORT_CHANNELS) ? 'X' : ' ');
           display.print(tmp);
           break;
@@ -2093,14 +2093,14 @@ public:
           break;
 
         case ROW_EXPORT_AUTOADD:
-          snprintf(tmp, sizeof(tmp), "    [%c] Auto-Add Prefs",
+          snprintf(tmp, sizeof(tmp), MECK_TR("    [%c] Auto-Add Prefs", "    [%c] Pr\xC3\xA9" "f. d'ajout auto"),
                    (_exportFlags & MECK_EXPORT_AUTOADD) ? 'X' : ' ');
           display.print(tmp);
           break;
 
         case ROW_EXPORT_NOW:
           display.setColor(selected ? DisplayDriver::DARK : DisplayDriver::GREEN);
-          display.print(">> Export Now");
+          display.print(MECK_TR(">> Export Now", ">> Exporter maintenant"));
           break;
         #endif
 
@@ -2112,49 +2112,49 @@ public:
 
         case ROW_CONTACT_MODE:
           if (editing && _editMode == EDIT_PICKER) {
-            snprintf(tmp, sizeof(tmp), "< Add Mode: %s >",
+            snprintf(tmp, sizeof(tmp), MECK_TR("< Add Mode: %s >", "< Ajout : %s >"),
                      contactModeLabel(_editPickerIdx));
           } else {
-            snprintf(tmp, sizeof(tmp), "Add Mode: %s",
+            snprintf(tmp, sizeof(tmp), MECK_TR("Add Mode: %s", "Ajout : %s"),
                      contactModeLabel(getContactMode()));
           }
           display.print(tmp);
           break;
 
         case ROW_AUTOADD_CHAT:
-          snprintf(tmp, sizeof(tmp), "  Companion: %s",
-                   (_prefs->autoadd_config & AUTO_ADD_CHAT) ? "ON" : "OFF");
+          snprintf(tmp, sizeof(tmp), MECK_TR("  Companion: %s", "  Compagnon : %s"),
+                   (_prefs->autoadd_config & AUTO_ADD_CHAT) ? MECK_TR("ON", "OUI") : MECK_TR("OFF", "NON"));
           display.print(tmp);
           break;
 
         case ROW_AUTOADD_REPEATER:
-          snprintf(tmp, sizeof(tmp), "  Repeater: %s",
-                   (_prefs->autoadd_config & AUTO_ADD_REPEATER) ? "ON" : "OFF");
+          snprintf(tmp, sizeof(tmp), MECK_TR("  Repeater: %s", "  R\xC3\xA9p\xC3\xA9teur : %s"),
+                   (_prefs->autoadd_config & AUTO_ADD_REPEATER) ? MECK_TR("ON", "OUI") : MECK_TR("OFF", "NON"));
           display.print(tmp);
           break;
 
         case ROW_AUTOADD_ROOM:
-          snprintf(tmp, sizeof(tmp), "  Room Server: %s",
-                   (_prefs->autoadd_config & AUTO_ADD_ROOM_SERVER) ? "ON" : "OFF");
+          snprintf(tmp, sizeof(tmp), MECK_TR("  Room Server: %s", "  Serveur salon : %s"),
+                   (_prefs->autoadd_config & AUTO_ADD_ROOM_SERVER) ? MECK_TR("ON", "OUI") : MECK_TR("OFF", "NON"));
           display.print(tmp);
           break;
 
         case ROW_AUTOADD_SENSOR:
-          snprintf(tmp, sizeof(tmp), "  Sensor: %s",
-                   (_prefs->autoadd_config & AUTO_ADD_SENSOR) ? "ON" : "OFF");
+          snprintf(tmp, sizeof(tmp), MECK_TR("  Sensor: %s", "  Capteur : %s"),
+                   (_prefs->autoadd_config & AUTO_ADD_SENSOR) ? MECK_TR("ON", "OUI") : MECK_TR("OFF", "NON"));
           display.print(tmp);
           break;
 
         case ROW_AUTOADD_OVERWRITE:
-          snprintf(tmp, sizeof(tmp), "  Overwrite Oldest: %s",
-                   (_prefs->autoadd_config & AUTO_ADD_OVERWRITE_OLDEST) ? "ON" : "OFF");
+          snprintf(tmp, sizeof(tmp), MECK_TR("  Overwrite Oldest: %s", "  \xC3\x89" "craser anciens : %s"),
+                   (_prefs->autoadd_config & AUTO_ADD_OVERWRITE_OLDEST) ? MECK_TR("ON", "OUI") : MECK_TR("OFF", "NON"));
           display.print(tmp);
           break;
 
         // --- Channels section ---
         case ROW_CH_HEADER:
           display.setColor(DisplayDriver::YELLOW);
-          display.print("--- Channels ---");
+          display.print(MECK_TR("--- Channels ---", "--- Canaux ---"));
           break;
 
         case ROW_CHANNEL: {
@@ -2174,20 +2174,20 @@ public:
               if (selected) {
                 // Build hint with notification state + actions
                 uint8_t nPref = _prefs->channel_notif[chIdx];
-                const char* nTag = (nPref == NOTIF_NONE) ? "Off" :
-                                   (nPref == NOTIF_MENTIONS) ? "@" : "All";
+                const char* nTag = (nPref == NOTIF_NONE) ? MECK_TR("Off", "Non") :
+                                   (nPref == NOTIF_MENTIONS) ? "@" : MECK_TR("All", "Tous");
                 char hintBuf[40];
               #if defined(MECK_AUDIO_VARIANT) || defined(HAS_4G_MODEM)
                 if (chIdx > 0) {
-                  snprintf(hintBuf, sizeof(hintBuf), "N:%s T:Tone X:Del", nTag);
+                  snprintf(hintBuf, sizeof(hintBuf), MECK_TR("N:%s T:Tone X:Del", "N:%s T:Son X:Suppr"), nTag);
                 } else {
-                  snprintf(hintBuf, sizeof(hintBuf), "N:%s T:Tone Ent:Region", nTag);
+                  snprintf(hintBuf, sizeof(hintBuf), MECK_TR("N:%s T:Tone Ent:Region", "N:%s T:Son Ent:R\xC3\xA9gion"), nTag);
                 }
               #else
                 if (chIdx > 0) {
-                  snprintf(hintBuf, sizeof(hintBuf), "N:%s Ent:Region X:Del", nTag);
+                  snprintf(hintBuf, sizeof(hintBuf), MECK_TR("N:%s Ent:Region X:Del", "N:%s Ent:R\xC3\xA9gion X:Suppr"), nTag);
                 } else {
-                  snprintf(hintBuf, sizeof(hintBuf), "N:%s Ent:Region", nTag);
+                  snprintf(hintBuf, sizeof(hintBuf), MECK_TR("N:%s Ent:Region", "N:%s Ent:R\xC3\xA9gion"), nTag);
                 }
               #endif
                 int hintW = display.getTextWidth(hintBuf);
@@ -2197,7 +2197,7 @@ public:
               }
             }
           } else {
-            snprintf(tmp, sizeof(tmp), " (empty)");
+            snprintf(tmp, sizeof(tmp), MECK_TR(" (empty)", " (vide)"));
           }
           display.print(tmp);
           break;
@@ -2208,14 +2208,14 @@ public:
             snprintf(tmp, sizeof(tmp), "> %s_", _editBuf);
           } else {
             display.setColor(selected ? DisplayDriver::DARK : DisplayDriver::GREEN);
-            strcpy(tmp, "+ Add Channel (# = public)");
+            strcpy(tmp, MECK_TR("+ Add Channel (# = public)", "+ Ajouter canal (# = public)"));
           }
           display.print(tmp);
           break;
 
         case ROW_CANNED_SUBMENU:
           display.setColor(selected ? DisplayDriver::DARK : DisplayDriver::GREEN);
-          display.print("Canned Messages >>");
+          display.print(MECK_TR("Canned Messages >>", "Messages pr\xC3\xA9" "d\xC3\xA9" "finis >>"));
           break;
 
         case ROW_CANNED_SLOT: {
@@ -2227,7 +2227,7 @@ public:
           } else if (_prefs->canned_msgs[slot][0]) {
             snprintf(tmp, sizeof(tmp), "%u: %.28s", (unsigned)(slot + 1), _prefs->canned_msgs[slot]);
           } else {
-            snprintf(tmp, sizeof(tmp), "%u: (empty)", (unsigned)(slot + 1));
+            snprintf(tmp, sizeof(tmp), MECK_TR("%u: (empty)", "%u: (vide)"), (unsigned)(slot + 1));
           }
           display.print(tmp);
           break;
@@ -2236,28 +2236,28 @@ public:
         #ifdef MECK_OTA_UPDATE
         case ROW_OTA_TOOLS_SUBMENU:
           display.setColor(selected ? DisplayDriver::DARK : DisplayDriver::GREEN);
-          display.print("OTA Tools >>");
+          display.print(MECK_TR("OTA Tools >>", "Outils OTA >>"));
           break;
 
         case ROW_FW_UPDATE:
-          display.print("Firmware Update");
+          display.print(MECK_TR("Firmware Update", "Mise \xC3\xA0 jour du firmware"));
           break;
 
         case ROW_SD_FILE_MGR:
-          display.print("SD File Manager");
+          display.print(MECK_TR("SD File Manager", "Gestionnaire de fichiers SD"));
           break;
         #endif
 
         case ROW_INFO_HEADER:
           display.setColor(DisplayDriver::YELLOW);
-          display.print("--- Device Info ---");
+          display.print(MECK_TR("--- Device Info ---", "--- Infos appareil ---"));
           break;
 
         case ROW_PUB_KEY: {
           // Show first 8 bytes of pub key as hex (16 chars)
           char hexBuf[17];
           mesh::Utils::toHex(hexBuf, the_mesh.self_id.pub_key, 8);
-          snprintf(tmp, sizeof(tmp), "Node ID: %s", hexBuf);
+          snprintf(tmp, sizeof(tmp), MECK_TR("Node ID: %s", "ID n\xC5\x93ud : %s"), hexBuf);
           display.print(tmp);
           break;
         }
@@ -2269,7 +2269,7 @@ public:
 
         case ROW_EXPERIMENTAL_SUBMENU:
           display.setColor(selected ? DisplayDriver::DARK : DisplayDriver::GREEN);
-          display.print("Experimental Features >>");
+          display.print(MECK_TR("Experimental Features >>", "Exp\xC3\xA9rimental >>"));
           break;
 
         case ROW_LANGUAGE:
@@ -2278,20 +2278,20 @@ public:
 
 #if defined(LilyGo_TDeck_Pro_Max)
         case ROW_ALT_B_BACKLIGHT:
-          snprintf(tmp, sizeof(tmp), "Change Backlight to Alt+B: %s",
-                   _prefs->backlight_alt_b_only ? "ON" : "OFF");
+          snprintf(tmp, sizeof(tmp), MECK_TR("Change Backlight to Alt+B: %s", "R\xC3\xA9tro\xC3\xA9" "clairage Alt+B : %s"),
+                   _prefs->backlight_alt_b_only ? MECK_TR("ON", "OUI") : MECK_TR("OFF", "NON"));
           display.print(tmp);
           break;
 #endif
 
         case ROW_PURGE_CONTACTS:
-          display.print("Delete all contacts");
+          display.print(MECK_TR("Delete all contacts", "Supprimer tous les contacts"));
           break;
 
         #ifdef HAS_4G_MODEM
         case ROW_IMEI: {
           const char* imei = modemManager.getIMEI();
-          snprintf(tmp, sizeof(tmp), "IMEI: %s", imei[0] ? imei : "(unavailable)");
+          snprintf(tmp, sizeof(tmp), "IMEI: %s", imei[0] ? imei : MECK_TR("(unavailable)", "(indisponible)"));
           display.print(tmp);
           break;
         }
@@ -2301,9 +2301,9 @@ public:
           int bars = modemManager.getSignalBars();
           if (op[0]) {
             // Show carrier name with signal bar count
-            snprintf(tmp, sizeof(tmp), "Carrier: %s (%d/5)", op, bars);
+            snprintf(tmp, sizeof(tmp), MECK_TR("Carrier: %s (%d/5)", "Op\xC3\xA9rateur : %s (%d/5)"), op, bars);
           } else {
-            snprintf(tmp, sizeof(tmp), "Carrier: (searching)");
+            snprintf(tmp, sizeof(tmp), MECK_TR("Carrier: (searching)", "Op\xC3\xA9rateur : (recherche)"));
           }
           display.print(tmp);
           break;
@@ -2327,7 +2327,7 @@ public:
               else if (strcmp(src, "user") == 0) srcChar = 'U';
               snprintf(tmp, sizeof(tmp), "APN: %s [%c]", apnShort, srcChar);
             } else {
-              snprintf(tmp, sizeof(tmp), "APN: (none)");
+              snprintf(tmp, sizeof(tmp), MECK_TR("APN: (none)", "APN : (aucun)"));
             }
           }
           display.print(tmp);
@@ -2371,15 +2371,15 @@ public:
         uint8_t chIdx = _rows[_cursor].param;
         ChannelDetails ch;
         the_mesh.getChannel(chIdx, ch);
-        snprintf(tmp, sizeof(tmp), "Delete %s?", ch.name);
+        snprintf(tmp, sizeof(tmp), MECK_TR("Delete %s?", "Supprimer %s ?"), ch.name);
         display.drawTextCentered(display.width() / 2, by + 4, tmp);
       } else if (_confirmAction == 2) {
-        display.drawTextCentered(display.width() / 2, by + 4, "Apply radio changes?");
+        display.drawTextCentered(display.width() / 2, by + 4, MECK_TR("Apply radio changes?", "Appliquer r\xC3\xA9glages radio ?"));
       } else if (_confirmAction == 3) {
-        display.drawTextCentered(display.width() / 2, by + 4, "Region not set.");
-        display.drawTextCentered(display.width() / 2, by + 15, "Leave unset?");
+        display.drawTextCentered(display.width() / 2, by + 4, MECK_TR("Region not set.", "R\xC3\xA9gion non d\xC3\xA9" "finie."));
+        display.drawTextCentered(display.width() / 2, by + 15, MECK_TR("Leave unset?", "Laisser non d\xC3\xA9" "finie ?"));
       }
-      display.drawTextCentered(display.width() / 2, by + bh - 14, "Enter:Yes  Q:No");
+      display.drawTextCentered(display.width() / 2, by + bh - 14, MECK_TR("Enter:Yes  Q:No", "Entr\xC3\xA9" "e:Oui  Q:Non"));
       display.setTextSize(1);
     }
 
@@ -2398,19 +2398,19 @@ public:
       int y = by + 4;
       if (_purgePhase == PURGE_CONFIRM || _purgePhase == PURGE_CONFIRM2) {
         display.setColor(DisplayDriver::YELLOW);
-        display.drawTextCentered(cx, y, "Delete all contacts?");
+        display.drawTextCentered(cx, y, MECK_TR("Delete all contacts?", "Supprimer les contacts ?"));
         y += lh + 2;
         display.setColor(DisplayDriver::LIGHT);
-        snprintf(tmp, sizeof(tmp), "All %d contact%s, with", _purgeContacts, _purgeContacts == 1 ? "" : "s");
+        snprintf(tmp, sizeof(tmp), MECK_TR("All %d contact%s, with", "Les %d contact%s (favoris"), _purgeContacts, _purgeContacts == 1 ? "" : "s");
         display.drawTextCentered(cx, y, tmp);                          y += lh;
-        display.drawTextCentered(cx, y, "favourites and custom");      y += lh;
-        display.drawTextCentered(cx, y, "paths, and the DM history");  y += lh;
-        display.drawTextCentered(cx, y, "will be deleted. Channel");   y += lh;
-        display.drawTextCentered(cx, y, "messages are kept.");         y += lh + 2;
+        display.drawTextCentered(cx, y, MECK_TR("favourites and custom", "et chemins manuels inclus)"));      y += lh;
+        display.drawTextCentered(cx, y, MECK_TR("paths, and the DM history", "et l'historique des MP"));  y += lh;
+        display.drawTextCentered(cx, y, MECK_TR("will be deleted. Channel", "seront effac\xC3\xA9s. Messages"));   y += lh;
+        display.drawTextCentered(cx, y, MECK_TR("messages are kept.", "des canaux conserv\xC3\xA9s."));         y += lh + 2;
         display.setColor(DisplayDriver::RED);
-        display.drawTextCentered(cx, y, "The device will RESTART.");
+        display.drawTextCentered(cx, y, MECK_TR("The device will RESTART.", "L'appareil va RED\xC3\x89MARRER."));
         display.setColor(DisplayDriver::LIGHT);
-        display.drawTextCentered(cx, by + bh - lh - 2, "Enter:Yes  Q:No");
+        display.drawTextCentered(cx, by + bh - lh - 2, MECK_TR("Enter:Yes  Q:No", "Entr\xC3\xA9" "e:Oui  Q:Non"));
         if (_purgePhase == PURGE_CONFIRM2) {
           // Second confirmation popup, drawn over the first box
           int tx = 10, tw = display.width() - 20;
@@ -2421,43 +2421,43 @@ public:
           display.setColor(DisplayDriver::LIGHT);
           display.drawRect(tx, ty, tw, th);
           display.setColor(DisplayDriver::YELLOW);
-          display.drawTextCentered(cx, ty + 3, "Are you sure?");
+          display.drawTextCentered(cx, ty + 3, MECK_TR("Are you sure?", "\xC3\x8Ates-vous s\xC3\xBBr ?"));
           display.setColor(DisplayDriver::LIGHT);
-          display.drawTextCentered(cx, ty + 3 + lh + 2, "This cannot be undone.");
-          display.drawTextCentered(cx, ty + th - lh - 2, "Enter:Yes  Q:No");
+          display.drawTextCentered(cx, ty + 3 + lh + 2, MECK_TR("This cannot be undone.", "Action irr\xC3\xA9versible."));
+          display.drawTextCentered(cx, ty + th - lh - 2, MECK_TR("Enter:Yes  Q:No", "Entr\xC3\xA9" "e:Oui  Q:Non"));
         }
       } else if (_purgePhase == PURGE_RUNNING) {
         display.setColor(DisplayDriver::YELLOW);
-        display.drawTextCentered(cx, y, "Purging");
+        display.drawTextCentered(cx, y, MECK_TR("Purging", "Suppression"));
         y += lh + 2;
         display.setColor(DisplayDriver::LIGHT);
-        display.drawTextCentered(cx, y, "Deleting all contacts and");  y += lh;
-        display.drawTextCentered(cx, y, "the DM history.");            y += lh;
-        display.drawTextCentered(cx, y, "Please wait...");             y += lh + 4;
+        display.drawTextCentered(cx, y, MECK_TR("Deleting all contacts and", "Suppression des contacts et"));  y += lh;
+        display.drawTextCentered(cx, y, MECK_TR("the DM history.", "de l'historique des MP."));            y += lh;
+        display.drawTextCentered(cx, y, MECK_TR("Please wait...", "Veuillez patienter..."));             y += lh + 4;
         display.setColor(DisplayDriver::RED);
-        display.drawTextCentered(cx, y, "Do not switch off. The");     y += lh;
-        display.drawTextCentered(cx, y, "device restarts when done.");
+        display.drawTextCentered(cx, y, MECK_TR("Do not switch off. The", "Ne pas \xC3\xA9teindre. L'appareil"));     y += lh;
+        display.drawTextCentered(cx, y, MECK_TR("device restarts when done.", "red\xC3\xA9marre \xC3\xA0 la fin."));
       } else {
         bool ok = _purgeContactsOk && _purgeDMs >= 0;
         display.setColor(DisplayDriver::YELLOW);
-        display.drawTextCentered(cx, y, ok ? "Contacts deleted" : "Purge failed");
+        display.drawTextCentered(cx, y, ok ? MECK_TR("Contacts deleted", "Contacts supprim\xC3\xA9s") : MECK_TR("Purge failed", "\xC3\x89" "chec de la suppression"));
         y += lh + 2;
         display.setColor(DisplayDriver::LIGHT);
         if (ok) {
-          snprintf(tmp, sizeof(tmp), "Done. %d contact%s and the", _purgeContacts, _purgeContacts == 1 ? "" : "s");
+          snprintf(tmp, sizeof(tmp), MECK_TR("Done. %d contact%s and the", "Fait. %d contact%s et"), _purgeContacts, _purgeContacts == 1 ? "" : "s");
           display.drawTextCentered(cx, y, tmp);                          y += lh;
-          display.drawTextCentered(cx, y, "DM history have been");       y += lh;
-          display.drawTextCentered(cx, y, "deleted from this device.");  y += lh + 4;
+          display.drawTextCentered(cx, y, MECK_TR("DM history have been", "l'historique des MP ont \xC3\xA9t\xC3\xA9"));       y += lh;
+          display.drawTextCentered(cx, y, MECK_TR("deleted from this device.", "supprim\xC3\xA9s de l'appareil."));  y += lh + 4;
         } else {
-          snprintf(tmp, sizeof(tmp), "Contacts file: %s", _purgeContactsOk ? "ok" : "failed");
+          snprintf(tmp, sizeof(tmp), MECK_TR("Contacts file: %s", "Fichier contacts : %s"), _purgeContactsOk ? "ok" : MECK_TR("failed", "\xC3\xA9" "chec"));
           display.drawTextCentered(cx, y, tmp);                          y += lh;
-          snprintf(tmp, sizeof(tmp), "DM history: %s", _purgeDMs >= 0 ? "ok" : "SD not ready");
+          snprintf(tmp, sizeof(tmp), MECK_TR("DM history: %s", "Historique MP : %s"), _purgeDMs >= 0 ? "ok" : MECK_TR("SD not ready", "pas de SD"));
           display.drawTextCentered(cx, y, tmp);                          y += lh;
-          display.drawTextCentered(cx, y, "The restart reloads what");   y += lh;
-          display.drawTextCentered(cx, y, "storage still holds.");       y += lh + 4;
+          display.drawTextCentered(cx, y, MECK_TR("The restart reloads what", "Le red\xC3\xA9marrage recharge"));   y += lh;
+          display.drawTextCentered(cx, y, MECK_TR("storage still holds.", "ce qui reste en m\xC3\xA9moire."));       y += lh + 4;
         }
         display.setColor(DisplayDriver::RED);
-        display.drawTextCentered(cx, y, "RESTARTING NOW...");
+        display.drawTextCentered(cx, y, MECK_TR("RESTARTING NOW...", "RED\xC3\x89MARRAGE..."));
       }
       display.setTextSize(1);
     }
@@ -2478,7 +2478,7 @@ public:
       // Header
       display.setColor(DisplayDriver::GREEN);
       display.setCursor(bx + 4, by + 3);
-      display.print("Notification Tone");
+      display.print(MECK_TR("Notification Tone", "Son de notification"));
 
       int listTop = by + 14;
       int listBot = by + bh - 14;
@@ -2514,10 +2514,10 @@ public:
 
         display.setCursor(bx + 6, sy);
         if (i == 0) {
-          display.print("Default (silent)");
+          display.print(MECK_TR("Default (silent)", "D\xC3\xA9" "faut (silencieux)"));
 #if defined(LilyGo_TDeck_Pro_Max)
         } else if (i == 1) {
-          display.print("Buzzer (vibrate)");
+          display.print(MECK_TR("Buzzer (vibrate)", "Buzzer (vibreur)"));
 #endif
         } else {
           // Show filename without extension
@@ -2535,7 +2535,7 @@ public:
       display.setColor(DisplayDriver::YELLOW);
       int fy = by + bh - 11;
       display.setCursor(bx + 4, fy);
-      display.print("Enter:Pick  Q:Back");
+      display.print(MECK_TR("Enter:Pick  Q:Back", "Entr\xC3\xA9" "e:Choisir  Q:Retour"));
 
       // Scroll indicator
       if (totalItems > maxVisible) {
@@ -2566,25 +2566,25 @@ public:
       int wy = by + 4;
 
       if (_wifiPhase == WIFI_PHASE_SCANNING) {
-        display.drawTextCentered(display.width() / 2, wy, "Scanning for networks...");
+        display.drawTextCentered(display.width() / 2, wy, MECK_TR("Scanning for networks...", "Recherche des r\xC3\xA9seaux..."));
 
       } else if (_wifiPhase == WIFI_PHASE_SELECT) {
         if (_wifiSSIDCount == 0) {
           // No networks found — show message with rescan prompt
           display.setCursor(bx + 4, wy);
-          display.print("No networks found.");
+          display.print(MECK_TR("No networks found.", "Aucun r\xC3\xA9seau trouv\xC3\xA9."));
           wy += 12;
           display.setCursor(bx + 4, wy);
-          display.print("Check your hotspot is on");
+          display.print(MECK_TR("Check your hotspot is on", "V\xC3\xA9rifiez que le partage est"));
           wy += 8;
           display.setCursor(bx + 4, wy);
-          display.print("and set to 2.4GHz.");
+          display.print(MECK_TR("and set to 2.4GHz.", "actif et en 2,4 GHz."));
           wy += 12;
           display.setCursor(bx + 4, wy);
-          display.print("Press R or Enter to rescan.");
+          display.print(MECK_TR("Press R or Enter to rescan.", "R ou Entr\xC3\xA9" "e pour relancer."));
         } else {
         display.setCursor(bx + 4, wy);
-        display.print("Select network:");
+        display.print(MECK_TR("Select network:", "Choisir un r\xC3\xA9seau :"));
         wy += 10;
         for (int wi = 0; wi < _wifiSSIDCount && wy < by + bh - 16; wi++) {
           bool sel = (wi == _wifiSSIDSelected);
@@ -2619,7 +2619,7 @@ public:
         display.print(tmp);
         wy += 12;
         display.setCursor(bx + 4, wy);
-        display.print("Password:");
+        display.print(MECK_TR("Password:", "Mot de passe :"));
         wy += 10;
         display.setCursor(bx + 4, wy);
         // Masked password with brief reveal of last char
@@ -2634,7 +2634,7 @@ public:
         display.print(passBuf);
 
       } else if (_wifiPhase == WIFI_PHASE_CONNECTING) {
-        display.drawTextCentered(display.width() / 2, wy + 10, "Connecting...");
+        display.drawTextCentered(display.width() / 2, wy + 10, MECK_TR("Connecting...", "Connexion..."));
       }
       display.setTextSize(1);
     }
@@ -2654,25 +2654,25 @@ public:
       int oy = by + 4;
 
       if (_otaPhase == OTA_PHASE_CONFIRM) {
-        display.drawTextCentered(display.width() / 2, oy, "Firmware Update");
+        display.drawTextCentered(display.width() / 2, oy, MECK_TR("Firmware Update", "Mise \xC3\xA0 jour du firmware"));
         oy += 14;
         display.setCursor(bx + 4, oy);
-        display.print("Start WiFi upload server?");
+        display.print(MECK_TR("Start WiFi upload server?", "Lancer le serveur WiFi ?"));
         oy += 10;
         display.setCursor(bx + 4, oy);
-        display.print("You will upload a .bin file");
+        display.print(MECK_TR("You will upload a .bin file", "Envoyez un fichier .bin"));
         oy += 8;
         display.setCursor(bx + 4, oy);
-        display.print("from your device's browser.");
+        display.print(MECK_TR("from your device's browser.", "depuis votre navigateur."));
 
       } else if (_otaPhase == OTA_PHASE_AP_START) {
-        display.drawTextCentered(display.width() / 2, oy + 20, "Starting WiFi...");
+        display.drawTextCentered(display.width() / 2, oy + 20, MECK_TR("Starting WiFi...", "D\xC3\xA9marrage du WiFi..."));
 
       } else if (_otaPhase == OTA_PHASE_WAITING) {
-        display.drawTextCentered(display.width() / 2, oy, "Firmware Update");
+        display.drawTextCentered(display.width() / 2, oy, MECK_TR("Firmware Update", "Mise \xC3\xA0 jour du firmware"));
         oy += 14;
         display.setCursor(bx + 4, oy);
-        display.print("Connect to WiFi network:");
+        display.print(MECK_TR("Connect to WiFi network:", "Connectez-vous au WiFi :"));
         oy += 10;
         display.setColor(DisplayDriver::GREEN);
         display.setCursor(bx + 4, oy);
@@ -2680,7 +2680,7 @@ public:
         display.setColor(DisplayDriver::LIGHT);
         oy += 12;
         display.setCursor(bx + 4, oy);
-        display.print("Then open browser:");
+        display.print(MECK_TR("Then open browser:", "Puis ouvrez le navigateur :"));
         oy += 10;
         display.setColor(DisplayDriver::GREEN);
         display.setCursor(bx + 4, oy);
@@ -2690,36 +2690,36 @@ public:
         display.setColor(DisplayDriver::LIGHT);
         oy += 12;
         display.setCursor(bx + 4, oy);
-        display.print("Waiting for upload...");
+        display.print(MECK_TR("Waiting for upload...", "En attente du fichier..."));
 
         // Poll the web server during render
         pollOTAServer();
 
       } else if (_otaPhase == OTA_PHASE_RECEIVING) {
-        display.drawTextCentered(display.width() / 2, oy, "Receiving Firmware");
+        display.drawTextCentered(display.width() / 2, oy, MECK_TR("Receiving Firmware", "R\xC3\xA9" "ception du firmware"));
         oy += 16;
         char progBuf[32];
-        snprintf(progBuf, sizeof(progBuf), "%d KB received", (int)(_otaBytesReceived / 1024));
+        snprintf(progBuf, sizeof(progBuf), MECK_TR("%d KB received", "%d Ko re\xC3\xA7us"), (int)(_otaBytesReceived / 1024));
         display.drawTextCentered(display.width() / 2, oy, progBuf);
         oy += 14;
         display.setCursor(bx + 4, oy);
-        display.print("Do not close browser");
+        display.print(MECK_TR("Do not close browser", "Ne fermez pas la page"));
 
         // Keep polling during receive
         pollOTAServer();
 
       } else if (_otaPhase == OTA_PHASE_VERIFY) {
-        display.drawTextCentered(display.width() / 2, oy + 20, "Verifying file...");
+        display.drawTextCentered(display.width() / 2, oy + 20, MECK_TR("Verifying file...", "V\xC3\xA9rification du fichier..."));
 
       } else if (_otaPhase == OTA_PHASE_FLASH) {
-        display.drawTextCentered(display.width() / 2, oy + 10, "Flashing Firmware");
+        display.drawTextCentered(display.width() / 2, oy + 10, MECK_TR("Flashing Firmware", "\xC3\x89" "criture du firmware"));
         display.setColor(DisplayDriver::YELLOW);
-        display.drawTextCentered(display.width() / 2, oy + 30, "DO NOT POWER OFF");
+        display.drawTextCentered(display.width() / 2, oy + 30, MECK_TR("DO NOT POWER OFF", "NE PAS \xC3\x89TEINDRE"));
         display.setColor(DisplayDriver::LIGHT);
 
       } else if (_otaPhase == OTA_PHASE_ERROR) {
         display.setColor(DisplayDriver::YELLOW);
-        display.drawTextCentered(display.width() / 2, oy, "Update Failed");
+        display.drawTextCentered(display.width() / 2, oy, MECK_TR("Update Failed", "\xC3\x89" "chec de la mise \xC3\xA0 jour"));
         display.setColor(DisplayDriver::LIGHT);
         oy += 14;
         if (_otaError) {
@@ -2744,27 +2744,27 @@ public:
       int oy = by + 4;
 
       if (_fmPhase == FM_PHASE_CONFIRM) {
-        display.drawTextCentered(display.width() / 2, oy, "SD File Manager");
+        display.drawTextCentered(display.width() / 2, oy, MECK_TR("SD File Manager", "Gestionnaire de fichiers SD"));
         oy += 14;
         display.setCursor(bx + 4, oy);
-        display.print("Start WiFi file server?");
+        display.print(MECK_TR("Start WiFi file server?", "Lancer le serveur WiFi ?"));
         oy += 10;
         display.setCursor(bx + 4, oy);
-        display.print("Upload and download files");
+        display.print(MECK_TR("Upload and download files", "Envoyer et t\xC3\xA9l\xC3\xA9" "charger des"));
         oy += 8;
         display.setCursor(bx + 4, oy);
-        display.print("on SD card via browser.");
+        display.print(MECK_TR("on SD card via browser.", "fichiers SD par navigateur."));
         oy += 10;
         display.setCursor(bx + 4, oy);
         display.setColor(DisplayDriver::YELLOW);
-        display.print("LoRa paused while active.");
+        display.print(MECK_TR("LoRa paused while active.", "LoRa mis en pause."));
         display.setColor(DisplayDriver::LIGHT);
 
       } else if (_fmPhase == FM_PHASE_WAITING) {
-        display.drawTextCentered(display.width() / 2, oy, "SD File Manager");
+        display.drawTextCentered(display.width() / 2, oy, MECK_TR("SD File Manager", "Gestionnaire de fichiers SD"));
         oy += 14;
         display.setCursor(bx + 4, oy);
-        display.print("Connect to WiFi network:");
+        display.print(MECK_TR("Connect to WiFi network:", "Connectez-vous au WiFi :"));
         oy += 10;
         display.setColor(DisplayDriver::GREEN);
         display.setCursor(bx + 4, oy);
@@ -2772,7 +2772,7 @@ public:
         display.setColor(DisplayDriver::LIGHT);
         oy += 12;
         display.setCursor(bx + 4, oy);
-        display.print("Then open browser:");
+        display.print(MECK_TR("Then open browser:", "Puis ouvrez le navigateur :"));
         oy += 10;
         display.setColor(DisplayDriver::GREEN);
         display.setCursor(bx + 4, oy);
@@ -2782,13 +2782,13 @@ public:
         display.setColor(DisplayDriver::LIGHT);
         oy += 12;
         display.setCursor(bx + 4, oy);
-        display.print("File server active...");
+        display.print(MECK_TR("File server active...", "Serveur de fichiers actif..."));
 
         pollOTAServer();
 
       } else if (_fmPhase == FM_PHASE_ERROR) {
         display.setColor(DisplayDriver::YELLOW);
-        display.drawTextCentered(display.width() / 2, oy, "File Manager Error");
+        display.drawTextCentered(display.width() / 2, oy, MECK_TR("File Manager Error", "Erreur du gestionnaire"));
         display.setColor(DisplayDriver::LIGHT);
         oy += 14;
         if (_fmError) {
@@ -2816,12 +2816,12 @@ public:
       // Header
       display.setColor(DisplayDriver::GREEN);
       display.setCursor(bx + 4, by + 3);
-      display.print("Share with contact:");
+      display.print(MECK_TR("Share with contact:", "Partager avec un contact :"));
 
       if (_shareContactCount == 0) {
         display.setColor(DisplayDriver::LIGHT);
         display.setCursor(bx + 4, by + 16);
-        display.print("No contacts available");
+        display.print(MECK_TR("No contacts available", "Aucun contact disponible"));
       } else {
         int listTop = by + 14;
         int listBot = by + bh - 14;
@@ -2872,7 +2872,7 @@ public:
       // Footer hint
       display.setColor(DisplayDriver::YELLOW);
       display.setCursor(bx + 4, by + bh - 12);
-      display.print("Enter:Send  Q:Cancel");
+      display.print(MECK_TR("Enter:Send  Q:Cancel", "Entr\xC3\xA9" "e:Envoyer  Q:Annuler"));
       display.setTextSize(1);
     }
 
@@ -2883,58 +2883,58 @@ public:
     display.setCursor(0, footerY);
 
     if (_editMode == EDIT_TEXT || _editMode == EDIT_CANNED) {
-      display.print("Type, Enter:Ok Sh+Del:Cancel");
+      display.print(MECK_TR("Type, Enter:Ok Sh+Del:Cancel", "Entr\xC3\xA9" "e:Ok Sh+Del:Annuler"));
     #ifdef MECK_WIFI_COMPANION
     } else if (_editMode == EDIT_WIFI) {
       if (_wifiPhase == WIFI_PHASE_SELECT) {
         if (_wifiSSIDCount == 0) {
-          display.print("R/Enter:Rescan Q:Back");
+          display.print(MECK_TR("R/Enter:Rescan Q:Back", "R/Entr\xC3\xA9" "e:Relancer Q:Retour"));
         } else {
-          display.print("W/S:Pick Enter:Sel R:Rescan");
+          display.print(MECK_TR("W/S:Pick Enter:Sel R:Rescan", "W/S:Choix Ent:OK R:Relance"));
         }
       } else if (_wifiPhase == WIFI_PHASE_PASSWORD) {
-        display.print("Enter:Connect Sh+Del:Exit");
+        display.print(MECK_TR("Enter:Connect Sh+Del:Exit", "Ent:Connexion Sh+Del:Sortir"));
       } else {
-        display.print("Please wait...");
+        display.print(MECK_TR("Please wait...", "Veuillez patienter..."));
       }
     #endif
     #ifdef MECK_OTA_UPDATE
     } else if (_editMode == EDIT_OTA) {
       if (_otaPhase == OTA_PHASE_CONFIRM) {
-        display.print("Enter:Start  Q:Cancel");
+        display.print(MECK_TR("Enter:Start  Q:Cancel", "Entr\xC3\xA9" "e:Lancer  Q:Annuler"));
       } else if (_otaPhase == OTA_PHASE_WAITING) {
-        display.print("Q:Cancel");
+        display.print(MECK_TR("Q:Cancel", "Q:Annuler"));
       } else if (_otaPhase == OTA_PHASE_ERROR) {
-        display.print("Q:Back");
+        display.print(MECK_TR("Q:Back", "Q:Retour"));
       } else {
-        display.print("Please wait...");
+        display.print(MECK_TR("Please wait...", "Veuillez patienter..."));
       }
     } else if (_editMode == EDIT_FILEMGR) {
       if (_fmPhase == FM_PHASE_CONFIRM) {
-        display.print("Enter:Start  Q:Cancel");
+        display.print(MECK_TR("Enter:Start  Q:Cancel", "Entr\xC3\xA9" "e:Lancer  Q:Annuler"));
       } else if (_fmPhase == FM_PHASE_WAITING) {
-        display.print("Q:Stop");
+        display.print(MECK_TR("Q:Stop", "Q:Arr\xC3\xAAter"));
       } else if (_fmPhase == FM_PHASE_ERROR) {
-        display.print("Q:Back");
+        display.print(MECK_TR("Q:Back", "Q:Retour"));
       } else {
-        display.print("Please wait...");
+        display.print(MECK_TR("Please wait...", "Veuillez patienter..."));
       }
     #endif
     } else if (_editMode == EDIT_PICKER) {
-      display.print("A/D:Choose Enter:Ok");
+      display.print(MECK_TR("A/D:Choose Enter:Ok", "A/D:Choisir Entr\xC3\xA9" "e:Ok"));
     } else if (_editMode == EDIT_NUMBER) {
-      display.print("W/S:Adj Enter:Ok Q:Cancel");
+      display.print(MECK_TR("W/S:Adj Enter:Ok Q:Cancel", "W/S:+/- Ent:Ok Q:Annuler"));
     } else if (_editMode == EDIT_CONFIRM) {
       // Footer already covered by overlay
     } else {
       if (_subScreen == SUB_CHANNELS) {
-        display.print("Q:Bk C:Share");
+        display.print(MECK_TR("Q:Bk C:Share", "Q:Ret C:Partager"));
       } else if (_subScreen != SUB_NONE) {
-        display.print("Q:Back");
+        display.print(MECK_TR("Q:Back", "Q:Retour"));
       } else {
-        display.print("Q:Bk");
+        display.print(MECK_TR("Q:Bk", "Q:Ret"));
       }
-      const char* r = "Tap/Ent:Edit";
+      const char* r = MECK_TR("Tap/Ent:Edit", "Ent:\xC3\x89" "diter");
       display.setCursor(display.width() - display.getTextWidth(r) - 2, footerY);
       display.print(r);
     }

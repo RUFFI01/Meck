@@ -363,8 +363,8 @@ void renderBatteryIndicator(DisplayDriver& display, uint16_t batteryMilliVolts, 
       display.setColor(DisplayDriver::GREEN);
       display.drawTextCentered(display.width() / 2, 64, tzCities(_tz_edit_val));
       display.setTextSize(_node_prefs->smallTextSize());
-      display.drawTextCentered(display.width() / 2, 84, "W/S:adj Enter:ok Q:cancel");
-      display.drawTextCentered(display.width() / 2, 96, "Tap:-/+  Hold:save");
+      display.drawTextCentered(display.width() / 2, 84, MECK_TR("W/S:adj Enter:ok Q:cancel", "W/S:r\xC3\xA9gler Ent:ok Q:annuler"));
+      display.drawTextCentered(display.width() / 2, 96, MECK_TR("Tap:-/+  Hold:save", "Appui:-/+  Maintien:enreg."));
       display.setTextSize(1);
       return;
     }
@@ -530,11 +530,11 @@ public:
       display.setTextSize(1);
       if (!_poweroff_msg_shown) {
         _poweroff_msg_shown = true;
-        display.drawTextCentered(display.width() / 2, 30, "powering off...");
-        display.drawTextCentered(display.width() / 2, 46, "plug in USB-C to turn on");
+        display.drawTextCentered(display.width() / 2, 30, MECK_TR("powering off...", "extinction..."));
+        display.drawTextCentered(display.width() / 2, 46, MECK_TR("plug in USB-C to turn on", "USB-C pour rallumer"));
         return 1500;
       } else {
-        display.drawTextCentered(display.width() / 2, 38, "plug in USB-C to turn on");
+        display.drawTextCentered(display.width() / 2, 38, MECK_TR("plug in USB-C to turn on", "USB-C pour rallumer"));
         return 5000;
       }
     }
@@ -1134,7 +1134,7 @@ public:
 
         // Show controls hint
         display.setTextSize(_node_prefs->smallTextSize());
-        display.drawTextCentered(display.width() / 2, by + bh - 10, "W/S:adj Enter:ok Q:cancel");
+        display.drawTextCentered(display.width() / 2, by + bh - 10, MECK_TR("W/S:adj Enter:ok Q:cancel", "W/S:r\xC3\xA9gler Ent:ok Q:annuler"));
         display.setTextSize(1);
       }
 
@@ -1278,13 +1278,13 @@ public:
       display.setColor(DisplayDriver::GREEN);
       display.setTextSize(1);
       if (_shutdown_init) {
-        display.drawTextCentered(display.width() / 2, 34, "hibernating...");
+        display.drawTextCentered(display.width() / 2, 34, MECK_TR("hibernating...", "mise en veille..."));
       } else if (_poweroff_confirm) {
         // Confirmation prompt for power off
         display.drawXbm((display.width() - 32) / 2, 20, power_icon, 32, 32);
-        display.drawTextCentered(display.width() / 2, 56, "power off device?");
-        display.drawTextCentered(display.width() / 2, 66, "usb-c to wake");
-        display.drawTextCentered(display.width() / 2, 82, "Enter:yes  q:no");
+        display.drawTextCentered(display.width() / 2, 56, MECK_TR("power off device?", "\xC3\xA9teindre l'appareil ?"));
+        display.drawTextCentered(display.width() / 2, 66, MECK_TR("usb-c to wake", "usb-c pour r\xC3\xA9veiller"));
+        display.drawTextCentered(display.width() / 2, 82, MECK_TR("Enter:yes  q:no", "Entr\xC3\xA9" "e:oui  q:non"));
       } else {
         // Menu: hibernate / power off
         display.drawXbm((display.width() - 32) / 2, 20, power_icon, 32, 32);
@@ -1329,7 +1329,7 @@ public:
         Serial.printf("UTC offset saving: %d\n", _node_prefs->utc_offset_hours);
         the_mesh.savePrefs();
         _editing_utc = false;
-        _task->showAlert("UTC offset saved", 800);
+        _task->showAlert(MECK_TR("UTC offset saved", "D\xC3\xA9" "calage UTC enregistr\xC3\xA9"), 800);
         Serial.println("UTC offset save complete");
         return true;
       }
@@ -1391,7 +1391,7 @@ public:
     if (c == KEY_NEXT || c == KEY_RIGHT || c == 'd') {
       _page = (_page + 1) % HomePage::Count;
       if (_page == HomePage::RECENT) {
-        _task->showAlert("Recent adverts", 800);
+        _task->showAlert(MECK_TR("Recent adverts", "Annonces r\xC3\xA9" "centes"), 800);
       }
       return true;
     }
@@ -1402,7 +1402,7 @@ public:
       if (meckCompanionIsBLE()) {
         meckCompanionUseNone();
       } else if (!meckCompanionUseBLE()) {
-        _task->showAlert("Reboot for Bluetooth", 1500);
+        _task->showAlert(MECK_TR("Reboot for Bluetooth", "Red\xC3\xA9marrer (Bluetooth)"), 1500);
       }
       return true;
     }
@@ -1419,9 +1419,9 @@ public:
     if (c == KEY_ENTER && _page == HomePage::ADVERT) {
       _task->notify(UIEventType::ack);
       if (the_mesh.advert()) {
-        _task->showAlert("Advert sent!", 1000);
+        _task->showAlert(MECK_TR("Advert sent!", "Annonce envoy\xC3\xA9" "e !"), 1000);
       } else {
-        _task->showAlert("Advert failed..", 1000);
+        _task->showAlert(MECK_TR("Advert failed..", "\xC3\x89" "chec de l'annonce.."), 1000);
       }
       return true;
     }
@@ -1501,7 +1501,7 @@ public:
       int unread = _task->getUnreadMsgCount();
       char infoBuf[32];
       if (unread > 0) {
-        sprintf(infoBuf, "%d%%  |  %d unread", pct, unread);
+        sprintf(infoBuf, MECK_TR("%d%%  |  %d unread", "%d%%  |  %d non lus"), pct, unread);
       } else {
         sprintf(infoBuf, "%d%%", pct);
       }
@@ -1521,11 +1521,11 @@ public:
       if (sms > 0 || missed > 0) {
         char notifBuf[32];
         if (sms > 0 && missed > 0) {
-          sprintf(notifBuf, "SMS: %d  Missed: %d", sms, missed);
+          sprintf(notifBuf, MECK_TR("SMS: %d  Missed: %d", "SMS : %d  Manqu\xC3\xA9s : %d"), sms, missed);
         } else if (sms > 0) {
           sprintf(notifBuf, "SMS: %d", sms);
         } else {
-          sprintf(notifBuf, "Missed: %d", missed);
+          sprintf(notifBuf, MECK_TR("Missed: %d", "Manqu\xC3\xA9s : %d"), missed);
         }
         display.setTextSize(1);
         display.setColor(DisplayDriver::GREEN);
@@ -1934,7 +1934,7 @@ void UITask::newMsg(uint8_t path_len, const char* from_name, const char* text, i
 #endif
   if (!isOnRepeaterAdmin() && !isRoomMsg && !suppressNotif && !gbcPlaying) {
     char alertBuf[40];
-    snprintf(alertBuf, sizeof(alertBuf), "New: %s", from_name);
+    snprintf(alertBuf, sizeof(alertBuf), MECK_TR("New: %s", "De : %s"), from_name);
     showAlert(alertBuf, 2000);
   }
   // Ensure picker badges update after toaster clears
@@ -2412,8 +2412,8 @@ if (curr) curr->poll();
         _display->startFrame();
         _display->setTextSize(2);
         _display->setColor(DisplayDriver::RED);
-        _display->drawTextCentered(_display->width() / 2, 20, "Low Battery.");
-        _display->drawTextCentered(_display->width() / 2, 40, "Shutting Down!");
+        _display->drawTextCentered(_display->width() / 2, 20, MECK_TR("Low Battery.", "Batterie faible."));
+        _display->drawTextCentered(_display->width() / 2, 40, MECK_TR("Shutting Down!", "Extinction !"));
         _display->endFrame();
       }
       #endif
@@ -2555,7 +2555,7 @@ void UITask::toggleGPS() {
       } else {
 #ifdef MECK_40MHZ_TEST
         // 40 MHz test build: GPS is gated -- refuse the enable, leave rail off
-        showAlert("GPS gated (40MHz build)", 1200);
+        showAlert(MECK_TR("GPS gated (40MHz build)", "GPS bloqu\xC3\xA9 (40 MHz)"), 1200);
         return;
 #endif
         // Enable GPS — power on hardware
@@ -2570,7 +2570,7 @@ void UITask::toggleGPS() {
         notify(UIEventType::ack);
       }
       the_mesh.savePrefs();
-      showAlert(_node_prefs->gps_enabled ? "GPS: Enabled" : "GPS: Disabled", 800);
+      showAlert(_node_prefs->gps_enabled ? MECK_TR("GPS: Enabled", "GPS : activ\xC3\xA9") : MECK_TR("GPS: Disabled", "GPS : d\xC3\xA9sactiv\xC3\xA9"), 800);
       _next_refresh = 0;
     }
   #endif
@@ -2587,7 +2587,7 @@ void UITask::toggleBuzzer() {
     }
     _node_prefs->buzzer_quiet = buzzer.isQuiet();
     the_mesh.savePrefs();
-    showAlert(buzzer.isQuiet() ? "Buzzer: OFF" : "Buzzer: ON", 800);
+    showAlert(buzzer.isQuiet() ? MECK_TR("Buzzer: OFF", "Buzzer : coup\xC3\xA9") : MECK_TR("Buzzer: ON", "Buzzer : activ\xC3\xA9"), 800);
     _next_refresh = 0;  // trigger refresh
   #endif
 }
@@ -3065,7 +3065,7 @@ void UITask::gotoGBCScreen() {
   // The emulator needs 240 MHz; at 40 it is unusable. Refuse from every
   // launch route (tile, J-key, games menu) and stay put. Snake and
   // Minesweeper are fine at 40 MHz and are not gated.
-  showAlert("Game Boy needs 240MHz", 1500);
+  showAlert(MECK_TR("Game Boy needs 240MHz", "Game Boy exige 240 MHz"), 1500);
   return;
 #endif
   GBCEmulatorScreen* gb = (GBCEmulatorScreen*)gbc_screen;
