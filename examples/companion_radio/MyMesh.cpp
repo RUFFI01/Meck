@@ -740,10 +740,17 @@ void MyMesh::sendFloodScoped(const TransportKey& scope, mesh::Packet* pkt, uint3
 void MyMesh::sendFloodScoped(const ContactInfo& recipient, mesh::Packet* pkt, uint32_t delay_millis) {
   Serial.printf("[sendFloodScoped] to '%s', delay=%lu, hash_mode=%d, bph=%d\n",
                 recipient.name, delay_millis, _prefs.path_hash_mode, _prefs.path_hash_mode + 1);
-  // DMs: use device default scope (no per-contact scope)
-  TransportKey default_scope;
-  memcpy(&default_scope.key, _prefs.default_scope_key, sizeof(default_scope.key));
-  sendFloodScoped(default_scope, pkt, delay_millis);
+  // Contact floods (DMs, acks, logins, requests): the BLE app's CMD 54 choice
+  // first (explicit un-scoped, or its scope key), otherwise the device default
+  TransportKey scope;
+  if (send_unscoped) {
+    memset(scope.key, 0, sizeof(scope.key));  // app explicitly requested un-scoped (ver 12+)
+  } else if (!send_scope.isNull()) {
+    memcpy(scope.key, send_scope.key, sizeof(scope.key));
+  } else {
+    memcpy(scope.key, _prefs.default_scope_key, sizeof(scope.key));
+  }
+  sendFloodScoped(scope, pkt, delay_millis);
 }
 void MyMesh::sendFloodScoped(const mesh::GroupChannel& channel, mesh::Packet* pkt, uint32_t delay_millis) {
   // Capture payload fingerprint for repeat tracking before sending
@@ -1452,6 +1459,13 @@ void MyMesh::onContactResponse(const ContactInfo &contact, const uint8_t *data, 
     i += 4;
     memcpy(&out_frame[i], &data[4], len - 4);
     i += (len - 4);
+    _serial->writeFrame(out_frame, i);
+  } else {   // let the app know about unknown/unhandled responses (eg. push telemetry packets)
+    int i = 0;
+    out_frame[i++] = PUSH_CODE_BINARY_RESPONSE;
+    out_frame[i++] = 0; // reserved
+    memcpy(&out_frame[i], data, len);
+    i += len;
     _serial->writeFrame(out_frame, i);
   }
 }
@@ -2519,6 +2533,16 @@ void MyMesh::handleCmdFrame(size_t len) {
   } else if (cmd_frame[0] == CMD_SEND_ANON_REQ && len > 1 + PUB_KEY_SIZE) {
     uint8_t *pub_key = &cmd_frame[1];
     ContactInfo *recipient = lookupContactByPubKey(pub_key, PUB_KEY_SIZE);
+    ContactInfo anon;
+    if (recipient == NULL) { // FIRMWARE_VER_CODE 13+,  allow non-contact requests
+      memset(&anon, 0, sizeof(anon));
+      memcpy(anon.id.pub_key, pub_key, PUB_KEY_SIZE);
+      anon.out_path_len = 0;   // default to zero-hop direct
+      anon.type = ADV_TYPE_NONE;  // unknown
+      anon.lastmod = getRTCClock()->getCurrentTime();
+
+      if (addAnonContact(anon)) recipient = &anon;
+    }
     uint8_t *data = &cmd_frame[1 + PUB_KEY_SIZE];
     if (recipient) {
       uint32_t tag, est_timeout;
@@ -2535,7 +2559,7 @@ void MyMesh::handleCmdFrame(size_t len) {
         _serial->writeFrame(out_frame, 10);
       }
     } else {
-      writeErrFrame(ERR_CODE_NOT_FOUND); // contact not found
+      writeErrFrame(ERR_CODE_TABLE_FULL); // contacts full
     }
   } else if (cmd_frame[0] == CMD_SEND_STATUS_REQ && len >= 1 + PUB_KEY_SIZE) {
     uint8_t *pub_key = &cmd_frame[1];
