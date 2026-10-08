@@ -228,11 +228,10 @@ void SerialBLEInterface::onWrite(BLECharacteristic* pCharacteristic, esp_ble_gat
     memcpy(&_rx_buf[_rx_len], rxValue + 2, n);
     _rx_len += n;
     if (tag == SLICE_TAG_LAST || tag == SLICE_TAG_SINGLE) {
-      if (recv_queue_len < FRAME_QUEUE_SIZE) {
-        recv_queue[recv_queue_len].len = _rx_len;
-        memcpy(recv_queue[recv_queue_len].buf, _rx_buf, _rx_len);
-        recv_queue_len++;
-      } else {
+      Frame frame;
+      frame.len = _rx_len;
+      memcpy(frame.buf, _rx_buf, _rx_len);
+      if (xQueueSend(recv_queue, &frame, 0) != pdTRUE) {
         BLE_DEBUG_PRINTLN("ERROR: onWrite(), recv_queue is full! (sliced)");
       }
       _rx_len = -1;
@@ -242,12 +241,14 @@ void SerialBLEInterface::onWrite(BLECharacteristic* pCharacteristic, esp_ble_gat
 #endif
   if (len > MAX_FRAME_SIZE) {
     BLE_DEBUG_PRINTLN("ERROR: onWrite(), frame too big, len=%d", len);
-  } else if (recv_queue_len >= FRAME_QUEUE_SIZE) {
-    BLE_DEBUG_PRINTLN("ERROR: onWrite(), recv_queue is full!");
   } else {
-    recv_queue[recv_queue_len].len = len;
-    memcpy(recv_queue[recv_queue_len].buf, rxValue, len);
-    recv_queue_len++;
+    Frame frame;
+    frame.len = len;
+    memcpy(frame.buf, rxValue, len);
+
+    if (xQueueSend(recv_queue, &frame, 0) != pdTRUE) {
+      BLE_DEBUG_PRINTLN("ERROR: onWrite(), recv_queue is full!");
+    }
   }
 }
 
@@ -377,17 +378,11 @@ size_t SerialBLEInterface::checkRecvFrame(uint8_t dest[]) {
 #endif
   }
 
-  if (recv_queue_len > 0) {   // check recv queue
-    size_t len = recv_queue[0].len;   // take from top of queue
-    memcpy(dest, recv_queue[0].buf, len);
-
-    BLE_DEBUG_PRINTLN("readBytes: sz=%d, hdr=%d", len, (uint32_t) dest[0]);
-
-    recv_queue_len--;
-    if (recv_queue_len > 0) {
-      memmove(&recv_queue[0], &recv_queue[1], recv_queue_len * sizeof(Frame));
-    }
-    return len;
+  Frame frame;
+  if (xQueueReceive(recv_queue, &frame, 0) == pdTRUE) {   // check recv queue
+    memcpy(dest, frame.buf, frame.len);
+    BLE_DEBUG_PRINTLN("readBytes: sz=%d, hdr=%d", (uint32_t) frame.len, (uint32_t) dest[0]);
+    return frame.len;
   }
 
   if (pServer->getConnectedCount() == 0) {

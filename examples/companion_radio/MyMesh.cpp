@@ -2495,7 +2495,8 @@ void MyMesh::handleCmdFrame(size_t len) {
   } else if (cmd_frame[0] == CMD_SEND_RAW_DATA && len >= 6) {
     int i = 1;
     uint8_t path_len = cmd_frame[i++];
-    if (path_len != OUT_PATH_UNKNOWN && i + mesh::Packet::getPathByteLenFor(path_len) + 4 <= len) { // minimum 4 byte payload
+    if (path_len != OUT_PATH_UNKNOWN && mesh::Packet::isValidPathLen(path_len)
+        && i + mesh::Packet::getPathByteLenFor(path_len) + 4 <= len) { // minimum 4 byte payload
       uint8_t *path = &cmd_frame[i];
       i += mesh::Packet::getPathByteLenFor(path_len);
       auto pkt = createRawData(&cmd_frame[i], len - i);
@@ -2762,7 +2763,7 @@ void MyMesh::handleCmdFrame(size_t len) {
         sendDirect(pkt, &cmd_frame[10], path_len);
 
         uint32_t t = _radio->getEstAirtimeFor(pkt->payload_len + pkt->path_len + 2);
-        uint32_t est_timeout = calcDirectTimeoutMillisFor(t, path_len);
+        uint32_t est_timeout = calcDirectTimeoutMillisFor(t, path_len >> path_sz);
 
         out_frame[0] = RESP_CODE_SENT;
         out_frame[1] = 0;
