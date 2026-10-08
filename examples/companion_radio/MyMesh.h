@@ -387,6 +387,7 @@ private:
   unsigned long _nextContactSaveDue;   // ESP32 chunked save: next scheduled flush (0 = unscheduled)
 
   TransportKey send_scope;
+  bool send_unscoped;   // force un-scoped flood (instead of using send_scope)
 
   // --- Region scope resolution for incoming channel messages (display only) ---
   // A received scoped flood/direct packet carries a one-way transport code. We match

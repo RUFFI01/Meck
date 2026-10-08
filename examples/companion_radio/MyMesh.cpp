@@ -761,7 +761,10 @@ void MyMesh::sendFloodScoped(const mesh::GroupChannel& channel, mesh::Packet* pk
 
   // Scope priority: BLE app send_scope → per-channel scope → device default → unscoped
   TransportKey scope;
-  if (!send_scope.isNull()) {
+  if (send_unscoped) {
+    // BLE app has explicitly requested un-scoped via CMD 54 (ver 12+) -- null key
+    memset(scope.key, 0, sizeof(scope.key));
+  } else if (!send_scope.isNull()) {
     // BLE app has set a scope via CMD 54 — use it (highest priority)
     memcpy(scope.key, send_scope.key, sizeof(scope.key));
   } else {
@@ -1237,7 +1240,7 @@ bool MyMesh::uiSendCliCommand(uint32_t contact_idx, const char* command) {
 
   uint32_t timestamp = getRTCClock()->getCurrentTimeUnique();
   uint32_t est_timeout;
-  int result = sendCommandData(*recipient, timestamp, 0, command, est_timeout);
+  int result = sendCommandData(*recipient, timestamp, 0, TXT_TYPE_CLI_DATA, command, est_timeout);
   if (result == MSG_SEND_FAILED) {
     MESH_DEBUG_PRINTLN("UI: CLI command send failed to %s: %s", recipient->name, command);
     return false;
@@ -1684,6 +1687,7 @@ MyMesh::MyMesh(mesh::Radio &radio, mesh::RNG &rng, mesh::RTCClock &rtc, SimpleMe
   _rxlog_head = 0;
   _rxlog_count = 0;
   memset(send_scope.key, 0, sizeof(send_scope.key));
+  send_unscoped = false;
   memset(_sent_track, 0, sizeof(_sent_track));
   _sent_track_idx = 0;
   _admin_contact_idx = -1;
@@ -2046,16 +2050,16 @@ void MyMesh::handleCmdFrame(size_t len) {
     uint8_t *pub_key_prefix = &cmd_frame[i];
     i += 6;
     ContactInfo *recipient = lookupContactByPubKey(pub_key_prefix, 6);
-    if (recipient && (txt_type == TXT_TYPE_PLAIN || txt_type == TXT_TYPE_CLI_DATA)) {
+    if (recipient && (txt_type == TXT_TYPE_PLAIN || txt_type == TXT_TYPE_CLI_DATA || txt_type == TXT_TYPE_CLI_COMMAND)) {
       char *text = (char *)&cmd_frame[i];
       int tlen = len - i;
       uint32_t est_timeout;
       text[tlen] = 0; // ensure null
       int result;
       uint32_t expected_ack;
-      if (txt_type == TXT_TYPE_CLI_DATA) {
+      if (txt_type == TXT_TYPE_CLI_DATA || txt_type == TXT_TYPE_CLI_COMMAND) {
         msg_timestamp = getRTCClock()->getCurrentTimeUnique(); // Use node's RTC instead of app timestamp to avoid tripping replay protection
-        result = sendCommandData(*recipient, msg_timestamp, attempt, text, est_timeout);
+        result = sendCommandData(*recipient, msg_timestamp, attempt, txt_type, text, est_timeout);
         expected_ack = 0; // no Ack expected
       } else {
         result = sendMessage(*recipient, msg_timestamp, attempt, text, expected_ack, est_timeout);
@@ -2896,6 +2900,10 @@ void MyMesh::handleCmdFrame(size_t len) {
       memset(send_scope.key, 0, sizeof(send_scope.key));  // set scope to null
       Serial.println("[CMD54] Per-channel scope cleared");
     }
+    send_unscoped = false;
+    writeOKFrame();
+  } else if (cmd_frame[0] == CMD_SET_FLOOD_SCOPE_KEY && len >= 2 && cmd_frame[1] == 1) {  // ver 12+
+    send_unscoped = true;
     writeOKFrame();
   } else if (cmd_frame[0] == CMD_SET_DEFAULT_FLOOD_SCOPE && len >= 1) {
     // v1.15+ — set device-wide default flood scope (name[31] + key[16])
