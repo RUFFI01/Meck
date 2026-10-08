@@ -24,6 +24,9 @@
 #define KB_KEY_EMOJI       0x01   // Non-printable code for $ key (emoji picker)
 #define KB_KEY_MIC         0x02   // Mic key press (PTT start / voice screen open)
 #define KB_KEY_MIC_RELEASE 0x03   // Mic key release (PTT stop)
+#if defined(MECK_PRO_KBD_BACKLIGHT)
+#define KB_KEY_KBD_BACKLIGHT 0x05 // Both shifts together: keyboard backlight toggle
+#endif
 
 class TCA8418Keyboard {
 private:
@@ -33,6 +36,8 @@ private:
   bool _shiftActive;   // Sticky shift (one-shot or held)
   bool _shiftConsumed; // Was shift active for the last returned key
   bool _shiftHeld;     // Shift key physically held down
+  bool _leftShiftHeld;
+  bool _rightShiftHeld;
   bool _shiftUsedWhileHeld; // Was shift consumed by any key while held
   bool _altActive;     // Sticky alt (one-shot)
   bool _symActive;     // Sticky sym (one-shot)
@@ -41,9 +46,9 @@ private:
   bool _enterHeld;              // Enter key physically held down
   unsigned long _enterPressTime; // millis() when Enter was pressed
 
-  // GBC raw joypad mode (GBCEmulatorScreen). While on, every key press and
-  // release updates _rawMask on BOTH edges and readKey() returns 0, so the
-  // emulator gets true press-and-hold input and nothing reaches the UI.
+  // GBC raw joypad mode (GBCEmulatorScreen). While on, key press and release
+  // events update _rawMask so the emulator gets true press-and-hold input;
+  // the configured both-shifts chord still returns its backlight key.
   // _rawMask and _rawExit are read from the emulator task on the other core
   // while readKey() writes them on this one, hence volatile.
   bool             _rawJoypad;
@@ -57,23 +62,30 @@ private:
   // from getKeyChar()'s table: W=9 A=20 S=19 D=18 K=13 J=14 Enter=21
   // Space=33 Backspace=11 Q=10 Shift=35/31. Bits: a 0x01, b 0x02,
   // select 0x04, start 0x08, right 0x10, left 0x20, up 0x40, down 0x80.
-  // Quit is Q (the UI's usual back key) or Shift+Backspace. (The Max driver
-  // also passes its both-shifts backlight chord through; the Pro has no
-  // keyboard backlight, so nothing gets through here.)
-  void rawJoypadEvent(uint8_t keyCode, bool pressed) {
-    if (keyCode == 35) { _rawShiftL = pressed; return; }
-    if (keyCode == 31) { _rawShiftR = pressed; return; }
+  // Quit is Q (the UI's usual back key) or Shift+Backspace. The Max and
+  // backlight-enabled Pro builds also pass the both-shifts chord through.
+  char rawJoypadEvent(uint8_t keyCode, bool pressed) {
+#if defined(MECK_PRO_KBD_BACKLIGHT)
+    if (keyCode == 35 || keyCode == 31) {
+      if (keyCode == 35) _rawShiftL = pressed; else _rawShiftR = pressed;
+      if (pressed && _rawShiftL && _rawShiftR) return KB_KEY_KBD_BACKLIGHT;
+      return 0;
+    }
+#else
+    if (keyCode == 35) { _rawShiftL = pressed; return 0; }
+    if (keyCode == 31) { _rawShiftR = pressed; return 0; }
+#endif
     if (keyCode == 10) {                       // Q = quit
       if (pressed) _rawExit = true;
-      return;
+      return 0;
     }
     if (keyCode == 34) {                       // Mic = mute toggle
       if (pressed) _rawMute = true;
-      return;
+      return 0;
     }
     if (keyCode == 11) {                       // Backspace: Shift+Backspace = quit
       if (pressed && (_rawShiftL || _rawShiftR)) _rawExit = true;
-      return;
+      return 0;
     }
     uint8_t bit = 0;
     switch (keyCode) {
@@ -85,10 +97,11 @@ private:
       case 20: bit = 0x20; break;   // A = left
       case 9:  bit = 0x40; break;   // W = up
       case 19: bit = 0x80; break;   // S = down
-      default: return;
+      default: return 0;
     }
     if (pressed) _rawMask = (uint8_t)(_rawMask | bit);
     else         _rawMask = (uint8_t)(_rawMask & (uint8_t)~bit);
+    return 0;
   }
 
   uint8_t readReg(uint8_t reg) {
@@ -206,7 +219,7 @@ private:
 public:
   TCA8418Keyboard(uint8_t addr = 0x34, TwoWire* wire = &Wire) 
     : _addr(addr), _wire(wire), _initialized(false), 
-      _shiftActive(false), _shiftConsumed(false), _shiftHeld(false), _shiftUsedWhileHeld(false), _altActive(false), _symActive(false), _micHeld(false), _lastShiftTime(0),
+      _shiftActive(false), _shiftConsumed(false), _shiftHeld(false), _leftShiftHeld(false), _rightShiftHeld(false), _shiftUsedWhileHeld(false), _altActive(false), _symActive(false), _micHeld(false), _lastShiftTime(0),
       _enterHeld(false), _enterPressTime(0),
       _rawJoypad(false), _rawMask(0), _rawExit(false), _rawMute(false), _rawShiftL(false), _rawShiftR(false) {}
 
@@ -288,12 +301,21 @@ public:
 
     // GBC raw joypad mode: both edges feed the held-key mask, nothing else.
     if (_rawJoypad) {
-      rawJoypadEvent(keyCode, pressed);
-      return 0;
+      if (keyCode == 35) _leftShiftHeld = pressed;
+      if (keyCode == 31) _rightShiftHeld = pressed;
+#if defined(MECK_PRO_KBD_BACKLIGHT)
+      if (pressed && _leftShiftHeld && _rightShiftHeld) {
+        _shiftActive = false;
+        _shiftUsedWhileHeld = true;
+      }
+#endif
+      return rawJoypadEvent(keyCode, pressed);
     }
 
     // Track shift release (before the general release-ignore)
     if (!pressed && (keyCode == 35 || keyCode == 31)) {
+      if (keyCode == 35) _leftShiftHeld = false;
+      else               _rightShiftHeld = false;
       _shiftHeld = false;
       // If shift was used while held (e.g. cursor nav), clear it completely
       // so the next bare keypress isn't treated as shifted.
@@ -327,6 +349,15 @@ public:
 
     // Handle modifier keys - set sticky state and return 0
     if (keyCode == 35 || keyCode == 31) {  // Shift keys
+      if (keyCode == 35) _leftShiftHeld = true;
+      else               _rightShiftHeld = true;
+#if defined(MECK_PRO_KBD_BACKLIGHT)
+      if (_leftShiftHeld && _rightShiftHeld) {
+        _shiftActive = false;
+        _shiftUsedWhileHeld = true;
+        return KB_KEY_KBD_BACKLIGHT;
+      }
+#endif
       _shiftActive = true;
       _shiftHeld = true;
       _shiftUsedWhileHeld = false;

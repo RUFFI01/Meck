@@ -155,8 +155,8 @@ extern void meck_audio_codec_init();      // target.cpp: ES8311 register init, o
 // ---- Firmware hooks ---------------------------------------------------------
 extern TCA8418Keyboard keyboard;          // main.cpp
 extern MyMesh the_mesh;                   // main.cpp
-#if defined(LilyGo_TDeck_Pro_Max)
-extern void toggleKeyboardBacklight();    // main.cpp (both-shifts chord, Max keyboard backlight)
+#if defined(LilyGo_TDeck_Pro_Max) || defined(MECK_PRO_KBD_BACKLIGHT)
+extern void toggleKeyboardBacklight();    // main.cpp (both-shifts keyboard backlight chord)
 #endif
 #ifdef MECK_OTA_UPDATE
 extern void otaPauseRadio();              // main.cpp
@@ -211,7 +211,7 @@ static volatile bool    s_snap_req     = false;
 static volatile bool    s_stop         = false;
 static volatile bool    s_task_stopped = false;
 static volatile bool    s_core_error   = false;
-#if defined(LilyGo_TDeck_Pro_Max)
+#if defined(LilyGo_TDeck_Pro_Max) || defined(MECK_PRO_KBD_BACKLIGHT)
 static volatile bool    s_kbd_bl_req   = false;   // both-shifts chord seen by the busy poll
 #endif
 static volatile unsigned long s_frames = 0;
@@ -326,10 +326,10 @@ static void mono_convert(uint8_t *dst_buf) {
 // updates the held-key mask and returns 0, so nothing is lost or misrouted.
 static void gbc_busy_poll(const void *arg) {
   (void)arg;
-  // Raw mode returns 0 for everything except (on the Max) the both-shifts
-  // backlight chord. Latch that here and act on it from poll(), outside the
+  // Raw mode returns 0 for everything except the both-shifts backlight chord.
+  // Latch that here and act on it from poll(), outside the
   // panel's busy wait.
-#if defined(LilyGo_TDeck_Pro_Max)
+#if defined(LilyGo_TDeck_Pro_Max) || defined(MECK_PRO_KBD_BACKLIGHT)
   if (keyboard.readKey() == KB_KEY_KBD_BACKLIGHT) s_kbd_bl_req = true;
 #else
   keyboard.readKey();
@@ -889,7 +889,7 @@ void GBCEmulatorScreen::poll() {
     keyboard.setRawJoypad(false);      // also clears any quit presses latched meanwhile
     _releaseKbAfterDraw = false;
   }
-#if defined(LilyGo_TDeck_Pro_Max)
+#if defined(LilyGo_TDeck_Pro_Max) || defined(MECK_PRO_KBD_BACKLIGHT)
   if (s_kbd_bl_req) {
     s_kbd_bl_req = false;
     toggleKeyboardBacklight();

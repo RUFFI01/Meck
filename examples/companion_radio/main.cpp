@@ -4539,16 +4539,19 @@ void initKeyboard() {
   }
 }
 
-#if defined(LilyGo_TDeck_Pro_Max)
-// Both-shifts keyboard backlight toggle (MAX only -- IO42). Shared by the
-// normal key path below and by the Game Boy emulator, whose raw joypad mode
-// reads the keyboard itself, so the on/off state lives here rather than in
-// handleKeyboardInput().
+#if defined(LilyGo_TDeck_Pro_Max) || defined(MECK_PRO_KBD_BACKLIGHT)
+// Both-shifts keyboard backlight toggle. Shared by normal input and the Game
+// Boy emulator, whose raw joypad mode reads the keyboard itself.
 void toggleKeyboardBacklight() {
+#if defined(LilyGo_TDeck_Pro_Max)
   static bool kbdBacklightOn = false;
   kbdBacklightOn = !kbdBacklightOn;
   uint8_t kbPct = the_mesh.getNodePrefs()->kb_backlight_pct;
   analogWrite(KB_BL_PIN, kbdBacklightOn ? (uint8_t)((kbPct * 255 + 50) / 100) : 0);
+#else
+  bool kbdBacklightOn = digitalRead(KB_BL_PIN) == LOW;
+  digitalWrite(KB_BL_PIN, kbdBacklightOn ? HIGH : LOW);
+#endif
   Serial.printf("Keyboard backlight %s\n", kbdBacklightOn ? "ON" : "OFF");
 }
 #endif
@@ -4595,14 +4598,16 @@ void handleKeyboardInput() {
   // Defer contact saves while user is actively pressing keys
   the_mesh.notifyUserInput();
 
-#if defined(LilyGo_TDeck_Pro_Max)
+#if defined(LilyGo_TDeck_Pro_Max) || defined(MECK_PRO_KBD_BACKLIGHT)
   // Alt+B toggles the e-ink frontlight (MAX only -- working backlight on IO41)
+#if defined(LilyGo_TDeck_Pro_Max)
   if (key == KB_KEY_BACKLIGHT) {
     if (board.isBacklightOn()) board.backlightOff();
     else                       board.backlightOn();
     return;
   }
-  // Both shifts together toggle the keyboard backlight (MAX only -- IO42).
+#endif
+  // Both shifts together toggle the keyboard backlight.
   if (key == KB_KEY_KBD_BACKLIGHT) {
     toggleKeyboardBacklight();
     return;
